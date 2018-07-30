@@ -3,3 +3,4 @@ __pycache__
 doc/source/_static
 doc/source/_templates
 doc/source/build
+/doc/build/html/_sources/analyzer_module.rst.txt
