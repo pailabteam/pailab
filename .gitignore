@@ -1,0 +1,5 @@
+.vs
+__pycache__
+doc/source/_static
+doc/source/_templates
+doc/source/build
