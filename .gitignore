@@ -3,3 +3,7 @@ __pycache__
 /doc/source/_static/
 /doc/build/doctrees
 /doc/build/html
+.coverage
+/htmlcov
+.vscode/settings.json
+.vscode/tasks.json
