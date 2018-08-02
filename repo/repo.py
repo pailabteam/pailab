@@ -7,7 +7,7 @@ LOGGER = logging.getLogger('repo')
 
 
 
-def _create_repo_object_info(version = 0, id = None, message = '', modifier = '', repo_type = ''):
+def _create_repo_object_info(version = 0, id = None, message = '', modifier = '', repo_type = '', description = ''):
     """ Create dictionary with all informations of a repo object
     """
     result = {'version': 0, 'id': id, 'class': '', 'message': message,
@@ -93,6 +93,8 @@ def _create_object_from_repo_object(obj):
         result = get_object_from_classname(obj['repo_info']['class'], obj)
     return result
 
+
+
 class RepoObject:
     def __init__(self, obj, repo_id = None, version = 0):
         if repo_id is None:
@@ -124,3 +126,30 @@ class RepoObject:
         return self._data['repo_info']['id']
 
     id = property(__get_id, __set_id)
+
+
+class ObjectRepository:
+    pass
+
+class DataStorage:
+    pass
+
+class CodeRepository:
+    pass
+
+class MLRepository:
+    def __init__(repo_object_storage, data_storage, code_repo):
+        pass
+
+    def add_raw_data(self, data):
+        pass
+    def get_raw_data(self, data):
+        pass
+    def add_training_data(self, data_set):
+        pass
+    def get_training_data(self, full):
+        pass
+    def add_preprocessing(self, prep_function, prep_param):
+        pass
+    
+
