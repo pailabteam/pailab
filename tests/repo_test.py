@@ -21,14 +21,22 @@ class RepoInfoTest(unittest.TestCase):
         version = '1.0.2'
         repo_info = repo_objects.RepoInfo(**{ 'version': version, 'NAME': name})
         self.assertEqual(repo_info.name, 'dummy')
-        self.assertEqual(repo_info[RepoInfoKey.Name], 'dummy')
-        self.assertEqual(repo_info[RepoInfoKey.Name.value], 'dummy')
+        self.assertEqual(repo_info['name'], 'dummy')
+        self.assertEqual(repo_info['NAME'], 'dummy')
+        self.assertEqual(repo_info[RepoInfoKey.NAME], 'dummy')
 
         repo_info.set_fields({RepoInfoKey.BIG_OBJECTS: {'dummy': 'dummy2'}})
         self.assertEqual(repo_info.name, 'dummy')
         self.assertEqual(repo_info.big_objects['dummy'], 'dummy2')
+        self.assertEqual(repo_info.big_objects['dummy'], 'dummy2')
+        repo_info[RepoInfoKey.NAME] = 'dummy2'
+        self.assertEqual(repo_info.name, 'dummy2')
+        repo_info['NAME'] = 'dummy2'
+        self.assertEqual(repo_info['NAME'], 'dummy2')
+        repo_info['name'] = 'dummy2'
+        self.assertEqual(repo_info['NAME'], 'dummy2')
+        self.assertEqual(repo_info['dummy'], None)
 
-    
 class RepoObjectTest(unittest.TestCase):
 
     def test_repo_object_helper(self):

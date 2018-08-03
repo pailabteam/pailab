@@ -53,21 +53,22 @@ class RepoInfo:
                             setattr(self, key.value, kwargs[key])
                     
               
-    def __setitem__(self, key, value):
+    def __setitem__(self, field, value):
         if isinstance(field, RepoInfoKey):
             setattr(self, field.value, value)
         if isinstance(field, str):
-            if field in RepoInfoKey.keys:
-                setattr(self, RepoInfoKey[field], value)
             for k in RepoInfoKey:
                 if k.value == field:
                     setattr(self, field, value)
-        
+                    break
+                else:
+                    if k.name == field:
+                        setattr(self, k.value, value)
+                        break
+
     def __getitem__(self, field):
         if isinstance(field, RepoInfoKey):
             return getattr(self, field.value)
-        if field in RepoInfoKey.keys:
-            return getattr(self, RepoInfoKey[field].value)
         if isinstance(field, str):    
             for k in RepoInfoKey:
                 if k.value == field:
