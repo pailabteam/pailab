@@ -33,13 +33,13 @@ class RepoInfo:
     def __init__(self, **kwargs):
         for key in RepoInfoKey:
             setattr(self, key.value, None)
-        self.set_fields(**kwargs)
+        self.set_fields(kwargs)
 
     def set_fields(self, kwargs):
         """Set repo info fields from a dictionary
 
         Args:
-            :param kwargs:
+            :param kwargs: dictionary 
         """
         if not kwargs is None:
             for key in RepoInfoKey:
@@ -63,15 +63,18 @@ class RepoInfo:
                 if k.value == field:
                     setattr(self, field, value)
         
-    def __getitem__(self, key):
+    def __getitem__(self, field):
         if isinstance(field, RepoInfoKey):
             return getattr(self, field.value)
-        if isinstance(field, str):
-            if field in RepoInfoKey.keys:
-                return getattr(self, RepoInfoKey[field])
+        if field in RepoInfoKey.keys:
+            return getattr(self, RepoInfoKey[field].value)
+        if isinstance(field, str):    
             for k in RepoInfoKey:
                 if k.value == field:
                     return getattr(self, field)
+                else:
+                    if k.name == field:
+                        return getattr(self, k.value)
         return None
     
 
@@ -173,7 +176,7 @@ class RepoObject:
             self._repo_info = repo_info
         else:
              if isinstance(repo_info, dict):
-                self._repo_info.set_fields(**repo_info)
+                self._repo_info.set_fields(repo_info)
 
     def _get_repo_info(self):
         return self._repo_info
