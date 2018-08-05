@@ -19,6 +19,8 @@ def _get_attribute_dict(clazz, excluded = set()):
 
 
 class RepoInfoKey(Enum):
+    """ Enums to describe all possible repository informations.
+    """
     VERSION = 'version'
     NAME = 'name'
     HISTORY = 'history'
@@ -218,3 +220,10 @@ def create_repo_obj(obj):
     result = get_object_from_classname(repo_info['classname'], obj)
     return result
 
+class RepoObjectType(Enum):
+    """Enums describing all repo object types.
+    """
+    RAW_DATA = 'raw_data'
+    DATASET = 'dataset'
+    PARAMETER = 'parameter'
+    JOB = 'job'
