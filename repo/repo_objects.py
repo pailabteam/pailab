@@ -1,18 +1,21 @@
 from enum import Enum, auto
-from functools import partial
-import copy
+from types import MethodType
 
 
-def _get_attribute_dict(clazz):
+
+def _get_attribute_dict(clazz, excluded = set()):
     """Return dictionary of non-static members and their values for an instance of  class
 
     Args:
         :param clazz: object instance of a crtain class
+        :param excluded: names of member attributes which are excluded
     """
     return { name: attr for name, attr in clazz.__dict__.items()
             if not name.startswith("__") 
             and not callable(attr)
-            and not type(attr) is staticmethod }
+            and not type(attr) is staticmethod 
+            and not name in excluded
+            }
 
 
 class RepoInfoKey(Enum):
@@ -34,7 +37,11 @@ class RepoInfo:
         for key in RepoInfoKey:
             setattr(self, key.value, None)
         self.set_fields(kwargs)
-
+        if self[RepoInfoKey.VERSION] is None:
+            self[RepoInfoKey.VERSION] = 0
+        if self[RepoInfoKey.BIG_OBJECTS] is None:
+            self[RepoInfoKey.BIG_OBJECTS] = set()
+    
     def set_fields(self, kwargs):
         """Set repo info fields from a dictionary
 
@@ -84,38 +91,76 @@ class RepoInfo:
         """
         return _get_attribute_dict(self)
 
+
+def create_repo_obj_dict(obj):
+    """
+    """
+    result = _get_attribute_dict(obj, obj.repo_info[RepoInfoKey.BIG_OBJECTS])
+    result['repo_info'] = obj.repo_info.get_dictionary()
+    return result
+
 class repo_object_init: # pylint: disable=too-few-public-methods
     """ Decorator class to modify a constructor so that the class can be used within the ml repository.
 
     """
-    def init_from_class_data(init_self, **kwargs):# pylint: disable=E0213
-        repo_info = RepoInfo()
-        repo_info.classname =  init_self.__class__.__module__ + '.' + init_self.__class__.__name__
-        applied = False
-        if kwargs is not None:
-            if 'repo_info' in kwargs.keys():
-                repo_info = kwargs['repo_info']
-                del  kwargs['repo_info']
+    def to_dict(repo_obj):
+        """ Return a data dictionary for a given repo_object
 
-            if 'repo_id' in kwargs.keys():
-                repo_info['id'] = kwargs['repo_id']
-                del kwargs['repo_id']
+        Args:
+            :param repo_obj: A repo_object, i.e. object which provides the repo_object interface
+
+            :returns: dictionary of data
+        """
+        excluded = [x for x in repo_obj.repo_info[RepoInfoKey.BIG_OBJECTS]]
+        excluded.append('repo_info')
+        return _get_attribute_dict(repo_obj, excluded)
     
-            if 'obj' in kwargs.keys():
-                data_dict = kwargs['obj']
-                for k, v in data_dict.items():
-                    setattr(init_self, k, v)
-                applied = True
+    def from_dict(repo_obj, repo_obj_dict):
+        """ set object from a dictionary
 
+        Args:
+            :param repo_object: repo_object which will be set from the dictionary
+            :param repo_object_dict: dictionary with the object data
+        """
+        for key, value in repo_obj_dict.items():
+            repo_obj.__dict__[key] = value
+
+    def numpy_to_dict(repo_obj):
+        pass
+
+    def numpy_from_dict(repo_obj, repo_numpy_dict):
+        pass
+
+    def init_repo_object(init_self, repo_info):# pylint: disable=E0213
+        repo_info[RepoInfoKey.CLASSNAME] = init_self.__class__.__module__ + '.' + init_self.__class__.__name__
         setattr(init_self, 'repo_info', repo_info)  
-        return applied
+        if not hasattr(init_self, 'to_dict'):
+            setattr(init_self, 'to_dict', MethodType(repo_object_init.to_dict, init_self))
+        if not hasattr(init_self, 'from_dict'):
+            setattr(init_self, 'from_dict', MethodType(repo_object_init.from_dict, init_self))
+        if len(repo_info[RepoInfoKey.BIG_OBJECTS]) > 0 :
+            if not hasattr(init_self, 'numpy_from_dict'):
+                setattr(init_self, 'numpy_from_dict',  MethodType(repo_object_init.numpy_from_dict, init_self))
+            if not hasattr(init_self, 'numpy_to_dict'):
+                setattr(init_self, 'numpy_to_dict',  MethodType(repo_object_init.numpy_to_dict, init_self))
+            
 
     def __call__(self, f):
         def wrap(init_self, *args, **kwargs):
-            if not repo_object_init.init_from_class_data(init_self, **kwargs):
-                if 'repo_id' in kwargs.keys():
-                    del kwargs['repo_id']
-                f(init_self,*args,**kwargs)
+            repo_info = None
+            if 'repo_info' in kwargs.keys(): #check if arguments contain a repo_info object
+                repo_info = kwargs['repo_info']
+                del kwargs['repo_info']
+                if isinstance(repo_info, dict):
+                    repo_info = RepoInfo(**repo_info)
+                if not '_init_from_dict' in kwargs.keys():
+                    f(init_self, *args, **kwargs)
+                repo_object_init.init_repo_object(init_self, repo_info)
+                if '_init_from_dict' in kwargs.keys() and kwargs['_init_from_dict'] == True:
+                    del kwargs['_init_from_dict']
+                    init_self.from_dict(kwargs)
+            else:
+                f(init_self,*args, **kwargs)
         return wrap
 
 def get_object_from_classname(classname, data):
@@ -132,54 +177,13 @@ def get_object_from_classname(classname, data):
     m = __import__( module )
     for comp in parts[1:]:
         m = getattr(m, comp)
-    return m(**data)
+    return m(_init_from_dict=True, **data)
 
-def _create_repo_dictionary(obj):
-    """
-    """
-    def get_members(repo_object):
-        if isinstance(repo_object, dict):
-            return repo_object
-        else:
-            return _get_attribute_dict(repo_object)
-
-    obj_dict = get_members(obj)
-    result = {'obj':{} }
-    members = result['obj']
-    for k, v in obj_dict.items():
-        if not k == 'repo_info':
-            members[k] = v
-        else:
-            result[k] = v
-    return result
-
-def _create_object_from_repo_object(obj):
+def create_repo_obj(obj):
     if not 'repo_info' in obj.keys():
         raise Exception('Given dictionary is not a repo dictionary, '\
             'since repo_info key is missing.')
     repo_info = obj['repo_info']
-    result = get_object_from_classname(repo_info.classname, obj)
+    result = get_object_from_classname(repo_info['classname'], obj)
     return result
 
-
-
-
-class RepoObject:
-
-    def __init__(self,  obj_data, repo_info = RepoInfo()):
-        self._repo_info =  RepoInfo()
-        self._set_repo_info(repo_info)
-        self._obj = obj_data
-        #self._obj_dict =
-
-    def _set_repo_info(self, repo_info):
-        if isinstance(repo_info, RepoInfo):
-            self._repo_info = repo_info
-        else:
-             if isinstance(repo_info, dict):
-                self._repo_info.set_fields(repo_info)
-
-    def _get_repo_info(self):
-        return self._repo_info
-
-    repo_info = property(_get_repo_info, _set_repo_info)

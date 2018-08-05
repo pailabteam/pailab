@@ -24,7 +24,6 @@ class RepoInfoTest(unittest.TestCase):
         self.assertEqual(repo_info['name'], 'dummy')
         self.assertEqual(repo_info['NAME'], 'dummy')
         self.assertEqual(repo_info[RepoInfoKey.NAME], 'dummy')
-
         repo_info.set_fields({RepoInfoKey.BIG_OBJECTS: {'dummy': 'dummy2'}})
         self.assertEqual(repo_info.name, 'dummy')
         self.assertEqual(repo_info.big_objects['dummy'], 'dummy2')
@@ -36,41 +35,44 @@ class RepoInfoTest(unittest.TestCase):
         repo_info['name'] = 'dummy2'
         self.assertEqual(repo_info['NAME'], 'dummy2')
         self.assertEqual(repo_info['dummy'], None)
+        repo_info_dict = repo_info.get_dictionary()
+        self.assertEqual(repo_info_dict['name'], 'dummy2')
+        # now test if dictionary contains only values for RepoInfoKeys
+        for k in RepoInfoKey:
+            self.assertEqual(repo_info_dict[k.value], repo_info[k])
 
 class RepoObjectTest(unittest.TestCase):
 
     def test_repo_object_helper(self):
         orig = TestClass(5, 3)
-        tmp = repo_objects._create_repo_dictionary(orig)
-        new = repo_objects._create_object_from_repo_object(tmp)
+        self.assertEqual(orig.a_plus_b(), 8)
+        orig = TestClass(5, 3, repo_info = {'name': 'test'})
+        tmp = repo_objects.create_repo_obj_dict(orig)
+        new = repo_objects.create_repo_obj(tmp)
         self.assertEqual(orig.a_plus_b(), new.a_plus_b())
         # test if different constructor call work correctly after applying decorator
-        orig = TestClass(5, b=3)
-        tmp = repo_objects._create_repo_dictionary(orig)
-        new = repo_objects._create_object_from_repo_object(tmp)
+        orig = TestClass(5, b=3, repo_info = {'name': 'test'})
+        tmp = repo_objects.create_repo_obj_dict(orig)
+        new = repo_objects.create_repo_obj(tmp)
         self.assertEqual(orig.a_plus_b(), new.a_plus_b())
 
-        orig = TestClass(a=5, b=3)
-        tmp = repo_objects._create_repo_dictionary(orig)
-        new = repo_objects._create_object_from_repo_object(tmp)
-        self.assertEqual(orig.a_plus_b(), new.a_plus_b())
-
-        orig = TestClass(**{'a' : 5, 'b' : 3})
-        tmp = repo_objects._create_repo_dictionary(orig)
-        new = repo_objects._create_object_from_repo_object(tmp)
+        orig = TestClass(**{'a' : 5, 'b' : 3}, repo_info = {'name': 'test'})
+        tmp = repo_objects.create_repo_obj_dict(orig)
+        new = repo_objects.create_repo_obj(tmp)
         self.assertEqual(orig.a_plus_b(), new.a_plus_b())
 
     def test_repo_object(self):
         # initialize repo object from test class
-        orig = TestClass(5, 3)
-        version = '1.0.1'
-        obj = repo_objects.RepoObject(orig, repo_info = {'name' : 'dummy', 'version': version})
+        version = 5
+        obj = TestClass(5, 3, repo_info = {'name' : 'dummy', 'version': version})
         self.assertEqual(obj.repo_info.name, 'dummy')
         self.assertEqual(obj.repo_info.version, version)
-       
-        # check if class creation works
-        #new = obj.get_class()
-        #self.assertEqual(orig.a_plus_b(), new.a_plus_b())
+        repo_dict = obj.to_dict()
+        self.assertEqual(repo_dict['a'], obj.a)
+        self.assertEqual(repo_dict['_b'], obj._b)
+        obj2 = TestClass(**repo_dict, repo_info = {'name' : 'dummy', 'version': version}, _init_from_dict = True)
+        self.assertEqual(obj2.a, obj.a)
+        self.assertEqual(obj2.a_plus_b(), obj.a_plus_b())
        
 
 if __name__ == '__main__':
