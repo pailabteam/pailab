@@ -8,7 +8,7 @@ def _get_attribute_dict(clazz, excluded = set()):
 
     Args:
         :param clazz: object instance of a crtain class
-        :param excluded: names of member attributes which are excluded
+        :param excluded: names of member attributes which are excluded from dictionary
     """
     return { name: attr for name, attr in clazz.__dict__.items()
             if not name.startswith("__") 
@@ -32,7 +32,11 @@ class RepoInfoKey(Enum):
 
 
 class RepoInfo:
-    
+    """Contains all repo relevent information
+
+    This class contains all repo relevant information such as version, name, descriptions. 
+    It must be a member of all objects which are handled by the repo.
+    """
     def __init__(self, **kwargs):
         for key in RepoInfoKey:
             setattr(self, key.value, None)
@@ -61,6 +65,12 @@ class RepoInfo:
                     
               
     def __setitem__(self, field, value):
+        """Set an item.
+        
+        Args:
+            :param field: Either a string (RepoInfoKey.value or RepoInfoKey.name) or directly a RepoInfoKey enum
+            :param value: value for the field
+        """
         if isinstance(field, RepoInfoKey):
             setattr(self, field.value, value)
         if isinstance(field, str):
@@ -74,6 +84,14 @@ class RepoInfo:
                         break
 
     def __getitem__(self, field):
+        """Get an item.
+        
+        Args:
+            :param field: Either a string (RepoInfoKey.value or RepoInfoKey.name) or directly a RepoInfoKey enum
+        
+        Returns:
+            Value of specified field.
+        """
         if isinstance(field, RepoInfoKey):
             return getattr(self, field.value)
         if isinstance(field, str):    
@@ -93,14 +111,17 @@ class RepoInfo:
 
 
 def create_repo_obj_dict(obj):
-    """
+    """ Create from a repo_object a dictionary with all values to handle the object within the repo
+    
+    Args:
+        :param obj: repository object
     """
     result = _get_attribute_dict(obj, obj.repo_info[RepoInfoKey.BIG_OBJECTS])
     result['repo_info'] = obj.repo_info.get_dictionary()
     return result
 
 class repo_object_init: # pylint: disable=too-few-public-methods
-    """ Decorator class to modify a constructor so that the class can be used within the ml repository.
+    """ Decorator class to modify a constructor so that the class can be used within the ml repository as repo_object.
 
     """
     def to_dict(repo_obj):
@@ -164,7 +185,7 @@ class repo_object_init: # pylint: disable=too-few-public-methods
         return wrap
 
 def get_object_from_classname(classname, data):
-    """ Returns an object instance for for given classname and data dictionary.
+    """ Returns an object instance for given classname and data dictionary.
     
     :param classname: Full classname as string including the modules, e.g. repo.Y if class Y is defined in module repo.
     :param data: Dictionary of data used to initialize the object instance.
@@ -180,6 +201,16 @@ def get_object_from_classname(classname, data):
     return m(_init_from_dict=True, **data)
 
 def create_repo_obj(obj):
+    """Create a repo_object from a dictionary.
+
+    This function creates a repo object from a dictionary in a factory-like fashion. 
+    It uses the obj['repo_info']['classname'] within the dictionary and constructs the class 
+    using get_object_from_classname. It throws an exception if the dictionary does not contain an 'repo_info' key.
+
+    Args:
+        :param obj: dictionary containing all informations for a repo_object.
+
+    """
     if not 'repo_info' in obj.keys():
         raise Exception('Given dictionary is not a repo dictionary, '\
             'since repo_info key is missing.')
