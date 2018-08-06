@@ -20,7 +20,7 @@ class MLObjectType(Enum):
     TRAINING_FUNCTION = 'training_function'
     MODEL_EVAL_FUNCTION = 'model_eval_function'
     MODEL_CALIBRATOR = 'model_calibrator'
-    MODEL_EVALUATOR = 'model_evaluator'
+    MODEL_EVALUATION = 'model_evaluator'
     PREP_PARAM = 'prep_param'
     PREPROCESSOR = 'preprocessor'
     MODEL_INFO = 'model_info'
