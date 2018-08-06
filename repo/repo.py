@@ -3,6 +3,8 @@ Machine learning repository
 """
 from enum import Enum
 import logging
+import repo_objects
+import repo_objects.RepoInfoKey as InfoKey
 from repo.repo_objects import repo_object_init # pylint: disable=E0401
 LOGGER = logging.getLogger('repo')
 
@@ -59,30 +61,25 @@ class MLRepo:
             :param numpy_repo: repository where the numpy data is stored in versions
             :param ml_repo: repository where the repo_objects are stored
         """
-        pass
+        self._script_repo = script_repo
+        self._numpy_repo = numpy_repo
+        self._ml_repo = ml_repo
 
     def add(self, repo_object, message = ''):
         """ Add a repo_object to the repository.
 
-            This method raises an exception, if an object with the same name already exists. It also checks for consistencies such as if a DataSet is added,
-            if the underlying RawData object is already contained in the repository or if an object with the same name already exists and raises exceptions.
-
             :param repo_object: repo_object to be added
             :param message: commit message
         """
-        pass
-        
-    def update(self, repo_object, message = ''):
-        """ Update a repo_object in the repository.
-
-            This method raises an exception, if an object with the same name does not already exist.
-             It also checks for consistencies such as if a DataSet is updated,
-            if the underlying RawData object is already contained in the repository.
-
-            :param repo_object: repo_object to be added
-            :param message: commit message
-        """
-        pass
+        obj_dict = repo_objects.create_repo_obj_dict(repo_object)
+        self._ml_repo.add(repo_object.repo_info[InfoKey.ML_TYPE], 
+                        repo_object.repo_info[InfoKey.NAME],
+                        obj_dict)
+        if len(repo_object.repo_info[InfoKey.BIG_OBJECTS]) > 0:
+            np_dict = repo_object.numpy_to_dict()
+            self._numpy_repo.add(repo_object.repo_info[InfoKey.NAME],
+                                repo_object.repo_info[InfoKey.VERSION],
+                                np_dict)
 
     def get(self, name, version = -1, full_object = False):
         """ Get a repo objects. It throws an exception, if an object with the name does not exist.
@@ -91,7 +88,12 @@ class MLRepo:
             :param version: object version, default is latest (-1)
             :param full_object: flag to determine whether also the numpy objects are loaded (True->load)
         """
-        pass
+        repo_dict = self._ml_repo.get(name, version)
+        result = repo_objects.create_repo_obj(repo_dict)
+        if full_object and len(result.repo_info[InfoKey.BIG_OBJECTS])>0:
+            numpy_dict = self._numpy_repo.get(result.repo_info[InfoKey.NAME], result.repo_info[InfoKey.VERSION])
+            result.numpy_from_dict(numpy_dict)
+        return result
 
     def get_names(self, ml_obj_type):
         """ Get the list of names of all repo_objects from a given repo_object_type in the repository.
