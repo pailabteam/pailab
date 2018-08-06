@@ -65,9 +65,9 @@ class RepoObjectTest(unittest.TestCase):
         # initialize repo object from test class
         version = 5
         obj = TestClass(5, 3, repo_info = {'name' : 'dummy', 'version': version})
-        self.assertEqual(obj.repo_info.name, 'dummy')
-        self.assertEqual(obj.repo_info.version, version)
-        repo_dict = obj.to_dict()
+        self.assertEqual(obj.repo_info.name, 'dummy') # pylint: disable=E1101
+        self.assertEqual(obj.repo_info.version, version) # pylint: disable=E1101
+        repo_dict = obj.to_dict() # pylint: disable=E1101
         self.assertEqual(repo_dict['a'], obj.a)
         self.assertEqual(repo_dict['_b'], obj._b)
         obj2 = TestClass(**repo_dict, repo_info = {'name' : 'dummy', 'version': version}, _init_from_dict = True)
