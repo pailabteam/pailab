@@ -126,7 +126,7 @@ class repo_object_init: # pylint: disable=too-few-public-methods
     """ Decorator class to modify a constructor so that the class can be used within the ml repository as repo_object.
 
     """
-    def to_dict(repo_obj):
+    def to_dict(repo_obj): # pylint: disable=E0213
         """ Return a data dictionary for a given repo_object
 
         Args:
@@ -138,7 +138,7 @@ class repo_object_init: # pylint: disable=too-few-public-methods
         excluded.append('repo_info')
         return _get_attribute_dict(repo_obj, excluded)
     
-    def from_dict(repo_obj, repo_obj_dict):
+    def from_dict(repo_obj, repo_obj_dict):  # pylint: disable=E0213
         """ set object from a dictionary
 
         Args:
@@ -148,10 +148,10 @@ class repo_object_init: # pylint: disable=too-few-public-methods
         for key, value in repo_obj_dict.items():
             repo_obj.__dict__[key] = value
 
-    def numpy_to_dict(repo_obj):
+    def numpy_to_dict(repo_obj):  # pylint: disable=E0213
         pass
 
-    def numpy_from_dict(repo_obj, repo_numpy_dict):
+    def numpy_from_dict(repo_obj, repo_numpy_dict):  # pylint: disable=E0213
         pass
 
     def init_repo_object(init_self, repo_info):# pylint: disable=E0213
