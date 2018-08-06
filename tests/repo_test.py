@@ -1,7 +1,6 @@
 import unittest
 from repo.repo_objects import RepoInfoKey # pylint: disable=E0401
 from repo.repo_objects import repo_object_init # pylint: disable=E0401
-import repo.repo as repo
 import repo.repo_objects as repo_objects
 
 class TestClass:
