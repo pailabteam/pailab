@@ -1,7 +1,9 @@
 import unittest
 from repo.repo_objects import RepoInfoKey # pylint: disable=E0401
 from repo.repo_objects import repo_object_init # pylint: disable=E0401
+import repo.repo as repo
 import repo.repo_objects as repo_objects
+import repo.memory_handler as memory_handler
 
 class TestClass:
     @repo_object_init()
@@ -73,6 +75,27 @@ class RepoObjectTest(unittest.TestCase):
         self.assertEqual(obj2.a, obj.a)
         self.assertEqual(obj2.a_plus_b(), obj.a_plus_b())
        
+class RepoTest(unittest.TestCase):
+    # test the repo together with a memory handler
+    def test_repo_memory_handler(self):
+        handler = memory_handler.RepoObjectMemoryStorage()
+        repository = repo.MLRepo(handler, handler, handler) # init repository with sample in memory handler
+        test_obj = TestClass(5, 3, repo_info={'ml_type' : 'training_data', 'name' : 'test_object'})
+
+        #test simple add 
+        version = repository.add(test_obj, 'first test commit')
+        self.assertEqual(test_obj.repo_info[repo_objects.RepoInfoKey.VERSION], 0)
+        self.assertEqual(version, 0)
+
+        # test simple get
+        test_obj2 = repository.get('test_object')
+        self.assertEqual(test_obj2.a_plus_b(), test_obj.a_plus_b())
+        self.assertEqual(test_obj2.repo_info[repo_objects.RepoInfoKey.NAME], test_obj.repo_info[repo_objects.RepoInfoKey.NAME])
+        self.assertEqual(test_obj2.repo_info[repo_objects.RepoInfoKey.VERSION], 0)
+        
+        # test if version is handled properly
+        version = repository.add(test_obj2, 'second test commit')
+        self.assertEqual(version, 1)
 
 if __name__ == '__main__':
     unittest.main()
