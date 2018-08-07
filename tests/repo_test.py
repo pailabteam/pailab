@@ -8,10 +8,10 @@ import numpy as np
 
 class TestClass:
     @repo_object_init(['mat'])
-    def __init__(self, a ,b):
+    def __init__(self, a ,b, mat = None):
         self.a = a
         self._b = b
-        self.mat = np.zeros([100, 3])
+        self.mat = mat
 
     def a_plus_b(self):
         return self.a + self._b
@@ -91,14 +91,25 @@ class RepoTest(unittest.TestCase):
         self.assertEqual(version, 0)
 
         # test simple get
-        test_obj2 = repository.get('test_object')#, version, False)
+        test_obj2 = repository.get('test_object')
         self.assertEqual(test_obj2.a_plus_b(), test_obj.a_plus_b())
         self.assertEqual(test_obj2.repo_info[repo_objects.RepoInfoKey.NAME], test_obj.repo_info[repo_objects.RepoInfoKey.NAME])
         self.assertEqual(test_obj2.repo_info[repo_objects.RepoInfoKey.VERSION], 0)
-        
+        self.assertEqual(test_obj2.mat, None)
+
         # test if version is handled properly
         version = repository.add(test_obj2, 'second test commit')
         self.assertEqual(version, 1)
+        
+
+        # test if also the numpy object will b retrieved
+        mat = np.zeros([100, 3])
+        test_obj = TestClass(5, 3, np.zeros([100, 3]), repo_info={repo_objects.RepoInfoKey.CATEGORY.value : 'test_data', 'name' : 'test_object'})
+        version = repository.add(test_obj)
+        test_obj2 = repository.get('test_object', version, full_object = True)
+        self.assertEqual(test_obj.mat.shape[0], test_obj2.mat.shape[0])
+        self.assertEqual(test_obj.mat.shape[1], test_obj2.mat.shape[1])
+        
 
 if __name__ == '__main__':
     unittest.main()
