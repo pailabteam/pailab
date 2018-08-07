@@ -4,12 +4,14 @@ from repo.repo_objects import repo_object_init # pylint: disable=E0401
 import repo.repo as repo
 import repo.repo_objects as repo_objects
 import repo.memory_handler as memory_handler
+import numpy as np
 
 class TestClass:
-    @repo_object_init()
+    @repo_object_init(['mat'])
     def __init__(self, a ,b):
         self.a = a
         self._b = b
+        self.mat = np.zeros([100, 3])
 
     def a_plus_b(self):
         return self.a + self._b
@@ -79,8 +81,9 @@ class RepoTest(unittest.TestCase):
     # test the repo together with a memory handler
     def test_repo_memory_handler(self):
         handler = memory_handler.RepoObjectMemoryStorage()
-        repository = repo.MLRepo(handler, handler, handler) # init repository with sample in memory handler
-        test_obj = TestClass(5, 3, repo_info={'ml_type' : 'training_data', 'name' : 'test_object'})
+        numpy_handler = memory_handler.NumpyMemoryStorage()
+        repository = repo.MLRepo(handler, numpy_handler, handler) # init repository with sample in memory handler
+        test_obj = TestClass(5, 3, repo_info={repo_objects.RepoInfoKey.CATEGORY.value : 'training_data', 'name' : 'test_object'})
 
         #test simple add 
         version = repository.add(test_obj, 'first test commit')
@@ -88,7 +91,7 @@ class RepoTest(unittest.TestCase):
         self.assertEqual(version, 0)
 
         # test simple get
-        test_obj2 = repository.get('test_object')
+        test_obj2 = repository.get('test_object')#, version, False)
         self.assertEqual(test_obj2.a_plus_b(), test_obj.a_plus_b())
         self.assertEqual(test_obj2.repo_info[repo_objects.RepoInfoKey.NAME], test_obj.repo_info[repo_objects.RepoInfoKey.NAME])
         self.assertEqual(test_obj2.repo_info[repo_objects.RepoInfoKey.VERSION], 0)
