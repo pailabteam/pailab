@@ -157,7 +157,7 @@ class repo_object_init: # pylint: disable=too-few-public-methods
         for x in repo_obj.repo_info[RepoInfoKey.BIG_OBJECTS]:
             setattr(repo_obj, x, repo_numpy_dict[x])
 
-    def __init__(self, big_objects = None):
+    def __init__(self, big_objects = []):
         """
         """
         self._big_objects = big_objects
@@ -171,12 +171,11 @@ class repo_object_init: # pylint: disable=too-few-public-methods
             setattr(init_self, 'to_dict', MethodType(repo_object_init.to_dict, init_self))
         if not hasattr(init_self, 'from_dict'):
             setattr(init_self, 'from_dict', MethodType(repo_object_init.from_dict, init_self))
-        if len(repo_info[RepoInfoKey.BIG_OBJECTS]) > 0 :
-            if not hasattr(init_self, 'numpy_from_dict'):
-                setattr(init_self, 'numpy_from_dict',  MethodType(repo_object_init.numpy_from_dict, init_self))
-            if not hasattr(init_self, 'numpy_to_dict'):
-                setattr(init_self, 'numpy_to_dict',  MethodType(repo_object_init.numpy_to_dict, init_self))
-                        
+        if not hasattr(init_self, 'numpy_from_dict'):
+            setattr(init_self, 'numpy_from_dict',  MethodType(repo_object_init.numpy_from_dict, init_self))
+        if not hasattr(init_self, 'numpy_to_dict'):
+            setattr(init_self, 'numpy_to_dict',  MethodType(repo_object_init.numpy_to_dict, init_self))
+                    
 
     def __call__(self, f):
         def wrap(init_self, *args, **kwargs):
