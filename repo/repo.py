@@ -3,8 +3,7 @@ Machine learning repository
 """
 from enum import Enum
 import logging
-import repo_objects
-import repo_objects.RepoInfoKey as InfoKey
+import repo.repo_objects as repo_objects
 from repo.repo_objects import repo_object_init # pylint: disable=E0401
 LOGGER = logging.getLogger('repo')
 
@@ -68,30 +67,32 @@ class MLRepo:
     def add(self, repo_object, message = ''):
         """ Add a repo_object to the repository.
 
-            :param repo_object: repo_object to be added
+            :param repo_object: repo_object to be added, will be modified so that it contains the version number
             :param message: commit message
+
+            :return version number of object added
         """
         obj_dict = repo_objects.create_repo_obj_dict(repo_object)
-        self._ml_repo.add(repo_object.repo_info[InfoKey.ML_TYPE], 
-                        repo_object.repo_info[InfoKey.NAME],
-                        obj_dict)
-        if len(repo_object.repo_info[InfoKey.BIG_OBJECTS]) > 0:
+        version = self._ml_repo.add(obj_dict)
+        repo_object.repo_info[repo_objects.RepoInfoKey.VERSION.value] = version 
+        if len(repo_object.repo_info[repo_objects.RepoInfoKey.BIG_OBJECTS]) > 0:
             np_dict = repo_object.numpy_to_dict()
-            self._numpy_repo.add(repo_object.repo_info[InfoKey.NAME],
-                                repo_object.repo_info[InfoKey.VERSION],
+            self._numpy_repo.add(repo_object.repo_info[repo_objects.RepoInfoKey.NAME],
+                                repo_object.repo_info[repo_objects.RepoInfoKey.VERSION],
                                 np_dict)
+        return version
 
     def get(self, name, version = -1, full_object = False):
         """ Get a repo objects. It throws an exception, if an object with the name does not exist.
 
             :param name: Object name
             :param version: object version, default is latest (-1)
-            :param full_object: flag to determine whether also the numpy objects are loaded (True->load)
+            :param full_object: flag to determine whether the numpy objects are loaded (True->load)
         """
         repo_dict = self._ml_repo.get(name, version)
         result = repo_objects.create_repo_obj(repo_dict)
-        if full_object and len(result.repo_info[InfoKey.BIG_OBJECTS])>0:
-            numpy_dict = self._numpy_repo.get(result.repo_info[InfoKey.NAME], result.repo_info[InfoKey.VERSION])
+        if full_object and len(result.repo_info[repo_objects.RepoInfoKey.BIG_OBJECTS])>0:
+            numpy_dict = self._numpy_repo.get(result.repo_info[repo_objects.RepoInfoKey.NAME], result.repo_info[repo_objects.RepoInfoKey.VERSION])
             result.numpy_from_dict(numpy_dict)
         return result
 

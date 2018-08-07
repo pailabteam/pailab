@@ -28,7 +28,6 @@ class RepoInfoKey(Enum):
     MODIFICATION_INFO = 'modification_info'
     DESCRIPTION = 'description'
     CATEGORY = 'category'
-    ML_TYPE = 'ml_type'
     BIG_OBJECTS = 'big_objects'
 
 
