@@ -148,13 +148,24 @@ class repo_object_init: # pylint: disable=too-few-public-methods
             repo_obj.__dict__[key] = value
 
     def numpy_to_dict(repo_obj):  # pylint: disable=E0213
-        pass
+        result = {}
+        for x in repo_obj.repo_info[RepoInfoKey.BIG_OBJECTS]:
+            result[x] = getattr(repo_obj, x)
+        return result
 
     def numpy_from_dict(repo_obj, repo_numpy_dict):  # pylint: disable=E0213
-        pass
+        for x in repo_obj.repo_info[RepoInfoKey.BIG_OBJECTS]:
+            setattr(repo_obj, x, repo_numpy_dict[x])
 
-    def init_repo_object(init_self, repo_info):# pylint: disable=E0213
+    def __init__(self, big_objects = None):
+        """
+        """
+        self._big_objects = big_objects
+
+    def init_repo_object(self, init_self, repo_info):# pylint: disable=E0213
         repo_info[RepoInfoKey.CLASSNAME] = init_self.__class__.__module__ + '.' + init_self.__class__.__name__
+        if not self._big_objects is None:
+            repo_info[RepoInfoKey.BIG_OBJECTS] = self._big_objects
         setattr(init_self, 'repo_info', repo_info)  
         if not hasattr(init_self, 'to_dict'):
             setattr(init_self, 'to_dict', MethodType(repo_object_init.to_dict, init_self))
@@ -165,7 +176,7 @@ class repo_object_init: # pylint: disable=too-few-public-methods
                 setattr(init_self, 'numpy_from_dict',  MethodType(repo_object_init.numpy_from_dict, init_self))
             if not hasattr(init_self, 'numpy_to_dict'):
                 setattr(init_self, 'numpy_to_dict',  MethodType(repo_object_init.numpy_to_dict, init_self))
-            
+                        
 
     def __call__(self, f):
         def wrap(init_self, *args, **kwargs):
@@ -177,7 +188,7 @@ class repo_object_init: # pylint: disable=too-few-public-methods
                     repo_info = RepoInfo(**repo_info)
                 if not '_init_from_dict' in kwargs.keys():
                     f(init_self, *args, **kwargs)
-                repo_object_init.init_repo_object(init_self, repo_info)
+                self.init_repo_object(init_self, repo_info)
                 if '_init_from_dict' in kwargs.keys() and kwargs['_init_from_dict'] == True:
                     del kwargs['_init_from_dict']
                     init_self.from_dict(kwargs)
