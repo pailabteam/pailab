@@ -92,7 +92,7 @@ class MLRepo:
         repo_dict = self._ml_repo.get(name, version)
         result = repo_objects.create_repo_obj(repo_dict)
         numpy_dict = {}
-        if len(result.repo_info[repo_objects.RepoInfoKey.BIG_OBJECTS])>0:
+        if len(result.repo_info[repo_objects.RepoInfoKey.BIG_OBJECTS])>0 and full_object:
             numpy_dict = self._numpy_repo.get(result.repo_info[repo_objects.RepoInfoKey.NAME], result.repo_info[repo_objects.RepoInfoKey.VERSION])
         for x in result.repo_info[repo_objects.RepoInfoKey.BIG_OBJECTS]:
              if not x in numpy_dict:
