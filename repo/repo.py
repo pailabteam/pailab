@@ -91,9 +91,13 @@ class MLRepo:
         """
         repo_dict = self._ml_repo.get(name, version)
         result = repo_objects.create_repo_obj(repo_dict)
-        if full_object and len(result.repo_info[repo_objects.RepoInfoKey.BIG_OBJECTS])>0:
+        numpy_dict = {}
+        if len(result.repo_info[repo_objects.RepoInfoKey.BIG_OBJECTS])>0:
             numpy_dict = self._numpy_repo.get(result.repo_info[repo_objects.RepoInfoKey.NAME], result.repo_info[repo_objects.RepoInfoKey.VERSION])
-            result.numpy_from_dict(numpy_dict)
+        for x in result.repo_info[repo_objects.RepoInfoKey.BIG_OBJECTS]:
+             if not x in numpy_dict:
+                 numpy_dict[x] = None
+        result.numpy_from_dict(numpy_dict)
         return result
 
     def get_names(self, ml_obj_type):
