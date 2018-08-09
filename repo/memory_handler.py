@@ -88,6 +88,7 @@ class RepoObjectMemoryStorage:
         which have no effect in the MemoryStorage case, we ignore this argument.
         :param version_list: list of version whose history will be used. 
         """
+        tmp = self._get_object_list(name)
         return [tmp[x] for x in version_list]
 
 
