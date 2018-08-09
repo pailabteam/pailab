@@ -11,7 +11,8 @@
         {
             "label": "coverage report html",
             "type": "shell",
-            "command": "coverage html"
+            "command": "coverage html",
+            "problemMatcher": []
         },
         {
             "label": "generate html docu",
