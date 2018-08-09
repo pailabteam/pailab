@@ -6,7 +6,8 @@
         {
             "label": "coverage repo",
             "type": "shell",
-            "command": "coverage run ./tests/repo_test.py"
+            "command": "coverage run ./tests/repo_test.py",
+            "problemMatcher": []
         },
         {
             "label": "coverage report html",
