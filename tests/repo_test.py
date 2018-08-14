@@ -187,8 +187,10 @@ class RepoTest(unittest.TestCase):
             repo_objects.RepoInfoKey.NAME.value: 'RawData_Test'})
         repository.add(raw_data, 'test commit')
         raw_data_2 = repository.get('RawData_Test')
-        self.assertEqual(len(raw_data.x_names), len(raw_data_2.x_names))
-        self.assertEqual(raw_data.x_names[0], raw_data_2.x_names[0])
+        self.assertEqual(len(raw_data.x_coord_names),
+                         len(raw_data_2.x_coord_names))
+        self.assertEqual(
+            raw_data.x_coord_names[0], raw_data_2.x_coord_names[0])
 
 
 if __name__ == '__main__':
