@@ -51,19 +51,19 @@ class RepoObjectTest(unittest.TestCase):
     def test_repo_object_helper(self):
         orig = TestClass(5, 3)
         self.assertEqual(orig.a_plus_b(), 8)
-        orig = TestClass(5, 3, repo_info={
-                         'name': 'test'})  # pylint: disable=E1123
+        orig = TestClass(5, 3, repo_info={  # pylint: disable=E1123
+                         'name': 'test'})
         tmp = repo_objects.create_repo_obj_dict(orig)
         new = repo_objects.create_repo_obj(tmp)
         self.assertEqual(orig.a_plus_b(), new.a_plus_b())
         # test if different constructor call work correctly after applying decorator
-        orig = TestClass(5, b=3, repo_info={
-                         'name': 'test'})  # pylint: disable=E1123
+        orig = TestClass(5, b=3, repo_info={  # pylint: disable=E1123
+                         'name': 'test'})
         tmp = repo_objects.create_repo_obj_dict(orig)
         new = repo_objects.create_repo_obj(tmp)
         self.assertEqual(orig.a_plus_b(), new.a_plus_b())
 
-        orig = TestClass(**{'a': 5, 'b': 3},
+        orig = TestClass(**{'a': 5, 'b': 3},  # pylint: disable=E1123
                          repo_info={'name': 'test'})  # pylint: disable=E1123
         tmp = repo_objects.create_repo_obj_dict(orig)
         new = repo_objects.create_repo_obj(tmp)
@@ -72,11 +72,11 @@ class RepoObjectTest(unittest.TestCase):
     def test_repo_object(self):
         # initialize repo object from test class
         version = 5
-        obj = TestClass(5, 3, repo_info={
-                        'name': 'dummy', 'version': version})  # pylint: disable=E1123
+        obj = TestClass(5, 3,  # pylint: disable=E1123
+                        repo_info={'name': 'dummy', 'version': version})  # pylint: disable=E1123
         self.assertEqual(obj.repo_info.name, 'dummy')  # pylint: disable=E1101
-        self.assertEqual(obj.repo_info.version,
-                         version)  # pylint: disable=E1101
+        self.assertEqual(obj.repo_info.version,  # pylint: disable=E1101
+                         version)
         repo_dict = obj.to_dict()  # pylint: disable=E1101
         self.assertEqual(repo_dict['a'], obj.a)
         self.assertEqual(repo_dict['_b'], obj._b)
@@ -87,8 +87,39 @@ class RepoObjectTest(unittest.TestCase):
 
 
 class RawDataTest(unittest.TestCase):
-    def test_raw_data(self):
-        pass
+    """Simple RawData objec tests
+    """
+
+    def test_validation(self):
+        # test if validation works
+        x_data = np.zeros([100, 2])
+
+        # exception because number of coord_names does not equal number of x_coords
+        with self.assertRaises(Exception):
+            test_data = repo_objects.RawData(  # pylint: disable=W0612
+                x_data, x_coord_names=[])  # pylint: disable=W0612
+        # exception because number of y-coords does not equal number of x-coords
+        y_data = np.zeros([99, 2])
+        with self.assertRaises(Exception):
+            test_data = repo_objects.RawData(  # pylint: disable=W0612
+                x_data, x_coord_names=['x1', 'x2'], y_data=y_data, y_coord_names=['y1', 'y2'])
+        # exception because number of y-coordnamess does not equal number of y-coords
+        y_data = np.zeros([100, 2])
+        with self.assertRaises(Exception):
+            test_data = repo_objects.RawData(  # pylint: disable=W0612
+                x_data, x_coord_names=['x1', 'x2'], y_data=y_data, y_coord_names=['y1'])
+
+    def test_constructor(self):
+        # simple construction
+        x_data = np.zeros([100, 4])
+        x_names = ['x1', 'x2', 'x3', 'x4']
+        test_data = repo_objects.RawData(x_data, x_names)
+        self.assertEqual(test_data.x_data.shape[0], x_data.shape[0])
+        # construction from array
+        x_data = np.zeros([100])
+        test_data = repo_objects.RawData(x_data, ['x1'])
+        self.assertEqual(len(test_data.x_data.shape), 2)
+        self.assertEqual(test_data.x_data.shape[1], 1)
 
 
 class RepoTest(unittest.TestCase):
@@ -98,20 +129,20 @@ class RepoTest(unittest.TestCase):
         numpy_handler = memory_handler.NumpyMemoryStorage()
         # init repository with sample in memory handler
         repository = repo.MLRepo(handler, numpy_handler, handler)
-        test_obj = TestClass(5, 3, repo_info={
+        test_obj = TestClass(5, 3, repo_info={  # pylint: disable=E1123
                              repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_DATA.value, 'name': 'test_object'})
 
         # test simple add
         version = repository.add(test_obj, 'first test commit')
         self.assertEqual(
-            test_obj.repo_info[repo_objects.RepoInfoKey.VERSION], 0)
+            test_obj.repo_info[repo_objects.RepoInfoKey.VERSION], 0)  # pylint: disable=E1101
         self.assertEqual(version, 0)
 
         # test simple get
         test_obj2 = repository.get('test_object')
         self.assertEqual(test_obj2.a_plus_b(), test_obj.a_plus_b())
         self.assertEqual(test_obj2.repo_info[repo_objects.RepoInfoKey.NAME],
-                         test_obj.repo_info[repo_objects.RepoInfoKey.NAME])
+                         test_obj.repo_info[repo_objects.RepoInfoKey.NAME])  # pylint: disable=E1101
         self.assertEqual(
             test_obj2.repo_info[repo_objects.RepoInfoKey.VERSION], 0)
         self.assertEqual(test_obj2.mat, None)
@@ -121,7 +152,7 @@ class RepoTest(unittest.TestCase):
         self.assertEqual(version, 1)
 
         # test if also the numpy object will b retrieved
-        test_obj = TestClass(5, 3, np.zeros([100, 3]), repo_info={
+        test_obj = TestClass(5, 3, np.zeros([100, 3]), repo_info={  # pylint: disable=E1123
                              repo.MLObjectType.TRAINING_DATA.value: 'test_data', 'name': 'test_object'})
         version = repository.add(test_obj)
         test_obj2 = repository.get('test_object', version, full_object=True)
@@ -130,7 +161,7 @@ class RepoTest(unittest.TestCase):
         # test if latest version -1 is also working
         test_obj2 = repository.get('test_object', -1)
         self.assertEqual(test_obj2.repo_info[repo_objects.RepoInfoKey.VERSION],
-                         test_obj.repo_info[repo_objects.RepoInfoKey.VERSION])
+                         test_obj.repo_info[repo_objects.RepoInfoKey.VERSION])  # pylint: disable=E1101
         # test if get_names works correctly
         names = repository.get_names(repo.MLObjectType.TRAINING_DATA.value)
         self.assertEqual(len(names), 1)
