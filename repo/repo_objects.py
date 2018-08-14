@@ -283,6 +283,8 @@ class RawData:
         self.x_data = x_data
         self.x_coord_names = x_coord_names
         self.n_data = x_data.shape[0]  # pylint: disable=E1101
+        self.y_data = None
+        self.y_coord_names = None
         if not y_data is None:
             self.y_data = y_data
             self.y_coord_names = y_coord_names
