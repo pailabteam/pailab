@@ -115,10 +115,15 @@ class RawDataTest(unittest.TestCase):
         x_names = ['x1', 'x2', 'x3', 'x4']
         test_data = repo_objects.RawData(x_data, x_names)
         self.assertEqual(test_data.x_data.shape[0], x_data.shape[0])
+        self.assertEqual(test_data.n_data, 100)
         # construction from array
         x_data = np.zeros([100])
         test_data = repo_objects.RawData(x_data, ['x1'])
         self.assertEqual(len(test_data.x_data.shape), 2)
+        self.assertEqual(test_data.x_data.shape[1], 1)
+        # construction from list
+        test_data = repo_objects.RawData([100, 200, 300], ['x1'])
+        self.assertEqual(test_data.x_data.shape[0], 3)
         self.assertEqual(test_data.x_data.shape[1], 1)
 
 
@@ -170,6 +175,20 @@ class RepoTest(unittest.TestCase):
         history = repository.get_history('test_object')
         self.assertEqual(
             len(history), test_obj2.repo_info[repo_objects.RepoInfoKey.VERSION])
+
+    def test_repo_RawData(self):
+        """Test RawData within repo
+        """
+        handler = memory_handler.RepoObjectMemoryStorage()
+        numpy_handler = memory_handler.NumpyMemoryStorage()
+        # init repository with sample in memory handler
+        repository = repo.MLRepo(handler, numpy_handler, handler)
+        raw_data = repo_objects.RawData(np.zeros([10, 1]), ['test_coord'], repo_info={  # pylint: disable=E0602
+            repo_objects.RepoInfoKey.NAME.value: 'RawData_Test'})
+        repository.add(raw_data, 'test commit')
+        raw_data_2 = repository.get('RawData_Test')
+        self.assertEqual(len(raw_data.x_names), len(raw_data_2.x_names))
+        self.assertEqual(raw_data.x_names[0], raw_data_2.x_names[0])
 
 
 if __name__ == '__main__':
