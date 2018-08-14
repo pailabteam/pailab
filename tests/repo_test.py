@@ -51,17 +51,20 @@ class RepoObjectTest(unittest.TestCase):
     def test_repo_object_helper(self):
         orig = TestClass(5, 3)
         self.assertEqual(orig.a_plus_b(), 8)
-        orig = TestClass(5, 3, repo_info={'name': 'test'})
+        orig = TestClass(5, 3, repo_info={
+                         'name': 'test'})  # pylint: disable=E1123
         tmp = repo_objects.create_repo_obj_dict(orig)
         new = repo_objects.create_repo_obj(tmp)
         self.assertEqual(orig.a_plus_b(), new.a_plus_b())
         # test if different constructor call work correctly after applying decorator
-        orig = TestClass(5, b=3, repo_info={'name': 'test'})
+        orig = TestClass(5, b=3, repo_info={
+                         'name': 'test'})  # pylint: disable=E1123
         tmp = repo_objects.create_repo_obj_dict(orig)
         new = repo_objects.create_repo_obj(tmp)
         self.assertEqual(orig.a_plus_b(), new.a_plus_b())
 
-        orig = TestClass(**{'a': 5, 'b': 3}, repo_info={'name': 'test'})
+        orig = TestClass(**{'a': 5, 'b': 3},
+                         repo_info={'name': 'test'})  # pylint: disable=E1123
         tmp = repo_objects.create_repo_obj_dict(orig)
         new = repo_objects.create_repo_obj(tmp)
         self.assertEqual(orig.a_plus_b(), new.a_plus_b())
@@ -69,7 +72,8 @@ class RepoObjectTest(unittest.TestCase):
     def test_repo_object(self):
         # initialize repo object from test class
         version = 5
-        obj = TestClass(5, 3, repo_info={'name': 'dummy', 'version': version})
+        obj = TestClass(5, 3, repo_info={
+                        'name': 'dummy', 'version': version})  # pylint: disable=E1123
         self.assertEqual(obj.repo_info.name, 'dummy')  # pylint: disable=E1101
         self.assertEqual(obj.repo_info.version,
                          version)  # pylint: disable=E1101
@@ -80,6 +84,11 @@ class RepoObjectTest(unittest.TestCase):
             **repo_dict, repo_info={'name': 'dummy', 'version': version}, _init_from_dict=True)
         self.assertEqual(obj2.a, obj.a)
         self.assertEqual(obj2.a_plus_b(), obj.a_plus_b())
+
+
+class RawDataTest(unittest.TestCase):
+    def test_raw_data(self):
+        pass
 
 
 class RepoTest(unittest.TestCase):
