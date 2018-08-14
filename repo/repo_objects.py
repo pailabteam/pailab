@@ -271,7 +271,7 @@ class RawData:
         x_data = RawData._cast_data_to_numpy(x_data)
         if x_data.shape[1] != len(x_data):  # pylint: disable=E1101
             raise Exception(
-                'Nmber of x-coordinates does not equal number of names for x-coordinates.')
+                'Number of x-coordinates does not equal number of names for x-coordinates.')
         y_data = RawData._cast_data_to_numpy(y_data)
         if not y_data is None:
             if y_data.shape[1] != len(y_data):  # pylint: disable=E1101
