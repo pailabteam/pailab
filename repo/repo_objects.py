@@ -269,12 +269,12 @@ class RawData:
             :param y_coord_names: list of y_data coordinate names
         """
         x_data = RawData._cast_data_to_numpy(x_data)
-        if x_data.shape[1] != len(x_data):  # pylint: disable=E1101
+        if x_data.shape[1] != len(x_coord_names):  # pylint: disable=E1101
             raise Exception(
-                'Nmber of x-coordinates does not equal number of names for x-coordinates.')
+                'Number of x-coordinates does not equal number of names for x-coordinates.')
         y_data = RawData._cast_data_to_numpy(y_data)
         if not y_data is None:
-            if y_data.shape[1] != len(y_data):  # pylint: disable=E1101
+            if y_data.shape[1] != len(y_coord_names):  # pylint: disable=E1101
                 raise Exception(
                     'Nmber of y-coordinates does not equal number of names for y-coordinates.')
             if y_data.shape[0] != x_data.shape[0]:  # pylint: disable=E1101
@@ -283,6 +283,8 @@ class RawData:
         self.x_data = x_data
         self.x_coord_names = x_coord_names
         self.n_data = x_data.shape[0]  # pylint: disable=E1101
+        self.y_data = None
+        self.y_coord_names = None
         if not y_data is None:
             self.y_data = y_data
             self.y_coord_names = y_coord_names
