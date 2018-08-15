@@ -79,7 +79,7 @@ class MLRepo:
             return version
         return self._ml_repo.get_latest_version(name) + 1 + version
 
-    def add(self, repo_object, message=''):
+    def _add(self, repo_object, message=''):
         """ Add a repo_object to the repository.
 
             :param repo_object: repo_object to be added, will be modified so that it contains the version number
@@ -97,7 +97,7 @@ class MLRepo:
                                  np_dict)
         return version
 
-    def get(self, name, version=-1, full_object=False):
+    def _get(self, name, version=-1, full_object=False):
         """ Get a repo objects. It throws an exception, if an object with the name does not exist.
 
             :param name: Object name

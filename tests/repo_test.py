@@ -138,13 +138,13 @@ class RepoTest(unittest.TestCase):
                              repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_DATA.value, 'name': 'test_object'})
 
         # test simple add
-        version = repository.add(test_obj, 'first test commit')
+        version = repository._add(test_obj, 'first test commit')
         self.assertEqual(
             test_obj.repo_info[repo_objects.RepoInfoKey.VERSION], 0)  # pylint: disable=E1101
         self.assertEqual(version, 0)
 
         # test simple get
-        test_obj2 = repository.get('test_object')
+        test_obj2 = repository._get('test_object')
         self.assertEqual(test_obj2.a_plus_b(), test_obj.a_plus_b())
         self.assertEqual(test_obj2.repo_info[repo_objects.RepoInfoKey.NAME],
                          test_obj.repo_info[repo_objects.RepoInfoKey.NAME])  # pylint: disable=E1101
@@ -153,18 +153,18 @@ class RepoTest(unittest.TestCase):
         self.assertEqual(test_obj2.mat, None)
 
         # test if version is handled properly
-        version = repository.add(test_obj2, 'second test commit')
+        version = repository._add(test_obj2, 'second test commit')
         self.assertEqual(version, 1)
 
         # test if also the numpy object will b retrieved
         test_obj = TestClass(5, 3, np.zeros([100, 3]), repo_info={  # pylint: disable=E1123
                              repo.MLObjectType.TRAINING_DATA.value: 'test_data', 'name': 'test_object'})
-        version = repository.add(test_obj)
-        test_obj2 = repository.get('test_object', version, full_object=True)
+        version = repository._add(test_obj)
+        test_obj2 = repository._get('test_object', version, full_object=True)
         self.assertEqual(test_obj.mat.shape[0], test_obj2.mat.shape[0])
         self.assertEqual(test_obj.mat.shape[1], test_obj2.mat.shape[1])
         # test if latest version -1 is also working
-        test_obj2 = repository.get('test_object', -1)
+        test_obj2 = repository._get('test_object', -1)
         self.assertEqual(test_obj2.repo_info[repo_objects.RepoInfoKey.VERSION],
                          test_obj.repo_info[repo_objects.RepoInfoKey.VERSION])  # pylint: disable=E1101
         # test if get_names works correctly
@@ -185,8 +185,8 @@ class RepoTest(unittest.TestCase):
         repository = repo.MLRepo(handler, numpy_handler, handler)
         raw_data = repo_objects.RawData(np.zeros([10, 1]), ['test_coord'], repo_info={  # pylint: disable=E0602
             repo_objects.RepoInfoKey.NAME.value: 'RawData_Test'})
-        repository.add(raw_data, 'test commit')
-        raw_data_2 = repository.get('RawData_Test')
+        repository._add(raw_data, 'test commit')
+        raw_data_2 = repository._get('RawData_Test')
         self.assertEqual(len(raw_data.x_coord_names),
                          len(raw_data_2.x_coord_names))
         self.assertEqual(

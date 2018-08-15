@@ -288,3 +288,23 @@ class RawData:
         if not y_data is None:
             self.y_data = y_data
             self.y_coord_names = y_coord_names
+
+
+class DataSet:
+    """Class used to access training or test data.
+
+    This class refers to some RawData object and a start- and endindex 
+
+    """
+    @repo_object_init()
+    def __init__(self, raw_data, start_index=0, end_index=-1):
+        """Constructor
+
+        Arguments:
+            :argument raw_data: {string} -- id of raw_data the dataset refers to
+            :argument start_index: {integer} -- index of first entry of the raw data used in the dataset
+            :argument end_index: {integer} -- end_index of last entry of the raw data used in the dataset
+        """
+        self.raw_data = raw_data
+        self.start_index = start_index
+        self.end_index = end_index
