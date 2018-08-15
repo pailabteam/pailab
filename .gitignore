@@ -5,3 +5,4 @@ __pycache__
 /doc/build/html
 .coverage
 /htmlcov
+.vscode/.ropeproject/objectdb
