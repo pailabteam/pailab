@@ -192,6 +192,28 @@ class RepoTest(unittest.TestCase):
         self.assertEqual(
             raw_data.x_coord_names[0], raw_data_2.x_coord_names[0])
 
+    def test_repo_training_test_data(self):
+        handler = memory_handler.RepoObjectMemoryStorage()
+        numpy_handler = memory_handler.NumpyMemoryStorage()
+        # init repository with sample in memory handler
+        repository = repo.MLRepo(handler, numpy_handler, handler)
+        training_data = repo_objects.RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'training_data'})
+        repository.add_training_data(training_data)
+        training_data_2 = repository.get_training_data()
+        self.assertEqual(training_data_2.repo_info[repo_objects.RepoInfoKey.NAME], training_data.repo_info[repo_objects.RepoInfoKey.NAME])
+        with self.assertRaises(Exception):
+            repository.add_training_data(training_data)
+        test_data = repo_objects.RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data'})
+        repository.add_test_data(test_data)
+        test_data_2 = repository.get_data('test_data')
+        self.assertEqual(test_data_2.repo_info[repo_objects.RepoInfoKey.NAME], test_data.repo_info[repo_objects.RepoInfoKey.NAME])
+        with self.assertRaises(Exception):
+            repository.add_test_data(test_data)
+        test_data = repo_objects.RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_2'})
+        repository.add_test_data(test_data)
+        test_data_2 = repository.get_data('test_data_2')
+        self.assertEqual(test_data_2.repo_info[repo_objects.RepoInfoKey.NAME], test_data.repo_info[repo_objects.RepoInfoKey.NAME])
+        
 
 if __name__ == '__main__':
     unittest.main()

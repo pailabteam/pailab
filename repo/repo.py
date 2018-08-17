@@ -148,8 +148,8 @@ class MLRepo:
         if self._mapping.training_data is not None:
             raise Exception(
                 'Training data already contained in repository, use update_training_data to update the data.')
-        self._mapping.training_data = data.repo_info[repo_objects.RepoInfoKey.Name.value]
-        self._add(data)
+        self._mapping.training_data = data.repo_info[repo_objects.RepoInfoKey.NAME.value]
+        self._add(data, 'training data added')
 
     def get_training_data(self, version=-1, full_object=True):
         """Returns training data 
@@ -162,26 +162,39 @@ class MLRepo:
             raise Exception("No training_data in repository.")
         return self._get_data(self._mapping.training_data, version, full_object)
 
+    def get_data(self, name, version=-1, full_object=True):
+        """Return a data object
+
+        Arguments:
+            name {string} -- data object
+
+        Keyword Arguments:
+            version {integer} -- version o data object to be returned, default is latest object
+            full_object {bool} -- if true, the full object including numpy objects is returned (default: {True})
+        """
+        return self._get_data(name, version, full_object)
+
     def add_test_data(self, data):
         """Add test data to repository.
 
         It adds the test data and raises an exception if testdata with the same name already exists.
 
         Arguments:
-            data {RawData or DataSet} -- [description]
+            data {RawData or DataSet} -- data to be added.
 
         Raises:
-            Exception -- [description]
+            Exception -- Exception indciating that data already exists.
         """
         if self._mapping.test_data is not None and data.repo_info[repo_objects.RepoInfoKey.NAME.value] in self._mapping.test_data:
             raise Exception(
                 'Test data already contained in repository, use update_test_data to update the data.')
         if self._mapping.test_data is None:
             self._mapping.test_data = [
-                data.repo_info[repo_objects.RepoInfoKey.Name.value]]
+                data.repo_info[repo_objects.RepoInfoKey.NAME]]
         else:
             self._mapping.test_data.append(
-                data.repo_info[repo_objects.RepoInfoKey.Name.value])
+                data.repo_info[repo_objects.RepoInfoKey.NAME])
+        self._add(data, 'test data added')
 
     def _get(self, name, version=-1, full_object=False):
         """ Get a repo objects. It throws an exception, if an object with the name does not exist.
