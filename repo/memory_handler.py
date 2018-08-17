@@ -42,7 +42,7 @@ class RepoObjectMemoryStorage:
         :return list of versions of object
         """
         if not name in self._name_to_category.keys():
-            raise Exception('No object with name ' + name + 'in store.')
+            raise Exception('No object with name ' + name + ' in store.')
         category = self._name_to_category[name]
         if not category in self._store.keys():
             raise Exception('No object ' + name + ' in category ' + category)
