@@ -55,6 +55,17 @@ class MLRepo:
         The repository needs three different handlers/repositories 
 
     """
+    class Mapping:
+        """This class maps all repo objects to their respective ids
+        """
+        @repo_object_init()
+        def __init__(self):
+            self.training_data = None
+            self.test_data = None
+            self.preprocessing = None
+            self.training_parameter = None
+            self.model_parameter = None
+            self.unit_tests = None
 
     def __init__(self, script_repo, numpy_repo, ml_repo):
         """ Constructor of MLRepo
@@ -66,6 +77,13 @@ class MLRepo:
         self._script_repo = script_repo
         self._numpy_repo = numpy_repo
         self._ml_repo = ml_repo
+        # check if the ml mapping is already contained in the repo, otherwise add it
+        try:
+            self._mapping = self._ml_repo.get('repo_mapping')
+        except:
+            self._mapping = MLRepo.Mapping(  # pylint: disable=E1123
+                repo_info={repo_objects.RepoInfoKey.NAME.value: 'repo_mapping'})
+            self._add(self._mapping, 'Adding empty mapping for repo creation.')
 
     def _adjust_version(self, version, name):
         """Checks if version is negative and then adjust it according to the typical python 
@@ -79,6 +97,26 @@ class MLRepo:
             return version
         return self._ml_repo.get_latest_version(name) + 1 + version
 
+    def _get_data(self, name, version=-1, full_object=True):
+        """Return data object
+
+        This method returns a data object, i.e. either a DataSet or RawData and is internaly used.
+
+        Keyword Arguments:
+            name {string} -- name of data object to be returned
+            version {int} -- version of data object (default: {-1})
+            full_object {bool} -- complete data if set to True (default: {True})
+        """
+        result = self._get(name, version, full_object)
+        if isinstance(result, repo_objects.DataSet):
+            raw_data = self._get(
+                result.raw_data, result.raw_data_version, full_object)
+            setattr(result, 'x_data', raw_data.x_data)
+            setattr(result, 'x_coord_names', raw_data.x_coord_names)
+            setattr(result, 'y_data', raw_data.y_data)
+            setattr(result, 'y_coord_names', raw_data.y_coord_names)
+        return result
+
     def _add(self, repo_object, message=''):
         """ Add a repo_object to the repository.
 
@@ -87,6 +125,7 @@ class MLRepo:
 
             :return version number of object added
         """
+        repo_object.repo_info[repo_objects.RepoInfoKey.COMMIT_MESSAGE.value] = message
         obj_dict = repo_objects.create_repo_obj_dict(repo_object)
         version = self._ml_repo.add(obj_dict)
         repo_object.repo_info[repo_objects.RepoInfoKey.VERSION.value] = version
@@ -96,6 +135,53 @@ class MLRepo:
                                  repo_object.repo_info[repo_objects.RepoInfoKey.VERSION],
                                  np_dict)
         return version
+
+    def add_training_data(self, data):
+        """Add training data, must be either RawData or DataSet
+
+        This method adds training data. If training data is already contained in the repository, it raises an exception.
+        To update training data call update_training_data method.
+
+        Arguments:
+            data {RawData or DataSet} -- training data to be added.
+        """
+        if self._mapping.training_data is not None:
+            raise Exception(
+                'Training data already contained in repository, use update_training_data to update the data.')
+        self._mapping.training_data = data.repo_info[repo_objects.RepoInfoKey.Name.value]
+        self._add(data)
+
+    def get_training_data(self, version=-1, full_object=True):
+        """Returns training data 
+
+        Keyword Arguments:
+            version {integer} -- version of data object
+            full_object {bool} -- if True, the complete data is returned including numpy data (default: {True})
+        """
+        if self._mapping.training_data is None:
+            raise Exception("No training_data in repository.")
+        return self._get_data(self._mapping.training_data, version, full_object)
+
+    def add_test_data(self, data):
+        """Add test data to repository.
+
+        It adds the test data and raises an exception if testdata with the same name already exists.
+
+        Arguments:
+            data {RawData or DataSet} -- [description]
+
+        Raises:
+            Exception -- [description]
+        """
+        if self._mapping.test_data is not None and data.repo_info[repo_objects.RepoInfoKey.NAME.value] in self._mapping.test_data:
+            raise Exception(
+                'Test data already contained in repository, use update_test_data to update the data.')
+        if self._mapping.test_data is None:
+            self._mapping.test_data = [
+                data.repo_info[repo_objects.RepoInfoKey.Name.value]]
+        else:
+            self._mapping.test_data.append(
+                data.repo_info[repo_objects.RepoInfoKey.Name.value])
 
     def _get(self, name, version=-1, full_object=False):
         """ Get a repo objects. It throws an exception, if an object with the name does not exist.
