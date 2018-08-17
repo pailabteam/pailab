@@ -237,15 +237,6 @@ def create_repo_obj(obj):
     return result
 
 
-class RepoObjectType(Enum):
-    """Enums describing all repo object types.
-    """
-    RAW_DATA = 'raw_data'
-    DATASET = 'dataset'
-    PARAMETER = 'parameter'
-    JOB = 'job'
-
-
 class RawData:
     def _cast_data_to_numpy(data):  # pylint: disable=E0213
         if data is None:
@@ -311,3 +302,13 @@ class DataSet:
         self.start_index = start_index
         self.end_index = end_index
         self.raw_data_version = raw_data_version
+
+
+class Function:
+    """Job evaluating a model
+    """
+    @repo_object_init()
+    def __init__(self, module_name, x_data, model_version=-1):
+        self.module_name = module_name
+        self.function_name = function_name
+        self.module_version = version
