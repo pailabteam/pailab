@@ -387,6 +387,15 @@ class MLRepo:
         fields.extend(obj_member_fields)
         return self._ml_repo.get_history(name, fields, version_list)
 
+    def get_commits(self,  version_start=0, version_end=-1):
+        version_list = []
+        version_list = range(self._adjust_version(
+            version_start, 'CommitInfo'), self._adjust_version(version_end, 'CommitInfo'))
+        result = []
+        for i in version_list:
+            result.append(self._get('CommitInfo', i))
+        return result
+
     def run_training(self, message='', job_runner=None):
         """ Run the training algorithm. 
 
