@@ -303,22 +303,24 @@ class DataSet:
         self.end_index = end_index
         self.raw_data_version = raw_data_version
 
-class ModelDefinition:
+class Model:
     @repo_object_init()
-    def __init__(self, preprocessing = None, eval_function = None, train_function = None, train_param = None, model_param = None):
+    def __init__(self, preprocessing = None, preprocessing_param = None, eval_function = None, train_function = None, train_param = None, model_param = None):
         """Defines all model relevant information
         
         Keyword Arguments:
             preprocessing {string} -- name of preprocessing used (default: {None})
+            preprocessing_param {string} -- name of preprocessing used (default: {None})
             eval_function {string} -- name of function object for model evaluation (default: {None})
             train_function {string} -- name of function object for model training (default: {None})
             train_param {string} -- name of training parameer object used for model training (default: {None})
             model_param {string} -- name of model parameter object used for creating the model, i.e. network architecture (default: {None})
         """
-        self.preprocessing = preprocessing
+        self.preprocessing_function = preprocessing
+        self.preprocessing_param = preprocessing_param
         self.eval_function = eval_function
-        self.train_function = train_function
-        self.train_param = train_param
+        self.training_function = train_function
+        self.training_param = train_param
         self.model_param = model_param
 
 class Function:
@@ -328,3 +330,17 @@ class Function:
     def __init__(self, module_name, function_name):
         self.module_name = module_name
         self.function_name = function_name
+
+class CommitInfo:
+    @repo_object_init()
+    def __init__(self, message, author, objects):
+        """Constructor
+        
+        Arguments:
+            message {string} -- commit message
+            author {string} -- author
+            objects {dictionary} --  dictionary of names of committed objects and version numbers
+        """
+        self.message = message
+        self.author = author
+        self.objects = objects
