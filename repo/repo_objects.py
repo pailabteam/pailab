@@ -303,12 +303,28 @@ class DataSet:
         self.end_index = end_index
         self.raw_data_version = raw_data_version
 
+class ModelDefinition:
+    @repo_object_init()
+    def __init__(self, preprocessing = None, eval_function = None, train_function = None, train_param = None, model_param = None):
+        """Defines all model relevant information
+        
+        Keyword Arguments:
+            preprocessing {string} -- name of preprocessing used (default: {None})
+            eval_function {string} -- name of function object for model evaluation (default: {None})
+            train_function {string} -- name of function object for model training (default: {None})
+            train_param {string} -- name of training parameer object used for model training (default: {None})
+            model_param {string} -- name of model parameter object used for creating the model, i.e. network architecture (default: {None})
+        """
+        self.preprocessing = preprocessing
+        self.eval_function = eval_function
+        self.train_function = train_function
+        self.train_param = train_param
+        self.model_param = model_param
 
 class Function:
-    """Job evaluating a model
+    """Function
     """
     @repo_object_init()
-    def __init__(self, module_name, x_data, model_version=-1):
+    def __init__(self, module_name, function_name):
         self.module_name = module_name
         self.function_name = function_name
-        self.module_version = version
