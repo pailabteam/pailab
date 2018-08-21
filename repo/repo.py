@@ -114,6 +114,8 @@ class MLRepo:
             Args:
                 :param category: Either a string (MLObjectType.value or MLObjectType.name) or directly a MLObjectType enum
                 :param name: name of object
+
+                :return true, if mapping has changed, false otherwise
             """
             category_name = MLObjectType._get_key(category)
             mapping = getattr(self, category_name)
@@ -123,6 +125,8 @@ class MLRepo:
                 raise Exception('Only one set of training data allowed.')
             if not name in mapping:
                 mapping.append(name)
+                return True
+            return False
 
         def __getitem__(self, category):
             """Get an item.
@@ -154,8 +158,7 @@ class MLRepo:
             self._mapping = MLRepo.Mapping(  # pylint: disable=E1123
                 repo_info={repo_objects.RepoInfoKey.NAME.value: 'repo_mapping', 
                 repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.MAPPING.value})
-            self.add(self._mapping, 'Adding empty mapping for repo creation.')
-
+           
     def _adjust_version(self, version, name):
         """Checks if version is negative and then adjust it according to the typical python 
         way for list where -1 is the last element of the list, -2 the second last etc.
@@ -178,7 +181,7 @@ class MLRepo:
                 Raises an exception if the category of the object is not defined in the object and if it is not defined with the category argument.
                 It raises an exception if an object with this id does already exist.
 
-                :return version number of object added
+                :return version number of object added and boolean if mapping has changed
             """        
             if repo_object.repo_info[repo_objects.RepoInfoKey.CATEGORY.value] is None:
                 if category is None:
@@ -186,7 +189,7 @@ class MLRepo:
                 else:
                     repo_object.repo_info[repo_objects.RepoInfoKey.CATEGORY.value] = category
             
-            self._mapping.add(repo_object.repo_info[repo_objects.RepoInfoKey.CATEGORY], repo_object.repo_info[repo_objects.RepoInfoKey.NAME])
+            mapping_changed = self._mapping.add(repo_object.repo_info[repo_objects.RepoInfoKey.CATEGORY], repo_object.repo_info[repo_objects.RepoInfoKey.NAME])
 
             repo_object.repo_info[repo_objects.RepoInfoKey.COMMIT_MESSAGE.value] = message
             obj_dict = repo_objects.create_repo_obj_dict(repo_object)
@@ -197,7 +200,7 @@ class MLRepo:
                 self._numpy_repo.add(repo_object.repo_info[repo_objects.RepoInfoKey.NAME],
                                     repo_object.repo_info[repo_objects.RepoInfoKey.VERSION],
                                     np_dict)
-            return version
+            return version, mapping_changed
 
     def add(self, repo_object, message='', category = None):
         """ Add a repo_object or list of repo objects to the repository.
@@ -213,17 +216,22 @@ class MLRepo:
         """
         result = {}
         repo_list = repo_object
+        mapping_changed = False
         if not isinstance(repo_list,list):
             repo_list = [repo_object]
         if isinstance(repo_list, list):
             for obj in repo_list:
-                result[obj.repo_info[repo_objects.RepoInfoKey.NAME]] = self._add(obj, message, category)
+                result[obj.repo_info[repo_objects.RepoInfoKey.NAME]], mapping_changed_tmp = self._add(obj, message, category)
+                mapping_changed = mapping_changed or mapping_changed_tmp
+        if mapping_changed:
+            mapping_version, dummy = self._add(self._mapping)
+            result['repo_mapping'] = mapping_version
+            
         commit_message = repo_objects.CommitInfo(message, self._user, result, repo_info = {repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.COMMIT_INFO.value,
                 repo_objects.RepoInfoKey.NAME.value: 'CommitInfo'} )
         self._add(commit_message)
-        if len(result) == 1:
-            for k, v in result.items():
-                return v
+        if len(result) == 1 or (mapping_changed and len(result) == 2):
+            return result[repo_object.repo_info[repo_objects.RepoInfoKey.NAME]]
         return result
 
     def get_training_data(self, version=-1, full_object=True):
@@ -380,7 +388,7 @@ class MLRepo:
         if not label is None:
             raise Exception('Not yet implemented.')
         version_list = range(self._adjust_version(
-            version_start, name), self._adjust_version(version_end, name))
+            version_start, name), self._adjust_version(version_end, name)+1)
         fields = [x for x in repo_info_fields]
         if len(repo_info_fields) == 0:
             fields = [x.value for x in repo_objects.RepoInfoKey]
@@ -390,7 +398,7 @@ class MLRepo:
     def get_commits(self,  version_start=0, version_end=-1):
         version_list = []
         version_list = range(self._adjust_version(
-            version_start, 'CommitInfo'), self._adjust_version(version_end, 'CommitInfo'))
+            version_start, 'CommitInfo'), self._adjust_version(version_end, 'CommitInfo')+1)
         result = []
         for i in version_list:
             result.append(self._get('CommitInfo', i))
