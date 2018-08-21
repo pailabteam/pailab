@@ -27,15 +27,15 @@ class MLObjectType(Enum):
     COMMIT_INFO = 'commit_info'
     MAPPING = 'mapping'
 
-    def _get_key(category): # pylint: disable=E0213
+    def _get_key(category):  # pylint: disable=E0213
         """Returns a standardized ky for the given category
-        
+
         Arguments:
-            category {MLObjectType or string (name or value of MLObjectType)} -- MLObjectType or string defining the enum 
-        
+            category {MLObjectType or string (name or value of MLObjectType)} -- MLObjectType or string defining the enum
+
         Raises:
             Exception -- If no MLObjectType exists matchin the given category or if category is of wrong type
-        
+
         Returns:
             string -- string which can be used e.g. in a dictionary
         """
@@ -51,6 +51,7 @@ class MLObjectType(Enum):
         if category_name is None:
             raise Exception('No category ' + str(category) + ' exists.')
         return category_name
+
 
 class ModelInfo:
     """ This class summarizes information of a special model version.
@@ -69,7 +70,66 @@ class ModelInfo:
         self.prep_param_version = None
         self.model_training_function_version = None
 
+class Mapping:
+    """Provides a mapping from MLObjectType to all objects in the repo belonging to this type
+    """
+    @repo_object_init()
+    def __init__(self, **kwargs):
+        for key in MLObjectType:
+            setattr(self, key.value, [])
+        self.set_fields(kwargs)
+        
+    def set_fields(self, kwargs):
+        """Set  fields from a dictionary
 
+        Args:
+            :param kwargs: dictionary
+        """
+        if not kwargs is None:
+            for key in MLObjectType:
+                if key.name in kwargs.keys():
+                    setattr(self, key.value, kwargs[key.name])
+                else:
+                    if key.value in kwargs.keys():
+                        setattr(self, key.value, kwargs[key.value])
+                    else:
+                        if key in kwargs.keys():
+                            setattr(self, key.value, kwargs[key])
+    
+        
+    def add(self, category, name):
+        """Add a object to a category if it does not already exists
+
+        Args:
+            :param category: Either a string (MLObjectType.value or MLObjectType.name) or directly a MLObjectType enum
+            :param name: name of object
+
+            :return true, if mapping has changed, false otherwise
+        """
+        category_name = MLObjectType._get_key(category)
+        mapping = getattr(self, category_name)
+        # if name in mapping:
+        #    raise Exception('Cannot add object: A ' + category_name + ' object with name ' + name + ' already exists in repo, please use update to modify it.')
+        if category_name == MLObjectType.TRAINING_DATA.value and len(mapping) > 0 and mapping[0] != name:
+            raise Exception('Only one set of training data allowed.')
+        if not name in mapping:
+            mapping.append(name)
+            return True
+        return False
+
+    def __getitem__(self, category):
+        """Get an item.
+
+        Args:
+            :param category: Either a string (MLObjectType.value or MLObjectType.name) or directly a MLObjectType enum
+
+        Returns:
+            Key of specified category.
+        """
+        category_name = MLObjectType._get_key(category)
+        return getattr(self, category_name)
+
+  
 class MLRepo:
     """ Repository for doing machine learning
 
@@ -81,65 +141,6 @@ class MLRepo:
         The repository needs three different handlers/repositories 
 
     """
-    class Mapping:
-        """Provides a mapping from MLObjectType to all objects in the repo belonging to this type
-        """
-        @repo_object_init()
-        def __init__(self, **kwargs):
-            for key in MLObjectType:
-                setattr(self, key.value, [])
-            self.set_fields(kwargs)
-            
-        def set_fields(self, kwargs):
-            """Set  fields from a dictionary
-
-            Args:
-                :param kwargs: dictionary
-            """
-            if not kwargs is None:
-                for key in MLObjectType:
-                    if key.name in kwargs.keys():
-                        setattr(self, key.value, kwargs[key.name])
-                    else:
-                        if key.value in kwargs.keys():
-                            setattr(self, key.value, kwargs[key.value])
-                        else:
-                            if key in kwargs.keys():
-                                setattr(self, key.value, kwargs[key])
-        
-            
-        def add(self, category, name):
-            """Add a object to a category if it does not already exists
-
-            Args:
-                :param category: Either a string (MLObjectType.value or MLObjectType.name) or directly a MLObjectType enum
-                :param name: name of object
-
-                :return true, if mapping has changed, false otherwise
-            """
-            category_name = MLObjectType._get_key(category)
-            mapping = getattr(self, category_name)
-            #if name in mapping:
-            #    raise Exception('Cannot add object: A ' + category_name + ' object with name ' + name + ' already exists in repo, please use update to modify it.')
-            if category_name == MLObjectType.TRAINING_DATA.value and len(mapping) > 0 and mapping[0] != name:
-                raise Exception('Only one set of training data allowed.')
-            if not name in mapping:
-                mapping.append(name)
-                return True
-            return False
-
-        def __getitem__(self, category):
-            """Get an item.
-
-            Args:
-                :param category: Either a string (MLObjectType.value or MLObjectType.name) or directly a MLObjectType enum
-
-            Returns:
-                Key of specified category.
-            """
-            category_name = MLObjectType._get_key(category)
-            return getattr(self, category_name)
-
     def __init__(self, user, script_repo, numpy_repo, ml_repo):
         """ Constructor of MLRepo
 
@@ -155,7 +156,7 @@ class MLRepo:
         try:
             self._mapping = self._ml_repo.get('repo_mapping', -1)
         except Exception:
-            self._mapping = MLRepo.Mapping(  # pylint: disable=E1123
+            self._mapping = Mapping(  # pylint: disable=E1123
                 repo_info={repo_objects.RepoInfoKey.NAME.value: 'repo_mapping', 
                 repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.MAPPING.value})
            
@@ -252,17 +253,10 @@ class MLRepo:
             name {string} -- data object
 
         Keyword Arguments:
-            version {integer} -- version o data object to be returned, default is latest object
+            version {integer} -- version of data object to be returned, default is latest object
             full_object {bool} -- if true, the full object including numpy objects is returned (default: {True})
         """
         result = self._get(name, version, full_object)
-        if isinstance(result, repo_objects.DataSet):
-            raw_data = self._get(
-                result.raw_data, result.raw_data_version, full_object)
-            setattr(result, 'x_data', raw_data.x_data)
-            setattr(result, 'x_coord_names', raw_data.x_coord_names)
-            setattr(result, 'y_data', raw_data.y_data)
-            setattr(result, 'y_coord_names', raw_data.y_coord_names)
         return result
 
     def add_eval_function(self, module_name, function_name, repo_name = None):
@@ -357,6 +351,14 @@ class MLRepo:
         """
         repo_dict = self._ml_repo.get(name, version)
         result = repo_objects.create_repo_obj(repo_dict)
+        if isinstance(result, repo_objects.DataSet):
+            raw_data = self._get(
+                result.raw_data, result.raw_data_version, full_object)
+            setattr(result, 'x_data', raw_data.x_data)
+            setattr(result, 'x_coord_names', raw_data.x_coord_names)
+            setattr(result, 'y_data', raw_data.y_data)
+            setattr(result, 'y_coord_names', raw_data.y_coord_names)
+
         numpy_dict = {}
         if len(result.repo_info[repo_objects.RepoInfoKey.BIG_OBJECTS]) > 0 and full_object:
             numpy_dict = self._numpy_repo.get(
