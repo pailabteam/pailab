@@ -133,12 +133,12 @@ class RepoTest(unittest.TestCase):
         handler = memory_handler.RepoObjectMemoryStorage()
         numpy_handler = memory_handler.NumpyMemoryStorage()
         # init repository with sample in memory handler
-        repository = repo.MLRepo(handler, numpy_handler, handler)
+        repository = repo.MLRepo('doeltz', handler, numpy_handler, handler)
         test_obj = TestClass(5, 3, repo_info={  # pylint: disable=E1123
                              repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_DATA.value, 'name': 'test_object'})
 
         # test simple add
-        version = repository._add(test_obj, 'first test commit')
+        version = repository.add(test_obj, 'first test commit')
         self.assertEqual(
             test_obj.repo_info[repo_objects.RepoInfoKey.VERSION], 0)  # pylint: disable=E1101
         self.assertEqual(version, 0)
@@ -153,13 +153,13 @@ class RepoTest(unittest.TestCase):
         self.assertEqual(test_obj2.mat, None)
 
         # test if version is handled properly
-        version = repository._add(test_obj2, 'second test commit')
+        version = repository.add(test_obj2, 'second test commit')
         self.assertEqual(version, 1)
 
         # test if also the numpy object will b retrieved
         test_obj = TestClass(5, 3, np.zeros([100, 3]), repo_info={  # pylint: disable=E1123
                              repo.MLObjectType.TRAINING_DATA.value: 'test_data', 'name': 'test_object'})
-        version = repository._add(test_obj)
+        version = repository.add(test_obj, category = repo.MLObjectType.TEST_DATA)
         test_obj2 = repository._get('test_object', version, full_object=True)
         self.assertEqual(test_obj.mat.shape[0], test_obj2.mat.shape[0])
         self.assertEqual(test_obj.mat.shape[1], test_obj2.mat.shape[1])
@@ -174,7 +174,7 @@ class RepoTest(unittest.TestCase):
         # test if get get_history works
         history = repository.get_history('test_object')
         self.assertEqual(
-            len(history), test_obj2.repo_info[repo_objects.RepoInfoKey.VERSION])
+            len(history), test_obj2.repo_info[repo_objects.RepoInfoKey.VERSION]+1)
 
     def test_repo_RawData(self):
         """Test RawData within repo
@@ -182,16 +182,48 @@ class RepoTest(unittest.TestCase):
         handler = memory_handler.RepoObjectMemoryStorage()
         numpy_handler = memory_handler.NumpyMemoryStorage()
         # init repository with sample in memory handler
-        repository = repo.MLRepo(handler, numpy_handler, handler)
+        repository = repo.MLRepo('doeltz', handler, numpy_handler, handler)
         raw_data = repo_objects.RawData(np.zeros([10, 1]), ['test_coord'], repo_info={  # pylint: disable=E0602
             repo_objects.RepoInfoKey.NAME.value: 'RawData_Test'})
-        repository._add(raw_data, 'test commit')
+        repository.add(raw_data, 'test commit', repo.MLObjectType.RAW_DATA)
         raw_data_2 = repository._get('RawData_Test')
         self.assertEqual(len(raw_data.x_coord_names),
                          len(raw_data_2.x_coord_names))
         self.assertEqual(
             raw_data.x_coord_names[0], raw_data_2.x_coord_names[0])
-
+        commits = repository.get_commits()
+        self.assertEqual(len(commits), 1)
+        self.assertEqual(len(commits[0].objects), 2)
+        self.assertEqual(commits[0].objects['RawData_Test'], 0)
+        
+    def test_repo_training_test_data(self):
+        handler = memory_handler.RepoObjectMemoryStorage()
+        numpy_handler = memory_handler.NumpyMemoryStorage()
+        # init repository with sample in memory handler
+        repository = repo.MLRepo('doeltz', handler, numpy_handler, handler)
+        training_data = repo_objects.RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'training_data'})
+        repository.add(training_data, category=repo.MLObjectType.TRAINING_DATA)
+        
+        training_data_2 = repository.get_training_data()
+        self.assertEqual(training_data_2.repo_info[repo_objects.RepoInfoKey.NAME], training_data.repo_info[repo_objects.RepoInfoKey.NAME])
+        test_data = repo_objects.RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data'})
+        repository.add(test_data, category=repo.MLObjectType.TEST_DATA)
+        
+        test_data_2 = repository.get_data('test_data')
+        self.assertEqual(test_data_2.repo_info[repo_objects.RepoInfoKey.NAME], test_data.repo_info[repo_objects.RepoInfoKey.NAME])
+        test_data = repo_objects.RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_2'})
+        repository.add(test_data, category = repo.MLObjectType.TEST_DATA)
+        
+        test_data_2 = repository.get_data('test_data_2')
+        self.assertEqual(test_data_2.repo_info[repo_objects.RepoInfoKey.NAME], test_data.repo_info[repo_objects.RepoInfoKey.NAME])
+        commits = repository.get_commits()
+        self.assertEqual(len(commits), 3)
+        self.assertEqual(commits[1].objects['test_data'], 0)
+        self.assertEqual(commits[1].objects['repo_mapping'], 1)
+        self.assertEqual(commits[2].objects['test_data_2'], 0)
+        self.assertEqual(commits[2].objects['repo_mapping'], 2)
+        
+        
 
 if __name__ == '__main__':
     unittest.main()

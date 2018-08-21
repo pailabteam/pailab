@@ -11,6 +11,7 @@ LOGGER = logging.getLogger('repo')
 class MLObjectType(Enum):
     """Enums describing all ml object types.
     """
+    RAW_DATA = 'raw_data'
     TRAINING_DATA = 'training_data'
     TEST_DATA = 'test_data'
     TEST_RESULT = 'test_result'
@@ -18,13 +19,38 @@ class MLObjectType(Enum):
     TRAINING_PARAM = 'training_param'
     TRAINING_FUNCTION = 'training_function'
     MODEL_EVAL_FUNCTION = 'model_eval_function'
-    MODEL_CALIBRATOR = 'model_calibrator'
-    MODEL_EVALUATION = 'model_evaluator'
     PREP_PARAM = 'prep_param'
     PREPROCESSOR = 'preprocessor'
     MODEL_INFO = 'model_info'
     LABEL = 'label'
+    MODEL = 'model'
+    COMMIT_INFO = 'commit_info'
+    MAPPING = 'mapping'
 
+    def _get_key(category): # pylint: disable=E0213
+        """Returns a standardized ky for the given category
+        
+        Arguments:
+            category {MLObjectType or string (name or value of MLObjectType)} -- MLObjectType or string defining the enum 
+        
+        Raises:
+            Exception -- If no MLObjectType exists matchin the given category or if category is of wrong type
+        
+        Returns:
+            string -- string which can be used e.g. in a dictionary
+        """
+
+        category_name = None
+        if isinstance(category, MLObjectType):
+            category_name = category.value
+        if isinstance(category, str):
+            for k in MLObjectType:
+                if k.value == category or k.name == category:
+                    category_name = k.value
+                    break
+        if category_name is None:
+            raise Exception('No category ' + str(category) + ' exists.')
+        return category_name
 
 class ModelInfo:
     """ This class summarizes information of a special model version.
@@ -55,8 +81,66 @@ class MLRepo:
         The repository needs three different handlers/repositories 
 
     """
+    class Mapping:
+        """Provides a mapping from MLObjectType to all objects in the repo belonging to this type
+        """
+        @repo_object_init()
+        def __init__(self, **kwargs):
+            for key in MLObjectType:
+                setattr(self, key.value, [])
+            self.set_fields(kwargs)
+            
+        def set_fields(self, kwargs):
+            """Set  fields from a dictionary
 
-    def __init__(self, script_repo, numpy_repo, ml_repo):
+            Args:
+                :param kwargs: dictionary
+            """
+            if not kwargs is None:
+                for key in MLObjectType:
+                    if key.name in kwargs.keys():
+                        setattr(self, key.value, kwargs[key.name])
+                    else:
+                        if key.value in kwargs.keys():
+                            setattr(self, key.value, kwargs[key.value])
+                        else:
+                            if key in kwargs.keys():
+                                setattr(self, key.value, kwargs[key])
+        
+            
+        def add(self, category, name):
+            """Add a object to a category if it does not already exists
+
+            Args:
+                :param category: Either a string (MLObjectType.value or MLObjectType.name) or directly a MLObjectType enum
+                :param name: name of object
+
+                :return true, if mapping has changed, false otherwise
+            """
+            category_name = MLObjectType._get_key(category)
+            mapping = getattr(self, category_name)
+            #if name in mapping:
+            #    raise Exception('Cannot add object: A ' + category_name + ' object with name ' + name + ' already exists in repo, please use update to modify it.')
+            if category_name == MLObjectType.TRAINING_DATA.value and len(mapping) > 0 and mapping[0] != name:
+                raise Exception('Only one set of training data allowed.')
+            if not name in mapping:
+                mapping.append(name)
+                return True
+            return False
+
+        def __getitem__(self, category):
+            """Get an item.
+
+            Args:
+                :param category: Either a string (MLObjectType.value or MLObjectType.name) or directly a MLObjectType enum
+
+            Returns:
+                Key of specified category.
+            """
+            category_name = MLObjectType._get_key(category)
+            return getattr(self, category_name)
+
+    def __init__(self, user, script_repo, numpy_repo, ml_repo):
         """ Constructor of MLRepo
 
             :param script_repo: repository for the user's modules providing the customized model evaluation, raining, calibration and preprocessing methods
@@ -66,7 +150,15 @@ class MLRepo:
         self._script_repo = script_repo
         self._numpy_repo = numpy_repo
         self._ml_repo = ml_repo
-
+        self._user = user
+        # check if the ml mapping is already contained in the repo, otherwise add it
+        try:
+            self._mapping = self._ml_repo.get('repo_mapping', -1)
+        except Exception:
+            self._mapping = MLRepo.Mapping(  # pylint: disable=E1123
+                repo_info={repo_objects.RepoInfoKey.NAME.value: 'repo_mapping', 
+                repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.MAPPING.value})
+           
     def _adjust_version(self, version, name):
         """Checks if version is negative and then adjust it according to the typical python 
         way for list where -1 is the last element of the list, -2 the second last etc.
@@ -79,26 +171,185 @@ class MLRepo:
             return version
         return self._ml_repo.get_latest_version(name) + 1 + version
 
-    def _add(self, repo_object, message=''):
-        """ Add a repo_object to the repository.
+    def _add(self, repo_object, message='', category = None):
+            """ Add a repo_object to the repository.
 
-            :param repo_object: repo_object to be added, will be modified so that it contains the version number
+                :param repo_object: repo_object to be added, will be modified so that it contains the version number
+                :param message: commit message
+                :param category: Category of repo_object which is used as fallback if th object does not define a category.
+
+                Raises an exception if the category of the object is not defined in the object and if it is not defined with the category argument.
+                It raises an exception if an object with this id does already exist.
+
+                :return version number of object added and boolean if mapping has changed
+            """        
+            if repo_object.repo_info[repo_objects.RepoInfoKey.CATEGORY.value] is None:
+                if category is None:
+                    raise Exception('Category of repo_object not set and no fallback category defined.')
+                else:
+                    repo_object.repo_info[repo_objects.RepoInfoKey.CATEGORY.value] = category
+            
+            mapping_changed = self._mapping.add(repo_object.repo_info[repo_objects.RepoInfoKey.CATEGORY], repo_object.repo_info[repo_objects.RepoInfoKey.NAME])
+
+            repo_object.repo_info[repo_objects.RepoInfoKey.COMMIT_MESSAGE.value] = message
+            obj_dict = repo_objects.create_repo_obj_dict(repo_object)
+            version = self._ml_repo.add(obj_dict)
+            repo_object.repo_info[repo_objects.RepoInfoKey.VERSION.value] = version
+            if len(repo_object.repo_info[repo_objects.RepoInfoKey.BIG_OBJECTS]) > 0:
+                np_dict = repo_object.numpy_to_dict()
+                self._numpy_repo.add(repo_object.repo_info[repo_objects.RepoInfoKey.NAME],
+                                    repo_object.repo_info[repo_objects.RepoInfoKey.VERSION],
+                                    np_dict)
+            return version, mapping_changed
+
+    def add(self, repo_object, message='', category = None):
+        """ Add a repo_object or list of repo objects to the repository.
+
+            :param repo_object: repo_object or list of repo_objects to be added, will be modified so that it contains the version number
             :param message: commit message
+            :param category: Category of repo_object which is used as fallback if the object does not define a category.
 
-            :return version number of object added
+            Raises an exception if the category of the object is not defined in the object and if it is not defined with the category argument.
+            It raises an exception if an object with this id does already exist.
+
+            :return version number of object added or dictionary of names and versions of objects added
         """
-        obj_dict = repo_objects.create_repo_obj_dict(repo_object)
-        version = self._ml_repo.add(obj_dict)
-        repo_object.repo_info[repo_objects.RepoInfoKey.VERSION.value] = version
-        if len(repo_object.repo_info[repo_objects.RepoInfoKey.BIG_OBJECTS]) > 0:
-            np_dict = repo_object.numpy_to_dict()
-            self._numpy_repo.add(repo_object.repo_info[repo_objects.RepoInfoKey.NAME],
-                                 repo_object.repo_info[repo_objects.RepoInfoKey.VERSION],
-                                 np_dict)
-        return version
+        result = {}
+        repo_list = repo_object
+        mapping_changed = False
+        if not isinstance(repo_list,list):
+            repo_list = [repo_object]
+        if isinstance(repo_list, list):
+            for obj in repo_list:
+                result[obj.repo_info[repo_objects.RepoInfoKey.NAME]], mapping_changed_tmp = self._add(obj, message, category)
+                mapping_changed = mapping_changed or mapping_changed_tmp
+        if mapping_changed:
+            mapping_version, dummy = self._add(self._mapping)
+            result['repo_mapping'] = mapping_version
+            
+        commit_message = repo_objects.CommitInfo(message, self._user, result, repo_info = {repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.COMMIT_INFO.value,
+                repo_objects.RepoInfoKey.NAME.value: 'CommitInfo'} )
+        self._add(commit_message)
+        if len(result) == 1 or (mapping_changed and len(result) == 2):
+            return result[repo_object.repo_info[repo_objects.RepoInfoKey.NAME]]
+        return result
 
+    def get_training_data(self, version=-1, full_object=True):
+        """Returns training data 
+
+        Keyword Arguments:
+            version {integer} -- version of data object
+            full_object {bool} -- if True, the complete data is returned including numpy data (default: {True})
+        """
+        if self._mapping[MLObjectType.TRAINING_DATA] is None:
+            raise Exception("No training_data in repository.")
+        return self.get_data(self._mapping[MLObjectType.TRAINING_DATA][0], version, full_object)
+
+    def get_data(self, name, version=-1, full_object=True):
+        """Return a data object
+
+        Arguments:
+            name {string} -- data object
+
+        Keyword Arguments:
+            version {integer} -- version o data object to be returned, default is latest object
+            full_object {bool} -- if true, the full object including numpy objects is returned (default: {True})
+        """
+        result = self._get(name, version, full_object)
+        if isinstance(result, repo_objects.DataSet):
+            raw_data = self._get(
+                result.raw_data, result.raw_data_version, full_object)
+            setattr(result, 'x_data', raw_data.x_data)
+            setattr(result, 'x_coord_names', raw_data.x_coord_names)
+            setattr(result, 'y_data', raw_data.y_data)
+            setattr(result, 'y_coord_names', raw_data.y_coord_names)
+        return result
+
+    def add_eval_function(self, module_name, function_name, repo_name = None):
+        """Add the function to evaluate the model
+
+        Arguments:
+            module_name {string} -- module where function is located
+            function_name {string} -- function name
+            repo_name {tring} -- identifier of the repo object used to store the information (default: None), if None, the name is set to module_name.function_name
+        """
+        name = repo_name
+        if name is None:
+            name = module_name.function_name
+        func = repo_objects.Function(module_name, function_name, repo_info={
+                                     repo_objects.RepoInfoKey.NAME.value: name,
+                                     repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.MODEL_EVAL_FUNCTION.value})
+        self.add(func, 'add model evaluation function ' + name)
+    
+    def add_training_function(self, module_name, function_name, repo_name = None):
+        """Add function to train a model
+
+        Arguments:
+            module_name {string} -- module where function is located
+            function_name {string} -- function name
+            repo_name {tring} -- identifier of the repo object used to store the information (default: None), if None, the name is set to module_name.function_name
+        """
+        name = repo_name
+        if name is None:
+            name = module_name.function_name
+        func = repo_objects.Function(module_name, function_name, repo_info={
+                                     repo_objects.RepoInfoKey.NAME.value: name,
+                                     repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.TRAINING_FUNCTION.value})
+        self.add(func, 'add model training function ' + name)
+
+    def add_model(self, model_name, model_eval = None, model_training = None, model_param = None, training_param = None):
+        """Add a new model to the repo
+        
+        Arguments:
+            model_name {string} -- identifier of the model
+        
+        Keyword Arguments:
+            model_eval {string} -- identifier of the evaluation function in the repo to evaluate the model, 
+                                    if None and there is only one evaluation function in the repo, this function will be used
+            model_training {string} -- identifier of the training function in the repo to train the model, 
+                                    if None and there is only one evaluation function in the repo, this function will be used
+            model_param {string} -- identifier of the model parameter in the repo (default: {None}), if None and there is exactly one ModelParameter in teh repo, this will be used,
+                                    otherwise it is assumed that no model_params are needed
+            training_param {string} -- identifier of the training parameter (default: {None}), if None and there is only one training_parameter object in the repo, 
+                                        this will be used
+        """
+        model = repo_objects.Model(repo_info={repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.MODEL, 
+                                               repo_objects.RepoInfoKey.NAME.value: model_name })
+        model.eval_function = model_eval
+        if model.eval_function is None:
+            mapping = self._mapping[MLObjectType.MODEL_EVAL_FUNCTION]
+            if len(mapping) == 1:
+                model.eval_function = mapping[0]
+            else:
+                raise Exception('More than one or no eval function in repo, therefore you must explicitely specify an eval function.')
+       
+        model.training_function = model_training
+        if  model.training_function is None:
+            mapping = self._mapping[MLObjectType.TRAINING_FUNCTION]
+            if len(mapping) == 1:
+                model.training_function = mapping[0]
+            else:
+                raise Exception('More than one or no training function in repo, therefore you must explicitely specify a training function.')
+        
+        model.training_param = training_param
+        if model.training_param is None:
+            mapping = self._mapping[MLObjectType.TRAINING_PARAM]
+            if len(mapping) == 1:
+                model.training_param = mapping[0]
+            else:
+                raise Exception('More than one or no training parameter in repo, therefore you must explicitely specify a training parameter.')
+
+        model.model_param = model_param
+        if model.model_param is None:
+            mapping = self._mapping[MLObjectType.MODEL_PARAM]
+            if len(mapping) == 1:
+                model.training_param = mapping[0]
+            else:
+                raise Exception('More than one or no training parameter in repo, therefore you must explicitely specify a training parameter.')
+        self.add(model)
+        
     def _get(self, name, version=-1, full_object=False):
-        """ Get a repo objects. It throws an exception, if an object with the name does not exist.
+        """ Get repo objects. It throws an exception, if an object with the name does not exist.
 
             :param name: Object name
             :param version: object version, default is latest (-1)
@@ -137,12 +388,21 @@ class MLRepo:
         if not label is None:
             raise Exception('Not yet implemented.')
         version_list = range(self._adjust_version(
-            version_start, name), self._adjust_version(version_end, name))
+            version_start, name), self._adjust_version(version_end, name)+1)
         fields = [x for x in repo_info_fields]
         if len(repo_info_fields) == 0:
             fields = [x.value for x in repo_objects.RepoInfoKey]
         fields.extend(obj_member_fields)
         return self._ml_repo.get_history(name, fields, version_list)
+
+    def get_commits(self,  version_start=0, version_end=-1):
+        version_list = []
+        version_list = range(self._adjust_version(
+            version_start, 'CommitInfo'), self._adjust_version(version_end, 'CommitInfo')+1)
+        result = []
+        for i in version_list:
+            result.append(self._get('CommitInfo', i))
+        return result
 
     def run_training(self, message='', job_runner=None):
         """ Run the training algorithm. 

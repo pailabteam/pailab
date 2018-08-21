@@ -29,6 +29,7 @@ class RepoInfoKey(Enum):
     DESCRIPTION = 'description'
     CATEGORY = 'category'
     BIG_OBJECTS = 'big_objects'
+    COMMIT_MESSAGE = 'commit_message'
 
 
 class RepoInfo:
@@ -236,15 +237,6 @@ def create_repo_obj(obj):
     return result
 
 
-class RepoObjectType(Enum):
-    """Enums describing all repo object types.
-    """
-    RAW_DATA = 'raw_data'
-    DATASET = 'dataset'
-    PARAMETER = 'parameter'
-    JOB = 'job'
-
-
 class RawData:
     def _cast_data_to_numpy(data):  # pylint: disable=E0213
         if data is None:
@@ -297,14 +289,58 @@ class DataSet:
 
     """
     @repo_object_init()
-    def __init__(self, raw_data, start_index=0, end_index=-1):
+    def __init__(self, raw_data, start_index=0, end_index=-1, raw_data_version=-1):
         """Constructor
 
         Arguments:
             :argument raw_data: {string} -- id of raw_data the dataset refers to
             :argument start_index: {integer} -- index of first entry of the raw data used in the dataset
             :argument end_index: {integer} -- end_index of last entry of the raw data used in the dataset
+            :argument raw_data_version: {integer} -- version of RawData object the DataSet refers to (default is latest)
         """
         self.raw_data = raw_data
         self.start_index = start_index
         self.end_index = end_index
+        self.raw_data_version = raw_data_version
+
+class Model:
+    @repo_object_init()
+    def __init__(self, preprocessing = None, preprocessing_param = None, eval_function = None, train_function = None, train_param = None, model_param = None):
+        """Defines all model relevant information
+        
+        Keyword Arguments:
+            preprocessing {string} -- name of preprocessing used (default: {None})
+            preprocessing_param {string} -- name of preprocessing used (default: {None})
+            eval_function {string} -- name of function object for model evaluation (default: {None})
+            train_function {string} -- name of function object for model training (default: {None})
+            train_param {string} -- name of training parameer object used for model training (default: {None})
+            model_param {string} -- name of model parameter object used for creating the model, i.e. network architecture (default: {None})
+        """
+        self.preprocessing_function = preprocessing
+        self.preprocessing_param = preprocessing_param
+        self.eval_function = eval_function
+        self.training_function = train_function
+        self.training_param = train_param
+        self.model_param = model_param
+
+class Function:
+    """Function
+    """
+    @repo_object_init()
+    def __init__(self, module_name, function_name):
+        self.module_name = module_name
+        self.function_name = function_name
+
+class CommitInfo:
+    @repo_object_init()
+    def __init__(self, message, author, objects):
+        """Constructor
+        
+        Arguments:
+            message {string} -- commit message
+            author {string} -- author
+            objects {dictionary} --  dictionary of names of committed objects and version numbers
+        """
+        self.message = message
+        self.author = author
+        self.objects = objects

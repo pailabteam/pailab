@@ -18,7 +18,8 @@
         {
             "label": "generate html docu",
             "type": "shell",
-            "command": "doc/make html"
+            "command": "doc/make html",
+            "problemMatcher": []
         }
     ]
 }
