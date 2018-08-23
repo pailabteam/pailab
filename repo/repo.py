@@ -269,7 +269,7 @@ class MLRepo:
         """
         name = repo_name
         if name is None:
-            name = module_name.function_name
+            name = module_name + "." + function_name
         func = repo_objects.Function(module_name, function_name, repo_info={
                                      repo_objects.RepoInfoKey.NAME.value: name,
                                      repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.MODEL_EVAL_FUNCTION.value})
@@ -285,7 +285,7 @@ class MLRepo:
         """
         name = repo_name
         if name is None:
-            name = module_name.function_name
+            name = module_name + "." + function_name
         func = repo_objects.Function(module_name, function_name, repo_info={
                                      repo_objects.RepoInfoKey.NAME.value: name,
                                      repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.TRAINING_FUNCTION.value})
