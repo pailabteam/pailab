@@ -254,6 +254,18 @@ class RepoTest(unittest.TestCase):
         self.assertEqual(model.training_param, 'training_param')
         self.assertEqual(model.model_param, 'model_param')
         
+    def test_get_history(self):
+        training_data_history = self.repository.get_history('training_data_1')
+        self.assertEqual(len(training_data_history), 1)
+        training_data = self.repository._get('training_data_1')
+        self.repository.add(training_data)
+        training_data_history = self.repository.get_history('training_data_1')
+        self.assertEqual(len(training_data_history), 2)
+        self.assertEqual(training_data_history[0]['repo_info']['version'], 0)
+        self.assertEqual(training_data_history[1]['repo_info']['version'], 1)
+        training_data_history = self.repository.get_history('training_data_1', version_start=1, version_end=1)
+        self.assertEqual(len(training_data_history), 1)
+
 
     def test_repo_training_test_data(self):
         handler = memory_handler.RepoObjectMemoryStorage()
