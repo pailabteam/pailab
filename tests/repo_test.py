@@ -237,6 +237,24 @@ class RepoTest(unittest.TestCase):
         self.assertEqual(len(commits[0].objects), 2)
         self.assertEqual(commits[0].objects['RawData_Test'], 0)
         
+    def test_add_model_defaults(self):
+        """test add_model using defaults to check whether default logic applies correctly
+        """
+
+        self.repository.add_eval_function('my_model_module', 'eval')
+        self.repository.add_training_function('my_model_module', 'fit')
+        model_param = TestClass(3,4, repo_info={RepoInfoKey.NAME.value: 'model_param', RepoInfoKey.CATEGORY.value: repo.MLObjectType.MODEL_PARAM.value})
+        self.repository.add(model_param)
+        training_param = TestClass(3,4, repo_info={RepoInfoKey.NAME.value: 'training_param', RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_PARAM.value})
+        self.repository.add(training_param)
+        self.repository.add_model('model1')
+        model = self.repository._get('model1')
+        self.assertEqual(model.eval_function, 'my_model_module.eval')
+        self.assertEqual(model.training_function, 'my_model_module.fit')
+        self.assertEqual(model.training_param, 'training_param')
+        self.assertEqual(model.model_param, 'model_param')
+        
+
     def test_repo_training_test_data(self):
         handler = memory_handler.RepoObjectMemoryStorage()
         numpy_handler = memory_handler.NumpyMemoryStorage()
