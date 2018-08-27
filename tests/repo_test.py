@@ -5,7 +5,7 @@ import repo.repo as repo
 import repo.repo_objects as repo_objects
 import repo.memory_handler as memory_handler
 import numpy as np
-
+from job_runner.job_runner import SimpleJobRunner
 
 class TestClass:
     @repo_object_init(['mat'])
@@ -134,7 +134,8 @@ class RepoTest(unittest.TestCase):
         '''
         handler = memory_handler.RepoObjectMemoryStorage()
         numpy_handler = memory_handler.NumpyMemoryStorage()
-        self.repository = repo.MLRepo('doeltz', handler, numpy_handler, handler)
+        job_runner = SimpleJobRunner()
+        self.repository = repo.MLRepo('doeltz', handler, numpy_handler, handler, job_runner)
         #### Setup dummy RawData
         raw_data = repo_objects.RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'raw_1'})
         self.repository.add(raw_data, category=repo.MLObjectType.RAW_DATA)
@@ -222,8 +223,9 @@ class RepoTest(unittest.TestCase):
         """
         handler = memory_handler.RepoObjectMemoryStorage()
         numpy_handler = memory_handler.NumpyMemoryStorage()
+        job_runner = SimpleJobRunner()
         # init repository with sample in memory handler
-        repository = repo.MLRepo('doeltz', handler, numpy_handler, handler)
+        repository = repo.MLRepo('doeltz', handler, numpy_handler, handler, job_runner)
         raw_data = repo_objects.RawData(np.zeros([10, 1]), ['test_coord'], repo_info={  # pylint: disable=E0602
             repo_objects.RepoInfoKey.NAME.value: 'RawData_Test'})
         repository.add(raw_data, 'test commit', repo.MLObjectType.RAW_DATA)
@@ -270,8 +272,9 @@ class RepoTest(unittest.TestCase):
     def test_repo_training_test_data(self):
         handler = memory_handler.RepoObjectMemoryStorage()
         numpy_handler = memory_handler.NumpyMemoryStorage()
+        job_runner = SimpleJobRunner()
         # init repository with sample in memory handler
-        repository = repo.MLRepo('doeltz', handler, numpy_handler, handler)
+        repository = repo.MLRepo('doeltz', handler, numpy_handler, handler, job_runner)
         training_data = repo_objects.RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'training_data'})
         repository.add(training_data, category=repo.MLObjectType.TRAINING_DATA)
         

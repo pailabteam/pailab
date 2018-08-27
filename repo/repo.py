@@ -1,7 +1,9 @@
 """
 Machine learning repository
 """
+import importlib
 from enum import Enum
+from copy import deepcopy
 import logging
 import repo.repo_objects as repo_objects
 from repo.repo_objects import repo_object_init  # pylint: disable=E0401
@@ -11,6 +13,7 @@ LOGGER = logging.getLogger('repo')
 class MLObjectType(Enum):
     """Enums describing all ml object types.
     """
+    EVAL_DATA = 'eval_data'
     RAW_DATA = 'raw_data'
     TRAINING_DATA = 'training_data'
     TEST_DATA = 'test_data'
@@ -70,6 +73,7 @@ class ModelInfo:
         self.prep_param_version = None
         self.model_training_function_version = None
 
+
 class Mapping:
     """Provides a mapping from MLObjectType to all objects in the repo belonging to this type
     """
@@ -78,7 +82,7 @@ class Mapping:
         for key in MLObjectType:
             setattr(self, key.value, [])
         self.set_fields(kwargs)
-        
+
     def set_fields(self, kwargs):
         """Set  fields from a dictionary
 
@@ -95,8 +99,7 @@ class Mapping:
                     else:
                         if key in kwargs.keys():
                             setattr(self, key.value, kwargs[key])
-    
-        
+
     def add(self, category, name):
         """Add a object to a category if it does not already exists
 
@@ -129,7 +132,44 @@ class Mapping:
         category_name = MLObjectType._get_key(category)
         return getattr(self, category_name)
 
-  
+class EvalJob:
+    """definition of a model evaluation job
+    """
+    @repo_object_init()
+    def __init__(self, model, data, user, eval_function_version=-1, model_version=-1, data_version=-1):
+        self.model = model
+        self.data = data
+        self.user = user
+        self.eval_function_version = eval_function_version
+        self.model_version = model_version
+        self.data_version = data_version
+
+    def run(self, repo, jobid):
+        """Run the job with data from the given repo
+
+        Arguments:
+            repo {MLrepository} -- repository used to get and store the data
+            jobid {string} -- id of job which will be run
+        """
+        model = repo.get(self.model, self.model_version)
+        data = repo._get(self.data, self.data_version, full_object=True)
+        eval_func = repo._get(model.eval_function, self.eval_function_version)
+        tmp = importlib.import_module(eval_func.module_name)
+        module_version = None
+        if hasattr(tmp, '__version__'):
+            module_version = tmp.__version__
+        f = getattr(tmp, eval_func.function_name)
+        y = f(model.model(), data.x_data)
+        result = repo_objects.RawData(y, data.y_coord_names, repo_info={
+                            repo_objects.RepoInfoKey.NAME.value: MLRepo.get_default_eval_name(model, data),
+                            repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.EVAL_DATA.value,
+                            repo_objects.RepoInfoKey.MODIFICATION_INFO.value: {'model_version': model.repo_info[repo_objects.RepoInfoKey.VERSION],
+                                                                'data_version': data.repo_info[repo_objects.RepoInfoKey.VERSION],
+                                                                'jobid': jobid}
+                            }
+                            )
+        repo.add(result)
+
 class MLRepo:
     """ Repository for doing machine learning
 
@@ -141,17 +181,19 @@ class MLRepo:
         The repository needs three different handlers/repositories 
 
     """
-    def __init__(self, user, script_repo, numpy_repo, ml_repo):
+    def __init__(self, user, script_repo, numpy_repo, ml_repo, job_runner):
         """ Constructor of MLRepo
 
             :param script_repo: repository for the user's modules providing the customized model evaluation, raining, calibration and preprocessing methods
             :param numpy_repo: repository where the numpy data is stored in versions
             :param ml_repo: repository where the repo_objects are stored
+            :param job_runner: the jobrunner to execute calibration, evaluations etc.
         """
         self._script_repo = script_repo
         self._numpy_repo = numpy_repo
         self._ml_repo = ml_repo
         self._user = user
+        self._job_runner = job_runner
         # check if the ml mapping is already contained in the repo, otherwise add it
         try:
             self._mapping = self._ml_repo.get('repo_mapping', -1)
@@ -369,6 +411,17 @@ class MLRepo:
         result.numpy_from_dict(numpy_dict)
         return result
 
+    def get_default_eval_name( model_name, data_name ):
+        """Return name of the object containing evaluation results
+        
+        Arguments:
+            data_name {[type]} -- [description]
+        
+        Returns:
+            string -- name of valuation results
+        """
+        return  model_name + '/eval/' + data_name
+
     def get_names(self, ml_obj_type):
         """ Get the list of names of all repo_objects from a given repo_object_type in the repository.
 
@@ -416,15 +469,33 @@ class MLRepo:
         """
         pass
 
-    def run_evaluation(self, message='', model_version=-1, datasets={}):
+    def run_evaluation(self, model, message=None, model_version=-1, datasets={}):
         """ Evaluate the model on all datasets. 
 
-            :param message: Commit message for this operation.
+            :param model: name of model to evaluate, if None and only one model exists
+            :message: message inserted into commit (default None), if Noe, an autmated message is created
             :param model_version: Version of model to be evaluated.
             :datasets: Dictionary of datasets (names and version numbers) on which the model is evaluated. 
-                Default is all datasets on latest version.
+                Default is all datasets from testdata on latest version.
+            Raises:
+                Exception if model_name is None and more then one model exists
         """
-        pass
+        datasets_ = deepcopy(datasets)
+        if len(datasets_) == 0:
+            names = self.get_names(MLObjectType.TEST_DATA)
+            for n in names:
+                v = self._ml_repo.get_latest_version(n)
+                datasets_[n] = v
+        m = model
+        if m is None:
+            models = self.get_names(MLObjectType.MODEL)
+            if len(models) == 1:
+                m = models[0]
+            else:
+                raise Exception('No model is specified but repository contains more than one model.')
+        for n, v in datasets:
+            eval_job = EvalJob(m, n, self._user, model_version=model_version, data_version=v)
+            self._job_runner.add(eval_job)
 
     def run_tests(self, message='', model_version=-1, tests={}, job_runner=None):
         """ Run tests for a specific model version.
