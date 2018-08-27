@@ -381,7 +381,8 @@ class MLRepo:
             if len(mapping) == 1:
                 model.model_param = mapping[0]
             else:
-                raise Exception('More than one or no training parameter in repo, therefore you must explicitely specify a training parameter.')
+                if len(mapping) > 1
+                raise Exception('More than one model parameter in repo, therefore you must explicitely specify a model parameter.')
         self.add(model)
         
     def _get(self, name, version=-1, full_object=False):
