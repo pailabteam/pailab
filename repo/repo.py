@@ -139,11 +139,16 @@ def __add_modification_info(repo_obj, *args):
     Arguments:
         repo_obj {repoobject} -- the object the modification info is added to
     """
-
     result = {}
     for v in args:
         if v is not None:
             result[v.repo_info[repo_objects.RepoInfoKey.NAME]] = v.repo_info[repo_objects.RepoInfoKey.VERSION] 
+            for k, w in v.repo_info[repo_objects.RepoInfoKey.MODIFICATION_INFO].items():
+                # check if there is a bad inconsistency: if an object modifying the current object has already been used with a different version
+                # number, this must be annotated 
+                if k in result.keys() and result[k] != w:
+                    result['inconsistency'] = 'object ' + k  + ' has already been used with a different version number'
+                result[k] = w
     repo_obj.repo_info[repo_objects.RepoInfoKey.MODIFICATION_INFO] = result 
 
 class EvalJob:
