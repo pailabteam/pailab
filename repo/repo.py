@@ -151,7 +151,7 @@ class EvalJob:
             repo {MLrepository} -- repository used to get and store the data
             jobid {string} -- id of job which will be run
         """
-        model = repo.get(self.model, self.model_version)
+        model = repo._get(self.model, self.model_version)
         data = repo._get(self.data, self.data_version, full_object=True)
         eval_func = repo._get(model.eval_function, self.eval_function_version)
         tmp = importlib.import_module(eval_func.module_name)
@@ -159,7 +159,7 @@ class EvalJob:
         if hasattr(tmp, '__version__'):
             module_version = tmp.__version__
         f = getattr(tmp, eval_func.function_name)
-        y = f(model.model(), data.x_data)
+        y = f(model, data.x_data)
         result = repo_objects.RawData(y, data.y_coord_names, repo_info={
                             repo_objects.RepoInfoKey.NAME.value: MLRepo.get_default_eval_name(model, data),
                             repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.EVAL_DATA.value,
@@ -501,7 +501,7 @@ class MLRepo:
                 m = models[0]
             else:
                 raise Exception('No model is specified but repository contains more than one model.')
-        for n, v in datasets:
+        for n, v in datasets_.items():
             eval_job = EvalJob(m, n, self._user, model_version=model_version, data_version=v)
             self._job_runner.add(eval_job)
 
