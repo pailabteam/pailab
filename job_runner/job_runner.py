@@ -38,23 +38,23 @@ class JobRunner:
 
 
 class SimpleJobRunner:
-    def __init_(self, repo):
+    def __init__(self, repo):
         self._repo = repo
-        self.job_status = {}
-        self.error_message = {}
+        self._job_status = {}
+        self._error_message = {}
 
     def get_status(self, jobid):
-        return self.job_status[jobid]
+        return self._job_status[jobid]
 
     def get_error_message(self, jobid):
-        return self.error_message[jobid]
+        return self._error_message[jobid]
 
     def add(self, job):
         job_id = uuid.uuid1()
-        self.job_status[job_id] = JobState.RUNNING.value
+        self._job_status[job_id] = JobState.RUNNING.value
         try:
             job.run(self._repo, job_id)
         except Exception as e:
-            self.job_status[job_id] = JobState.FAILED
-            self.error_message[job_id] = str(e)
-        self.job_status[job_id] = JobState.SUCCESSFULLY_FINISHED
+            self._job_status[job_id] = JobState.FAILED
+            self._error_message[job_id] = str(e)
+        self._job_status[job_id] = JobState.SUCCESSFULLY_FINISHED
