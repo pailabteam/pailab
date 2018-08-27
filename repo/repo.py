@@ -27,6 +27,7 @@ class MLObjectType(Enum):
     MODEL_INFO = 'model_info'
     LABEL = 'label'
     MODEL = 'model'
+    CALIBRATED_MODEL = 'calib_model'
     COMMIT_INFO = 'commit_info'
     MAPPING = 'mapping'
 
@@ -132,6 +133,19 @@ class Mapping:
         category_name = MLObjectType._get_key(category)
         return getattr(self, category_name)
 
+def __add_modification_info(repo_obj, *args):
+    """Add modificaion info to a repo object from a list if repo objects which were used to create it.
+    
+    Arguments:
+        repo_obj {repoobject} -- the object the modification info is added to
+    """
+
+    result = {}
+    for v in args:
+        if v is not None:
+            result[v.repo_info[repo_objects.RepoInfoKey.NAME]] = v.repo_info[repo_objects.RepoInfoKey.VERSION] 
+    repo_obj.repo_info[repo_objects.RepoInfoKey.MODIFICATION_INFO] = result 
+
 class EvalJob:
     """definition of a model evaluation job
     """
@@ -162,14 +176,56 @@ class EvalJob:
         y = f(model, data.x_data)
         result = repo_objects.RawData(y, data.y_coord_names, repo_info={
                             repo_objects.RepoInfoKey.NAME.value: MLRepo.get_default_eval_name(model, data),
-                            repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.EVAL_DATA.value,
-                            repo_objects.RepoInfoKey.MODIFICATION_INFO.value: {'model_version': model.repo_info[repo_objects.RepoInfoKey.VERSION],
-                                                                'data_version': data.repo_info[repo_objects.RepoInfoKey.VERSION],
-                                                                'jobid': jobid}
+                            repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.EVAL_DATA.value
                             }
                             )
-        repo.add(result)
+        __add_modification_info(result, model, data)
+        repo.add(result, 'evaluate data '+ self.data + ' with model ' + self.model)
 
+class TrainingJob:
+    """definition of a model training job
+    """
+    @repo_object_init()
+    def __init__(self, model, user, training_function_version=-1, model_version=-1, 
+                training_data_version=-1, training_param_version = -1, model_param_version = -1):
+        self.model = model
+        self.user = user
+        self.training_function_version = training_function_version
+        self.model_version = model_version
+        self.training_param_version = training_param_version
+        self.model_param_version = model_param_version
+        self.training_data_version = training_data_version
+
+    def run(self, repo, jobid):
+        """Run the job with data from the given repo
+
+        Arguments:
+            repo {MLrepository} -- repository used to get and store the data
+            jobid {string} -- id of job which will be run
+        """
+        model = repo._get(self.model, self.model_version)
+
+        train_data = repo.get_training_data(self.data_version, full_object=True)
+        train_func = repo._get(model.train_function, self.train_function_version)
+        train_param = repo._get(model.training_param, self.training_param_version)
+        model_param = None
+        if not model.model_param is None:
+            model_param = repo._get(model.model_param, self.model_param_version)
+        tmp = importlib.import_module(train_func.module_name)
+        module_version = None
+        if hasattr(tmp, '__version__'):
+            module_version = tmp.__version__
+        f = getattr(tmp, train_func.function_name)
+        m = None
+        if model_param is None:
+            m = f(train_param, train_data.x_data, train_data.y_data)
+        else:
+            m = f(model_param, train_param, train_data.x_data, train_data.y_data)
+        m.repo_info[repo_objects.RepoInfoKey.NAME] = self.model + '/model' 
+        m.repo_info[repo_objects.RepoInfoKey.CATEGORY] = MLObjectType.CALIBRATED_MODEL
+        __add_modification_info(m, model_param, train_param, train_data.x_data, train_data)
+        repo.add(m, 'training of model ' + self.model)
+        
 class MLRepo:
     """ Repository for doing machine learning
 
@@ -460,15 +516,23 @@ class MLRepo:
             result.append(self._get('CommitInfo', i))
         return result
 
-    def run_training(self, message='', job_runner=None):
+    def run_training(self, model=None, message=None, model_version=-1, training_function_version=-1,
+                    training_data_version=-1, training_param_version = -1, model_param_version = -1):
         """ Run the training algorithm. 
 
         :param message: commit message
-        :param job_runner: job runner executing the raining script. Default is single threaded local jobrunner.
-
-        :return ticket number and new model version
         """
-        pass
+        if model is None:
+            m_names = self.get_names(MLObjectType.MODEL)
+            if len(m_names) == 0:
+                Exception('No model definition exists, please define a model first.')
+            if len(m_names) > 1:
+                Exception('More than one model in repository, please specify a model to evaluate.')
+                model = m_names[0]
+        train_job = TrainJob(model, self._user, training_function_version=training_function_version, model_version=model_version,
+            training_data_version=training_data_version, training_param_version= training_param_version, model_param_version=model_param_version)
+        self._job_runner.add(train_job)
+
 
     def run_evaluation(self, model=None, message=None, model_version=-1, datasets={}):
         """ Evaluate the model on all datasets. 
@@ -494,15 +558,8 @@ class MLRepo:
             for n in names:
                 v = self._ml_repo.get_latest_version(n)
                 datasets_[n] = v
-        m = model
-        if m is None:
-            models = self.get_names(MLObjectType.MODEL)
-            if len(models) == 1:
-                m = models[0]
-            else:
-                raise Exception('No model is specified but repository contains more than one model.')
         for n, v in datasets_.items():
-            eval_job = EvalJob(m, n, self._user, model_version=model_version, data_version=v)
+            eval_job = EvalJob(model, n, self._user, model_version=model_version, data_version=v)
             self._job_runner.add(eval_job)
 
     def run_tests(self, message='', model_version=-1, tests={}, job_runner=None):
