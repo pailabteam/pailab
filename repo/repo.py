@@ -470,7 +470,7 @@ class MLRepo:
         """
         pass
 
-    def run_evaluation(self, model, message=None, model_version=-1, datasets={}):
+    def run_evaluation(self, model=None, message=None, model_version=-1, datasets={}):
         """ Evaluate the model on all datasets. 
 
             :param model: name of model to evaluate, if None and only one model exists
@@ -481,6 +481,13 @@ class MLRepo:
             Raises:
                 Exception if model_name is None and more then one model exists
         """
+        if model is None:
+            m_names = self.get_names(MLObjectType.MODEL)
+            if len(m_names) == 0:
+                Exception('No model exists, please train a model first.')
+            if len(m_names) > 1:
+                Exception('More than one model in repository, please specify a model to evaluate.')
+                model = m_names[0]
         datasets_ = deepcopy(datasets)
         if len(datasets_) == 0:
             names = self.get_names(MLObjectType.TEST_DATA)
