@@ -5,7 +5,7 @@ import repo.repo as repo
 import repo.repo_objects as repo_objects
 import repo.memory_handler as memory_handler
 import numpy as np
-from job_runner.job_runner import SimpleJobRunner
+from job_runner.job_runner import SimpleJobRunner # pylint: disable=E0401
 
 class TestClass:
     @repo_object_init(['mat'])
@@ -171,7 +171,7 @@ class RepoTest(unittest.TestCase):
 
         self.repository.add_eval_function('tests.repo_test', 'eval_func_test')
         self.repository.add_training_function('tests.repo_test', 'train_func_test')
-        self.repository.add(TestClass(1,2, repo_info={repo_objects.RepoInfoKey.NAME.value: 'training_param',
+        self.repository.add(TestClass(1,2, repo_info={repo_objects.RepoInfoKey.NAME.value: 'training_param', # pylint: disable=E1123
                                             repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_PARAM}))
         ## setup dumma 
         self.repository.add_model('model', )
@@ -268,9 +268,9 @@ class RepoTest(unittest.TestCase):
     def test_add_model_defaults(self):
         """test add_model using defaults to check whether default logic applies correctly
         """
-        model_param = TestClass(3,4, repo_info={RepoInfoKey.NAME.value: 'model_param', RepoInfoKey.CATEGORY.value: repo.MLObjectType.MODEL_PARAM.value})
+        model_param = TestClass(3,4, repo_info={RepoInfoKey.NAME.value: 'model_param', RepoInfoKey.CATEGORY.value: repo.MLObjectType.MODEL_PARAM.value}) # pylint: disable=E1123
         self.repository.add(model_param)
-        training_param = TestClass(3,4, repo_info={RepoInfoKey.NAME.value: 'training_param', RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_PARAM.value})
+        training_param = TestClass(3,4, repo_info={RepoInfoKey.NAME.value: 'training_param', RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_PARAM.value}) # pylint: disable=E1123
         self.repository.add(training_param)
         self.repository.add_model('model1')
         model = self.repository._get('model1')
