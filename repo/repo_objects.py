@@ -47,7 +47,9 @@ class RepoInfo:
             self[RepoInfoKey.VERSION] = 0
         if self[RepoInfoKey.BIG_OBJECTS] is None:
             self[RepoInfoKey.BIG_OBJECTS] = set()
-
+        if self[RepoInfoKey.MODIFICATION_INFO] is None:
+            self[RepoInfoKey.MODIFICATION_INFO] = {}
+            
     def set_fields(self, kwargs):
         """Set repo info fields from a dictionary
 
