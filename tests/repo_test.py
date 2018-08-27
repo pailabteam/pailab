@@ -126,6 +126,26 @@ class RawDataTest(unittest.TestCase):
         self.assertEqual(test_data.x_data.shape[0], 3)
         self.assertEqual(test_data.x_data.shape[1], 1)
 
+def eval_func_test(model, data):
+    '''Dummy model eval function for testing
+    
+        Function retrns independent of data and model a simple numpy array with zeros
+    Arguments:
+        model {} -- dummy model, not used
+        data {} -- dummy data, not used
+    '''
+    return np.zeros([10,1])
+
+def train_func_test(model_param, training_param, data):
+    '''Dummy model training function for testing
+    
+        Function retrns independent of data and model a simple numpy array with zeros
+    Arguments:
+        model_param {} -- dummy model parameter
+        training_param {} -- dummy training parameter, not used
+        data {} -- dummy trainig data, not used
+    '''
+    return None
 
 class RepoTest(unittest.TestCase):
 
@@ -149,6 +169,12 @@ class RepoTest(unittest.TestCase):
         test_data_2 = repo_objects.DataSet('raw_3', 0, -1, repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_2',  repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TEST_DATA})
         self.repository.add([training_data, test_data_1, test_data_2])
 
+        self.repository.add_eval_function('tests.repo_test', 'eval_func_test')
+        self.repository.add_training_function('tests.repo_test', 'train_func_test')
+        self.repository.add(TestClass(1,2, repo_info={repo_objects.RepoInfoKey.NAME.value: 'training_param',
+                                            repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_PARAM}))
+        ## setup dumma 
+        self.repository.add_model('model', )
         ## setup dummy model definition
 
 
@@ -242,17 +268,14 @@ class RepoTest(unittest.TestCase):
     def test_add_model_defaults(self):
         """test add_model using defaults to check whether default logic applies correctly
         """
-
-        self.repository.add_eval_function('my_model_module', 'eval')
-        self.repository.add_training_function('my_model_module', 'fit')
         model_param = TestClass(3,4, repo_info={RepoInfoKey.NAME.value: 'model_param', RepoInfoKey.CATEGORY.value: repo.MLObjectType.MODEL_PARAM.value})
         self.repository.add(model_param)
         training_param = TestClass(3,4, repo_info={RepoInfoKey.NAME.value: 'training_param', RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_PARAM.value})
         self.repository.add(training_param)
         self.repository.add_model('model1')
         model = self.repository._get('model1')
-        self.assertEqual(model.eval_function, 'my_model_module.eval')
-        self.assertEqual(model.training_function, 'my_model_module.fit')
+        self.assertEqual(model.eval_function, 'tests.repo_test.eval_func_test')
+        self.assertEqual(model.training_function, 'tests.repo_test.train_func_test')
         self.assertEqual(model.training_param, 'training_param')
         self.assertEqual(model.model_param, 'model_param')
         
@@ -268,6 +291,10 @@ class RepoTest(unittest.TestCase):
         training_data_history = self.repository.get_history('training_data_1', version_start=1, version_end=1)
         self.assertEqual(len(training_data_history), 1)
 
+    def test_run_eval_defaults(self):
+        '''Test running evaluation with default arguments
+        '''
+        self.repository.run_evaluation()
 
     def test_repo_training_test_data(self):
         handler = memory_handler.RepoObjectMemoryStorage()
