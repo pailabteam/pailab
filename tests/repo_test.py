@@ -145,7 +145,7 @@ def train_func_test(model_param, training_param, data):
         training_param {} -- dummy training parameter, not used
         data {} -- dummy trainig data, not used
     '''
-    return TestClass(2,3)
+    return TestClass(2,3, repo_info = {}) # pylint: disable=E1123
 
 class RepoTest(unittest.TestCase):
 

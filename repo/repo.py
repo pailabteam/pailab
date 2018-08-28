@@ -133,7 +133,7 @@ class Mapping:
         category_name = MLObjectType._get_key(category)
         return getattr(self, category_name)
 
-def __add_modification_info(repo_obj, *args):
+def _add_modification_info(repo_obj, *args):
     """Add modificaion info to a repo object from a list if repo objects which were used to create it.
     
     Arguments:
@@ -184,7 +184,7 @@ class EvalJob:
                             repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.EVAL_DATA.value
                             }
                             )
-        __add_modification_info(result, model, data)
+        _add_modification_info(result, model, data)
         repo.add(result, 'evaluate data '+ self.data + ' with model ' + self.model)
 
 class TrainingJob:
@@ -210,8 +210,8 @@ class TrainingJob:
         """
         model = repo._get(self.model, self.model_version)
 
-        train_data = repo.get_training_data(self.data_version, full_object=True)
-        train_func = repo._get(model.train_function, self.train_function_version)
+        train_data = repo.get_training_data(self.training_data_version, full_object=True)
+        train_func = repo._get(model.training_function, self.training_function_version)
         train_param = repo._get(model.training_param, self.training_param_version)
         model_param = None
         if not model.model_param is None:
@@ -228,7 +228,7 @@ class TrainingJob:
             m = f(model_param, train_param, train_data.x_data, train_data.y_data)
         m.repo_info[repo_objects.RepoInfoKey.NAME] = self.model + '/model' 
         m.repo_info[repo_objects.RepoInfoKey.CATEGORY] = MLObjectType.CALIBRATED_MODEL
-        __add_modification_info(m, model_param, train_param, train_data.x_data, train_data)
+        _add_modification_info(m, model_param, train_param, train_data)
         repo.add(m, 'training of model ' + self.model)
         
 class MLRepo:
@@ -473,16 +473,17 @@ class MLRepo:
         result.numpy_from_dict(numpy_dict)
         return result
 
-    def get_default_eval_name( model_name, data_name ):
+    def get_default_eval_name( model, data ):
         """Return name of the object containing evaluation results
         
         Arguments:
-            data_name {[type]} -- [description]
+            model {ModelDefinition object} -- 
+            data {RawData or DataSet object} --
         
         Returns:
             string -- name of valuation results
         """
-        return  model_name + '/eval/' + data_name
+        return  model.repo_info[repo_objects.RepoInfoKey.NAME] + '/eval/' + data.repo_info[repo_objects.RepoInfoKey.NAME]
 
     def get_names(self, ml_obj_type):
         """ Get the list of names of all repo_objects from a given repo_object_type in the repository.
@@ -533,7 +534,7 @@ class MLRepo:
                 Exception('No model definition exists, please define a model first.')
             if len(m_names) > 1:
                 Exception('More than one model in repository, please specify a model to evaluate.')
-                model = m_names[0]
+            model = m_names[0]
         train_job = TrainingJob(model, self._user, training_function_version=training_function_version, model_version=model_version,
             training_data_version=training_data_version, training_param_version= training_param_version, model_param_version=model_param_version)
         self._job_runner.add(train_job)
@@ -556,7 +557,7 @@ class MLRepo:
                 Exception('No model exists, please train a model first.')
             if len(m_names) > 1:
                 Exception('More than one model in repository, please specify a model to evaluate.')
-                model = m_names[0]
+            model = m_names[0]
         datasets_ = deepcopy(datasets)
         if len(datasets_) == 0:
             names = self.get_names(MLObjectType.TEST_DATA)
