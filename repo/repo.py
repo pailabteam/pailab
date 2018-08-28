@@ -57,24 +57,6 @@ class MLObjectType(Enum):
         return category_name
 
 
-class ModelInfo:
-    """ This class summarizes information of a special model version.
-
-        This class summarizes information of a special model version,
-        such as version numbers of all objects used such as trainin data, training parametere, etc..
-    """
-    @repo_object_init()
-    def __init__(self):
-        self.model_version = None
-        self.training_data_version = {}
-        self.test_version = {}
-        self.test_result_version = {}
-        self.model_param_version = None
-        self.training_param_version = None
-        self.prep_param_version = None
-        self.model_training_function_version = None
-
-
 class Mapping:
     """Provides a mapping from MLObjectType to all objects in the repo belonging to this type
     """
