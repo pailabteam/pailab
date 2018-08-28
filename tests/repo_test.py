@@ -145,7 +145,7 @@ def train_func_test(model_param, training_param, data):
         training_param {} -- dummy training parameter, not used
         data {} -- dummy trainig data, not used
     '''
-    return None
+    return TestClass(2,3)
 
 class RepoTest(unittest.TestCase):
 
@@ -297,6 +297,11 @@ class RepoTest(unittest.TestCase):
         '''Test running evaluation with default arguments
         '''
         self.repository.run_evaluation()
+
+    def test_run_train_defaults(self):
+        '''Test running training with default arguments
+        '''
+        self.repository.run_training()
 
     def test_repo_training_test_data(self):
         handler = memory_handler.RepoObjectMemoryStorage()

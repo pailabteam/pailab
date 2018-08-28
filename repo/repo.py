@@ -534,7 +534,7 @@ class MLRepo:
             if len(m_names) > 1:
                 Exception('More than one model in repository, please specify a model to evaluate.')
                 model = m_names[0]
-        train_job = TrainJob(model, self._user, training_function_version=training_function_version, model_version=model_version,
+        train_job = TrainingJob(model, self._user, training_function_version=training_function_version, model_version=model_version,
             training_data_version=training_data_version, training_param_version= training_param_version, model_param_version=model_param_version)
         self._job_runner.add(train_job)
 
