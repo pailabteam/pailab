@@ -17,7 +17,7 @@ class JobRunner:
     """Baseclass for all job runners so that they can be used together with the MLRepo
     """
 
-    def add(self, job):
+    def add(self, job):  # pragma: no cover
         """[summary]
 
         Arguments:
@@ -30,10 +30,10 @@ class JobRunner:
         """
         raise NotImplementedError
 
-    def get_status(self, jobid):
+    def get_status(self, jobid):  # pragma: no cover
         raise NotImplementedError
 
-    def get_error_message(self, jobid):
+    def get_error_message(self, jobid):  # pragma: no cover
         raise NotImplementedError
 
 
