@@ -5,7 +5,7 @@ import repo.repo as repo
 import repo.repo_objects as repo_objects
 import repo.memory_handler as memory_handler
 import numpy as np
-
+from job_runner.job_runner import SimpleJobRunner # pylint: disable=E0401
 
 class TestClass:
     @repo_object_init(['mat'])
@@ -126,6 +126,26 @@ class RawDataTest(unittest.TestCase):
         self.assertEqual(test_data.x_data.shape[0], 3)
         self.assertEqual(test_data.x_data.shape[1], 1)
 
+def eval_func_test(model, data):
+    '''Dummy model eval function for testing
+    
+        Function retrns independent of data and model a simple numpy array with zeros
+    Arguments:
+        model {} -- dummy model, not used
+        data {} -- dummy data, not used
+    '''
+    return np.zeros([10,1])
+
+def train_func_test(model_param, training_param, data):
+    '''Dummy model training function for testing
+    
+        Function retrns independent of data and model a simple numpy array with zeros
+    Arguments:
+        model_param {} -- dummy model parameter
+        training_param {} -- dummy training parameter, not used
+        data {} -- dummy trainig data, not used
+    '''
+    return TestClass(2,3, repo_info = {}) # pylint: disable=E1123
 
 class RepoTest(unittest.TestCase):
 
@@ -134,7 +154,9 @@ class RepoTest(unittest.TestCase):
         '''
         handler = memory_handler.RepoObjectMemoryStorage()
         numpy_handler = memory_handler.NumpyMemoryStorage()
-        self.repository = repo.MLRepo('doeltz', handler, numpy_handler, handler)
+        self.repository = repo.MLRepo('doeltz', handler, numpy_handler, handler, None)
+        job_runner = SimpleJobRunner(self.repository)
+        self.repository._job_runner = job_runner
         #### Setup dummy RawData
         raw_data = repo_objects.RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'raw_1'})
         self.repository.add(raw_data, category=repo.MLObjectType.RAW_DATA)
@@ -148,6 +170,12 @@ class RepoTest(unittest.TestCase):
         test_data_2 = repo_objects.DataSet('raw_3', 0, -1, repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_2',  repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TEST_DATA})
         self.repository.add([training_data, test_data_1, test_data_2])
 
+        self.repository.add_eval_function('tests.repo_test', 'eval_func_test')
+        self.repository.add_training_function('tests.repo_test', 'train_func_test')
+        self.repository.add(TestClass(1,2, repo_info={repo_objects.RepoInfoKey.NAME.value: 'training_param', # pylint: disable=E1123
+                                            repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_PARAM}))
+        ## setup dumma 
+        self.repository.add_model('model', )
         ## setup dummy model definition
 
 
@@ -223,7 +251,9 @@ class RepoTest(unittest.TestCase):
         handler = memory_handler.RepoObjectMemoryStorage()
         numpy_handler = memory_handler.NumpyMemoryStorage()
         # init repository with sample in memory handler
-        repository = repo.MLRepo('doeltz', handler, numpy_handler, handler)
+        repository = repo.MLRepo('doeltz', handler, numpy_handler, handler, None)
+        job_runner = SimpleJobRunner(repository)
+        repository._job_runner = job_runner
         raw_data = repo_objects.RawData(np.zeros([10, 1]), ['test_coord'], repo_info={  # pylint: disable=E0602
             repo_objects.RepoInfoKey.NAME.value: 'RawData_Test'})
         repository.add(raw_data, 'test commit', repo.MLObjectType.RAW_DATA)
@@ -240,17 +270,14 @@ class RepoTest(unittest.TestCase):
     def test_add_model_defaults(self):
         """test add_model using defaults to check whether default logic applies correctly
         """
-
-        self.repository.add_eval_function('my_model_module', 'eval')
-        self.repository.add_training_function('my_model_module', 'fit')
-        model_param = TestClass(3,4, repo_info={RepoInfoKey.NAME.value: 'model_param', RepoInfoKey.CATEGORY.value: repo.MLObjectType.MODEL_PARAM.value})
+        model_param = TestClass(3,4, repo_info={RepoInfoKey.NAME.value: 'model_param', RepoInfoKey.CATEGORY.value: repo.MLObjectType.MODEL_PARAM.value}) # pylint: disable=E1123
         self.repository.add(model_param)
-        training_param = TestClass(3,4, repo_info={RepoInfoKey.NAME.value: 'training_param', RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_PARAM.value})
+        training_param = TestClass(3,4, repo_info={RepoInfoKey.NAME.value: 'training_param', RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_PARAM.value}) # pylint: disable=E1123
         self.repository.add(training_param)
         self.repository.add_model('model1')
         model = self.repository._get('model1')
-        self.assertEqual(model.eval_function, 'my_model_module.eval')
-        self.assertEqual(model.training_function, 'my_model_module.fit')
+        self.assertEqual(model.eval_function, 'tests.repo_test.eval_func_test')
+        self.assertEqual(model.training_function, 'tests.repo_test.train_func_test')
         self.assertEqual(model.training_param, 'training_param')
         self.assertEqual(model.model_param, 'model_param')
         
@@ -266,12 +293,23 @@ class RepoTest(unittest.TestCase):
         training_data_history = self.repository.get_history('training_data_1', version_start=1, version_end=1)
         self.assertEqual(len(training_data_history), 1)
 
+    def test_run_eval_defaults(self):
+        '''Test running evaluation with default arguments
+        '''
+        self.repository.run_evaluation()
+
+    def test_run_train_defaults(self):
+        '''Test running training with default arguments
+        '''
+        self.repository.run_training()
 
     def test_repo_training_test_data(self):
         handler = memory_handler.RepoObjectMemoryStorage()
         numpy_handler = memory_handler.NumpyMemoryStorage()
         # init repository with sample in memory handler
-        repository = repo.MLRepo('doeltz', handler, numpy_handler, handler)
+        repository = repo.MLRepo('doeltz', handler, numpy_handler, handler, None)
+        job_runner = SimpleJobRunner(repository)
+        repository._job_runner = job_runner
         training_data = repo_objects.RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'training_data'})
         repository.add(training_data, category=repo.MLObjectType.TRAINING_DATA)
         
