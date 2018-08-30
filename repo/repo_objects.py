@@ -283,28 +283,6 @@ class RawData:
             self.y_data = y_data
             self.y_coord_names = y_coord_names
 
-
-class DataSet:
-    """Class used to access training or test data.
-
-    This class refers to some RawData object and a start- and endindex 
-
-    """
-    @repo_object_init()
-    def __init__(self, raw_data, start_index=0, end_index=-1, raw_data_version=-1):
-        """Constructor
-
-        Arguments:
-            :argument raw_data: {string} -- id of raw_data the dataset refers to
-            :argument start_index: {integer} -- index of first entry of the raw data used in the dataset
-            :argument end_index: {integer} -- end_index of last entry of the raw data used in the dataset
-            :argument raw_data_version: {integer} -- version of RawData object the DataSet refers to (default is latest)
-        """
-        self.raw_data = raw_data
-        self.start_index = start_index
-        self.end_index = end_index
-        self.raw_data_version = raw_data_version
-
 class Model:
     @repo_object_init()
     def __init__(self, preprocessing = None, preprocessing_param = None, eval_function = None, train_function = None, train_param = None, model_param = None):

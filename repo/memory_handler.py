@@ -1,8 +1,80 @@
+from copy import deepcopy
 import repo.repo_objects as repo_objects
 import repo.repo as repo
+from repo.repo_store import RepoStore
 
 
-class RepoObjectMemoryStorage:
+class RepoObjectMemoryStorage(RepoStore):
+    # region private
+    def _replace_version_keyword(self, name, versionset):
+        def replace_keyword_by_version(n):
+            if n is None:
+                return None
+            if isinstance(n, str):
+                if n == RepoStore.FIRST_VERSION:
+                    return 0
+                if n == RepoStore.LAST_VERSION:
+                    return self.get_latest_version(name)
+            return n
+        if isinstance(versionset, tuple):
+            return (replace_keyword_by_version(versionset[0]), replace_keyword_by_version(versionset[1]))
+        v = deepcopy(versionset)
+        v = replace_keyword_by_version(v)
+        if isinstance(v, list):
+            for i in range(len(v)):
+                v[i] = replace_keyword_by_version(v[i])
+        return v
+
+    def _is_in_versions(self, name, version, versions):
+        if versions is None:
+            return True
+        v = self._replace_version_keyword(name, versions)
+        if isinstance(v, list):
+            return version in v
+        if isinstance(v, tuple):
+            return (version >= v[0]) and (version <= v[1])
+        return version == v
+
+    def _is_in_modifications(self, obj, modifications):
+        """Check if dictionary contains all modifications as given and if their version is in the respective version spec
+
+        Arguments:
+            obj {dict} -- object dictionary
+            modifications {dict} -- [description]
+
+        Returns:
+            [bool] -- either True or False depending if given modification criteria is met
+        """
+        if modifications is None:
+            return True
+        modification_info = obj.repo_info[repo_objects.RepoInfoKey.MODIFICATION_INFO]
+        result = True
+        for k, v in modifications.items():
+            if not k in modification_info.keys():
+                return False
+            result = result and self._is_in_versions(
+                k, modification_info[k], v)
+            if result == False:
+                return result
+        return result
+
+    def _get_object_list(self, name):
+        """Return list of all versions of an object.
+
+        :param name: name of object
+
+        :return list of versions of object
+        """
+        if not name in self._name_to_category.keys():
+            raise Exception('No object with name ' + name + ' in store.')
+        category = self._name_to_category[name]
+        if not category in self._store.keys():
+            raise Exception('No object ' + name + ' in category ' + category)
+        if not name in self._store[category].keys():
+            raise Exception('No object ' + name + ' in category ' + category)
+        return self._store[category][name]
+# endregion
+
     def __init__(self):
         self._store = {}
         self._name_to_category = {}
@@ -34,30 +106,19 @@ class RepoObjectMemoryStorage:
         self._categories[category].add(name)
         return obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value]
 
-    def _get_object_list(self, name):
-        """Return list of all versions of an object.
-
-        :param name: name of object
-
-        :return list of versions of object
-        """
-        if not name in self._name_to_category.keys():
-            raise Exception('No object with name ' + name + ' in store.')
-        category = self._name_to_category[name]
-        if not category in self._store.keys():
-            raise Exception('No object ' + name + ' in category ' + category)
-        if not name in self._store[category].keys():
-            raise Exception('No object ' + name + ' in category ' + category)
-        return self._store[category][name]
-
-    def get(self, name, version):
-        """
-        """
+    def get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None):
         tmp = self._get_object_list(name)
-        if version >= len(tmp) or abs(version) > len(tmp):
-            raise Exception('No valid versionnumber (' + str(version) +
-                            ') for object ' + name)
-        return tmp[version]
+        result = []
+        for x in tmp:
+            if self._is_in_versions(x['repo_info'][repo_objects.RepoInfoKey.NAME.value], x['repo_info'][repo_objects.RepoInfoKey.VERSION.value], versions):
+                if self._is_in_modifications(x, modifier_versions):
+                    result.append(x)
+        return result
+
+    def get_version_number(self, name, offset):
+        if offset < 0:
+            return len(self._get_object_list(name)) + offset
+        return offset
 
     def get_latest_version(self, name):
         """Return latest version number of an object.
@@ -76,20 +137,6 @@ class RepoObjectMemoryStorage:
         if not category in self._store.keys():
             raise Exception('Category ' + category + ' not in storage.')
         return [x for x in self._store[category].keys()]
-
-    def get_history(self, name, fields=[], version_list=[]):
-        """Return history of an object.
-
-        This is an interface which has no effect in the case of the Memory-Handler but may enhance performance using other
-        handlers. Therefore the ML Repo uses this interface and we have to implement it.
-
-        :param name: name of object
-        :param fields: the fields which will be taken from the repo. Since this is only for performance isues
-        which have no effect in the MemoryStorage case, we ignore this argument.
-        :param version_list: list of version whose history will be used. 
-        """
-        tmp = self._get_object_list(name)
-        return [tmp[x] for x in version_list]
 
 
 class NumpyMemoryStorage:
