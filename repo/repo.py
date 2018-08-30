@@ -274,18 +274,6 @@ class MLRepo:
                 repo_info={repo_objects.RepoInfoKey.NAME.value: 'repo_mapping', 
                 repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.MAPPING.value})
            
-    def _adjust_version(self, version, name):
-        """Checks if version is negative and then adjust it according to the typical python 
-        way for list where -1 is the last element of the list, -2 the second last etc.
-
-        :param version: version number
-        :param name: name of object for which version is adjusted
-        :return adjusted version
-        """
-        if isinstance(version, int):
-            return self._ml_repo.get_version_number(name, version)
-        return version
-
     def _add(self, repo_object, message='', category = None):
             """ Add a repo_object to the repository.
 
