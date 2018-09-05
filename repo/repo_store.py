@@ -76,9 +76,9 @@ class RepoStore(abc.ABC):
         Returns:
             version number -- latest version number
         """
-        return self.get(name, versions=RepoStore.LAST_VERSION, repo_info_fields=[RepoInfoKey.VERSION.value])['repo_info'][RepoInfoKey.VERSION.value])
+        return self.get(name, versions=RepoStore.LAST_VERSION, repo_info_fields=[RepoInfoKey.VERSION.value])['repo_info'][RepoInfoKey.VERSION.value]
 
-    def object_exists(self, name, version = LAST_VERSION):
+    def object_exists(self, name, version=LAST_VERSION):
         """Returns True if an object with the given name and version exists.
 
         Arguments:
@@ -87,5 +87,5 @@ class RepoStore(abc.ABC):
         Keyword Arguments:
             version {version number} -- version number (default: {LAST_VERSION})
         """
-        obj=self.get(name, versions = [version])
+        obj = self.get(name, versions=[version])
         return len(obj) != 0
