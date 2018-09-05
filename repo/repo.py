@@ -580,14 +580,21 @@ class MLRepo:
         pass
 
 
-    def set_label(self, model_version, message='', force=True):
+    def set_label(self, label_name, model_name = None, model_version = repo_store.RepoStore.LAST_VERSION, message=''):
         """ Label a certain model version.
 
-            This method labels a certain model version. If force == False it checks if the label 
-            already exists an raises in this case an exception.
+            It checks if a model with this version really exists and throws an exception if such a model does not exist.
 
+            This method labels a certain model version. 
             :param message: Commit message
+            :param model_name: name of model
             :param model_version: model version for which the label is set.
-            :param force: lag determining if ann exception is raise if the label is already used (force->False, exception is raised)
         """
-        pass
+        # check if a model with this version exists
+        if not self._ml_repo.object_exists(model_name, model_version):
+            raise Exception('Cannot set label, model ' + model_name + ' with version ' + str(model_version) + ' does not exist.')
+        label = repo_objects.Label(model_name, model_version, repo_info={repo_objects.RepoInfoKey.NAME.value: label_name, 
+            repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.LABEL.value})
+        self._ml_repo.add(label)        
+        
+
