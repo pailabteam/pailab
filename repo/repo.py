@@ -146,6 +146,10 @@ class EvalJob:
         self.eval_function_version = eval_function_version
         self.model_version = model_version
         self.data_version = data_version
+        self.predecessors = [] #list of jobids which must have been run before this job should be excuted
+
+    def get_predecessor_jobs(self):
+        return self.predecessors
 
     def run(self, repo, jobid):
         """Run the job with data from the given repo
@@ -185,6 +189,10 @@ class TrainingJob:
         self.training_param_version = training_param_version
         self.model_param_version = model_param_version
         self.training_data_version = training_data_version
+        self.predecessors = [] #list of jobids which must have been run before this job should be excuted
+
+    def get_predecessor_jobs(self):
+        return self.predecessors
 
     def run(self, repo, jobid):
         """Run the job with data from the given repo
