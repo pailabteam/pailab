@@ -355,10 +355,10 @@ class MeasureConfiguration:
         self.measures = {}
         for x in measures:
             if isinstance(x,tuple):
-                measures[MeasureConfiguration._create_name(x)] = x
+                self.measures[MeasureConfiguration._create_name(x)] = x
             else:
                 if isinstance(x,str):
-                    measures[MeasureConfiguration._create_name(x)] = (x, MeasureConfiguration._ALL_COORDINATES)
+                    self.measures[MeasureConfiguration._create_name(x)] = (x, MeasureConfiguration._ALL_COORDINATES)
                 else:
                     raise Exception('Given list of measures contains invalid element.')
 
@@ -378,3 +378,7 @@ class MeasureConfiguration:
     
     #endregion
     
+class Measure:
+    @repo_object_init()
+    def __init__(self, value):
+        self.value = value

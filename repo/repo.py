@@ -33,6 +33,7 @@ class MLObjectType(Enum):
     COMMIT_INFO = 'commit_info'
     MAPPING = 'mapping'
     MEASURE = 'measure'
+    MEASURE_CONFIGURATION = 'measure_config'
 
     def _get_key(category):  # pylint: disable=E0213
         """Returns a standardized ky for the given category
@@ -243,7 +244,7 @@ class TrainingJob:
 
 class MeasureJob:
     @repo_object_init()
-    def __init__(self, measure_type, coordinates, data_name, model_name, data_version=repo_store.RepoStore.LAST_VERSION,
+    def __init__(self, result_name, measure_type, coordinates, data_name, model_name, data_version=repo_store.RepoStore.LAST_VERSION,
                 model_version=repo_store.RepoStore.LAST_VERSION):
         """Constructor
 
@@ -266,15 +267,6 @@ class MeasureJob:
         self.data_version = data_version
 
     def run(self, repo, jobid):
-        x,y = self._preprocess_data(repo)
-        if self.measure_type == repo_objects.MeasureConfiguration.MAX:
-            return self._compute_max(x, y)
-        else:
-            raise NotImplementedError
-
-    def _preprocess_data(self, repo):
-        """Return tuple of target and evaluated values
-        """
         target = repo._get(self.data_name, versions=self.data_version, full_object = True)
         eval_data_name = MLRepo.get_default_eval_name(self.model_name, self.data_name)
         eval_data = repo._get(eval_data_name, modifier_versions={self.model_name: self.model_version, self.data_name: self.data_version} )
@@ -283,10 +275,15 @@ class MeasureJob:
         columns = []
         for x in self.coordinates:
             columns.append(target.y_coord_names.index(x))
-        return target.y_data[:,columns], eval_data.x_data[:,columns]
-
-    def _compute_mse(self, target, eval):
-        raise NotImplementedError
+        v = 0
+        if self.measure_type == repo_objects.MeasureConfiguration.MAX:
+            v = self._compute_max(target.y_data[:,columns], eval_data.x_data[:,columns])
+        else:
+            raise NotImplementedError
+        result = repo_objects.Measure( v, 
+                                repo_info = {repo_objects.RepoInfoKey.NAME.value : result_name, repo_objects.RepoInfoKey.CATEGORY: MLObjectType.MEASURE})
+        _add_modification_info(result, eval_data, target)
+        repo.add(m, 'computing  measure ' + measure + ' on data ' + self.data_name)
 
     def _compute_max(self, target, eval):
         return linalg.norm(target-eval, np.inf)
@@ -615,7 +612,6 @@ class MLRepo:
             training_data_version=training_data_version, training_param_version= training_param_version, model_param_version=model_param_version)
         self._job_runner.add(train_job)
 
-
     def run_evaluation(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, datasets={}):
         """ Evaluate the model on all datasets. 
 
@@ -644,6 +640,34 @@ class MLRepo:
             eval_job = EvalJob(model, n, self._user, model_version=model_version, data_version=v)
             self._job_runner.add(eval_job)
 
+    def run_measures(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, datasets={}, measures = {}):
+        if model is None:
+            m_names = self.get_names(MLObjectType.MODEL)
+            if len(m_names) == 0:
+                Exception('No model exists, please train a model first.')
+            if len(m_names) > 1:
+                Exception('More than one model in repository, please specify a model to evaluate.')
+            model = m_names[0]
+        datasets_ = deepcopy(datasets)
+        if len(datasets_) == 0:
+            names = self.get_names(MLObjectType.TEST_DATA)
+            for n in names:
+                v = self._ml_repo.get_version_number(n, -1)
+                datasets_[n] = v
+        measure_config = self.get_names(MLObjectType.MEASURE_CONFIGURATION)
+        measure_config = self._get(measure_config)
+        measures_to_run = {}
+        if len(measures) == 0: # if no measures are specified, use all from configuration
+            measures_to_run = measure_config.measures
+        else:
+            for k, v in measure.items():
+                measures_to_run[k] = v
+
+        for n, v in datasets_.items():
+            for m_name, m in measures_to_run:
+                measure_job = MeasureJob(m_name, m.measure_type, m.coordinates, n, model, v, model_version)
+                self._job_runner.add(measure_job)
+
     def run_tests(self, message='', model_version=repo_store.RepoStore.LAST_VERSION, tests={}, job_runner=None):
         """ Run tests for a specific model version.
 
@@ -655,7 +679,6 @@ class MLRepo:
             :return ticket number of job
         """
         pass
-
 
     def set_label(self, label_name, model_name = None, model_version = repo_store.RepoStore.LAST_VERSION, message=''):
         """ Label a certain model version.
