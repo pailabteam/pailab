@@ -654,7 +654,7 @@ class MLRepo:
             for n in names:
                 v = self._ml_repo.get_version_number(n, -1)
                 datasets_[n] = v
-        measure_config = self.get_names(MLObjectType.MEASURE_CONFIGURATION)
+        measure_config = self.get_names(MLObjectType.MEASURE_CONFIGURATION)[0]
         measure_config = self._get(measure_config)
         measures_to_run = {}
         if len(measures) == 0: # if no measures are specified, use all from configuration
@@ -664,8 +664,8 @@ class MLRepo:
                 measures_to_run[k] = v
 
         for n, v in datasets_.items():
-            for m_name, m in measures_to_run:
-                measure_job = MeasureJob(m_name, m.measure_type, m.coordinates, n, model, v, model_version)
+            for m_name, m in measures_to_run.items():
+                measure_job = MeasureJob(m_name, m[0], m[1], n, model, v, model_version)
                 self._job_runner.add(measure_job)
 
     def run_tests(self, message='', model_version=repo_store.RepoStore.LAST_VERSION, tests={}, job_runner=None):
