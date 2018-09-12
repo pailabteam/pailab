@@ -155,7 +155,7 @@ class RepoTest(unittest.TestCase):
         """
 
         measure_config = repo_objects.MeasureConfiguration(
-                                    [(repo_objects.MeasureConfiguration.MAX, ['x0']),
+                                    [(repo_objects.MeasureConfiguration.MAX, ['y0']),
                                         repo_objects.MeasureConfiguration.MAX],
                                         repo_info={RepoInfoKey.NAME.value: 'measure_config'}
                                     )

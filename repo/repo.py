@@ -3,6 +3,7 @@ Machine learning repository
 """
 import importlib
 from numpy import linalg
+from numpy import inf
 from enum import Enum
 from copy import deepcopy
 import logging
@@ -267,10 +268,10 @@ class MeasureJob:
         self.data_version = data_version
 
     def run(self, repo, jobid):
-        target = repo._get(self.data_name, versions=self.data_version, full_object = True)
+        target = repo._get(self.data_name, version=self.data_version, full_object = True)
         eval_data_name = MLRepo.get_default_eval_name(self.model_name, self.data_name)
-        eval_data = repo._get(eval_data_name, modifier_versions={self.model_name: self.model_version, self.data_name: self.data_version} )
-        if len(self.coordinates) == 0 or repo_objects.MeasureConfiguration.__ALL_COORDINATES in self.coordinates:
+        eval_data = repo._get(eval_data_name, modifier_versions={self.model_name: self.model_version, self.data_name: self.data_version}, full_object = True )
+        if len(self.coordinates) == 0 or repo_objects.MeasureConfiguration._ALL_COORDINATES in self.coordinates:
             return target.y_data, eval_data.x_data
         columns = []
         for x in self.coordinates:
@@ -280,13 +281,14 @@ class MeasureJob:
             v = self._compute_max(target.y_data[:,columns], eval_data.x_data[:,columns])
         else:
             raise NotImplementedError
+        result_name = MLRepo.get_default_measure_result_name(self.data_name)
         result = repo_objects.Measure( v, 
-                                repo_info = {repo_objects.RepoInfoKey.NAME.value : result_name, repo_objects.RepoInfoKey.CATEGORY: MLObjectType.MEASURE})
+                                repo_info = {repo_objects.RepoInfoKey.NAME.value : result_name, repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.MEASURE})
         _add_modification_info(result, eval_data, target)
-        repo.add(m, 'computing  measure ' + measure + ' on data ' + self.data_name)
+        repo.add(result, 'computing  measure ' + self.measure_type + ' on data ' + self.data_name)
 
-    def _compute_max(self, target, eval):
-        return linalg.norm(target-eval, np.inf)
+    def _compute_max(self, target_data, eval_data):
+        return linalg.norm(target_data-eval_data, inf)
         
 # endregion
 class DataSet:
@@ -553,6 +555,12 @@ class MLRepo:
             return tmp[0]
         return tmp
 
+    def get_default_measure_result_name(data):
+        data_name = data
+        if not isinstance(data, str):
+            data_name = data.repo_info[repo_objects.RepoInfoKey.NAME]
+        return '/measure_result/' + data_name
+
     def get_default_eval_name( model, data ):
         """Return name of the object containing evaluation results
         
@@ -563,8 +571,14 @@ class MLRepo:
         Returns:
             string -- name of valuation results
         """
-        return  model.repo_info[repo_objects.RepoInfoKey.NAME] + '/eval/' + data.repo_info[repo_objects.RepoInfoKey.NAME]
-
+        model_name = model
+        if not isinstance(model,str):
+            model_name =model.repo_info[repo_objects.RepoInfoKey.NAME]
+        data_name = data
+        if not isinstance(data, str):
+            data_name = data.repo_info[repo_objects.RepoInfoKey.NAME]
+        return  model_name + '/eval/' + data_name
+        
     def get_names(self, ml_obj_type):
         """ Get the list of names of all repo_objects from a given repo_object_type in the repository.
 
