@@ -1,3 +1,6 @@
+import traceback
+import traceback
+
 import abc
 
 import uuid
@@ -56,12 +59,17 @@ class JobRunner(abc.ABC):
     def get_error_message(self, jobid):  # pragma: no cover
         pass
 
+    @abc.abstractmethod
+    def get_trace_back(self, jobid):  # pragma: no cover
+        pass
+
 
 class SimpleJobRunner:
     def __init__(self, repo):
         self._repo = repo
         self._job_status = {}
         self._error_message = {}
+        self._trace_back = {}
 
     def get_status(self, jobid):
         return self._job_status[jobid]
@@ -69,12 +77,18 @@ class SimpleJobRunner:
     def get_error_message(self, jobid):
         return self._error_message[jobid]
 
+    def get_trace_back(self, jobid):  # pragma: no cover
+        return self._trace_back[jobid]
+
     def add(self, job):
         job_id = uuid.uuid1()
         self._job_status[job_id] = JobState.RUNNING.value
         try:
             job.run(self._repo, job_id)
+            self._job_status[job_id] = JobState.SUCCESSFULLY_FINISHED
         except Exception as e:
+            self._trace_back[job_id] = traceback.format_exc()
             self._job_status[job_id] = JobState.FAILED
             self._error_message[job_id] = str(e)
-        self._job_status[job_id] = JobState.SUCCESSFULLY_FINISHED
+
+        return job_id
