@@ -1,6 +1,9 @@
+import datetime
+
 import numpy as np
 from enum import Enum
 from types import MethodType
+
 
 
 def _get_attribute_dict(clazz, excluded=set()):
@@ -324,7 +327,13 @@ class CommitInfo:
         self.message = message
         self.author = author
         self.objects = objects
+        self.time = datetime.datetime.now()
 
+    def __str__(self):
+        """Get meaningfull string of object
+        """
+        result =  'time: ' + str(self.time) + ', author: ' + self.author + ', message: '+ self.message + ', objects: ' + str(self.objects)
+        return result
 class Label:
     """RepoObject to label a certain model
     """
