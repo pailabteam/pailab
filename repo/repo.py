@@ -468,6 +468,24 @@ class MLRepo:
                                      repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.TRAINING_FUNCTION.value})
         self.add(func, 'add model training function ' + name)
 
+    def add_data(self, data_name, data, input_variables = None, target_variables = None):
+        """Add raw data to the repository
+
+        Arguments:
+            data_name {name of data} -- the name of the data added
+            data {pandas datatable} -- the data as pndas datatable
+        
+        Keyword Arguments:
+            input_variables {list of strings} -- list of column names defining the input variables for the machine learning (default: {None}). If None, all variables are used as input
+            target_variables {list of strings} -- list of column names defining the target variables for the machine learning (default: {None}). If None, no target data is added from the table.
+        """
+        if target_variables is not None:
+            raw_data = repo_objects.RawData(data.as_matrix(columns=input_variables), input_variables, data.as_matrix(columns=target_variables), 
+                target_variables, repo_info = {repo_objects.RepoInfoKey.NAME.value: data_name})
+        else:
+            raw_data = repo_objects.RawData(data.as_matrix(), list(data), repo_info = {repo_objects.RepoInfoKey.NAME.value: data_name})
+        self.add(raw_data, 'data ' + data_name + ' added to repository' , category = MLObjectType.RAW_DATA)
+
     def add_model(self, model_name, model_eval = None, model_training = None, model_param = None, training_param = None):
         """Add a new model to the repo
         
@@ -518,7 +536,7 @@ class MLRepo:
             else:
                 if len(mapping) > 1:
                     raise Exception('More than one model parameter in repo, therefore you must explicitely specify a model parameter.')
-        self.add(model)
+        self.add(model, 'add model ' + model_name)
         
     def _get(self, name, version=repo_store.RepoStore.LAST_VERSION, full_object=False,
              modifier_versions=None, obj_fields=None,  repo_info_fields=None):
@@ -624,8 +642,10 @@ class MLRepo:
             model = m_names[0]
         train_job = TrainingJob(model, self._user, training_function_version=training_function_version, model_version=model_version,
             training_data_version=training_data_version, training_param_version= training_param_version, model_param_version=model_param_version)
-        self._job_runner.add(train_job)
-
+        job_id = self._job_runner.add(train_job)
+        logging.info('Training job added to jobrunner, job_id: ' + str(job_id))
+        return job_id
+        
     def run_evaluation(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, datasets={}):
         """ Evaluate the model on all datasets. 
 
