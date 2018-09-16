@@ -333,3 +333,52 @@ class Label:
         self.model_name = model_name
         self.model_version = model_version
     
+    
+class MeasureConfiguration:
+    """RepoObject defining a configuration for all measures which shall be computed.
+    """    
+    L2 = 'l2'
+    MSE = 'mse'
+    MAX = 'max'
+
+    _ALL_COORDINATES = '_all'
+    
+    @repo_object_init()
+    def __init__(self, measures):
+        """Constructor
+        
+        Arguments:
+            measures {list} -- list containing defintions for measures. The list contains either tuples of string (describing measure type) and a list of strings 
+            (containing names of coordinates used computing the measure) or only strings (just the measure types where we assume that then all coordinates are used o compute the measure)
+
+        """
+        self.measures = {}
+        for x in measures:
+            if isinstance(x,tuple):
+                self.measures[MeasureConfiguration._create_name(x)] = x
+            else:
+                if isinstance(x,str):
+                    self.measures[MeasureConfiguration._create_name(x)] = (x, MeasureConfiguration._ALL_COORDINATES)
+                else:
+                    raise Exception('Given list of measures contains invalid element.')
+
+    #region private
+    @staticmethod
+    def _create_name(measure_def):
+        if isinstance(measure_def, tuple):
+            name = measure_def[0]
+            if isinstance(measure_def[1], list):
+                name = name +'(' + str(list) + ')'
+            if isinstance(measure_def[1], str):
+                name = name + '(' + measure_def[1] + ')'
+            return name
+        if isinstance(measure_def, str):
+            return measure_def
+        raise Exception('Measure definition has wrong type.')
+    
+    #endregion
+    
+class Measure:
+    @repo_object_init()
+    def __init__(self, value):
+        self.value = value

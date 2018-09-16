@@ -47,7 +47,7 @@ class RepoObjectMemoryStorage(RepoStore):
         """
         if modifications is None:
             return True
-        modification_info = obj.repo_info[repo_objects.RepoInfoKey.MODIFICATION_INFO]
+        modification_info = obj['repo_info'][repo_objects.RepoInfoKey.MODIFICATION_INFO.value]
         result = True
         for k, v in modifications.items():
             if not k in modification_info.keys():

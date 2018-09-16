@@ -150,6 +150,17 @@ def train_func_test(model_param, training_param, data):
 
 class RepoTest(unittest.TestCase):
 
+    def _setup_measure_config(self):
+        """Add a measure configuration with two measures (both MAX) where one measure just uses the coordinate x0
+        """
+
+        measure_config = repo_objects.MeasureConfiguration(
+                                    [(repo_objects.MeasureConfiguration.MAX, ['y0']),
+                                        repo_objects.MeasureConfiguration.MAX],
+                                        repo_info={RepoInfoKey.NAME.value: 'measure_config'}
+                                    )
+        self.repository.add(measure_config, category=repo.MLObjectType.MEASURE_CONFIGURATION, message = 'adding measure configuration')
+
     def setUp(self):
         '''Setup a complete ML repo with two different test data objetcs, training data, model definition etc.
         '''
@@ -159,11 +170,11 @@ class RepoTest(unittest.TestCase):
         job_runner = SimpleJobRunner(self.repository)
         self.repository._job_runner = job_runner
         #### Setup dummy RawData
-        raw_data = repo_objects.RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'raw_1'})
+        raw_data = repo_objects.RawData(np.zeros([10,1]), ['x0'], np.zeros([10,1]), ['y0'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'raw_1'})
         self.repository.add(raw_data, category=repo.MLObjectType.RAW_DATA)
-        raw_data = repo_objects.RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'raw_2'})
+        raw_data = repo_objects.RawData(np.zeros([10,1]), ['x0'], np.zeros([10,1]), ['y0'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'raw_2'})
         self.repository.add(raw_data, category=repo.MLObjectType.RAW_DATA)
-        raw_data = repo_objects.RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'raw_3'})
+        raw_data = repo_objects.RawData(np.zeros([10,1]), ['x0'], np.zeros([10,1]), ['y0'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'raw_3'})
         self.repository.add(raw_data, category=repo.MLObjectType.RAW_DATA)
         ## Setup dummy Test and Training DataSets on RawData
         training_data = repo.DataSet('raw_1', repo_store.RepoStore.FIRST_VERSION, repo_store.RepoStore.LAST_VERSION, 
@@ -178,10 +189,10 @@ class RepoTest(unittest.TestCase):
         self.repository.add_training_function('tests.repo_test', 'train_func_test')
         self.repository.add(TestClass(1,2, repo_info={repo_objects.RepoInfoKey.NAME.value: 'training_param', # pylint: disable=E1123
                                             repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_PARAM}))
-        ## setup dumma 
-        self.repository.add_model('model', )
         ## setup dummy model definition
-
+        self.repository.add_model('model', )
+        # setup measure configuration
+        self._setup_measure_config()
 
     def test_adding_training_data_exception(self):
         '''Tests if adding new training data leads to an exception
@@ -308,6 +319,10 @@ class RepoTest(unittest.TestCase):
         '''
         self.repository.run_training()
 
+    def test_run_measure_defaults(self):
+        self.repository.run_evaluation() # run first the evaluation so that there is at least one evaluation
+        self.repository.run_measures()
+    
     def test_repo_training_test_data(self):
         handler = memory_handler.RepoObjectMemoryStorage()
         numpy_handler = memory_handler.NumpyMemoryStorage()
