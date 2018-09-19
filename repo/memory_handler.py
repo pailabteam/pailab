@@ -90,6 +90,8 @@ class RepoObjectMemoryStorage(RepoStore):
         :return: version number of added object
         """
         category = obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value]
+        if not isinstance(category, str):
+            category = category.value
         name = obj['repo_info'][repo_objects.RepoInfoKey.NAME.value]
         if not category in self._store.keys():
             self._store[category] = {}
@@ -135,7 +137,8 @@ class RepoObjectMemoryStorage(RepoStore):
         :return: list of object names belonging to the category
         """
         if not category in self._store.keys():
-            raise Exception('Category ' + category + ' not in storage.')
+            return []
+            #raise Exception('Category ' + category + ' not in storage.')
         return [x for x in self._store[category].keys()]
 
 
