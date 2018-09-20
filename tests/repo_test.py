@@ -161,6 +161,10 @@ class RepoTest(unittest.TestCase):
                                     )
         self.repository.add(measure_config, category=repo.MLObjectType.MEASURE_CONFIGURATION, message = 'adding measure configuration')
 
+    def _add_calibrated_model(self):
+        dummy_model = TestClass(1,2, repo_info = {repo_objects.RepoInfoKey.NAME.value:'dummy_model'})
+        self.repository.add(dummy_model, message = 'add dummy model', category=repo.MLObjectType.CALIBRATED_MODEL)
+
     def setUp(self):
         '''Setup a complete ML repo with two different test data objetcs, training data, model definition etc.
         '''
@@ -177,11 +181,11 @@ class RepoTest(unittest.TestCase):
         raw_data = repo_objects.RawData(np.zeros([10,1]), ['x0'], np.zeros([10,1]), ['y0'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'raw_3'})
         self.repository.add(raw_data, category=repo.MLObjectType.RAW_DATA)
         ## Setup dummy Test and Training DataSets on RawData
-        training_data = repo.DataSet('raw_1', repo_store.RepoStore.FIRST_VERSION, repo_store.RepoStore.LAST_VERSION, 
+        training_data = repo.DataSet('raw_1', 0, -1, 
                                     repo_info = {repo_objects.RepoInfoKey.NAME.value: 'training_data_1', repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_DATA})
-        test_data_1 = repo.DataSet('raw_2', repo_store.RepoStore.FIRST_VERSION, repo_store.RepoStore.LAST_VERSION, 
+        test_data_1 = repo.DataSet('raw_2', 0, -1, 
                                     repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_1',  repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TEST_DATA})
-        test_data_2 = repo.DataSet('raw_3', repo_store.RepoStore.FIRST_VERSION, repo_store.RepoStore.LAST_VERSION, 
+        test_data_2 = repo.DataSet('raw_3', 0, -1, 
                                     repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_2',  repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TEST_DATA})
         self.repository.add([training_data, test_data_1, test_data_2])
 
@@ -190,9 +194,11 @@ class RepoTest(unittest.TestCase):
         self.repository.add(TestClass(1,2, repo_info={repo_objects.RepoInfoKey.NAME.value: 'training_param', # pylint: disable=E1123
                                             repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_PARAM}))
         ## setup dummy model definition
-        self.repository.add_model('model', )
+        self.repository.add_model('model')
         # setup measure configuration
         self._setup_measure_config()
+        # add dummy calibrated model
+        self._add_calibrated_model()
 
     def test_adding_training_data_exception(self):
         '''Tests if adding new training data leads to an exception

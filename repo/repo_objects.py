@@ -1,6 +1,9 @@
+import datetime
+
 import numpy as np
 from enum import Enum
 from types import MethodType
+
 
 
 def _get_attribute_dict(clazz, excluded=set()):
@@ -295,6 +298,7 @@ class Model:
             train_function {string} -- name of function object for model training (default: {None})
             train_param {string} -- name of training parameer object used for model training (default: {None})
             model_param {string} -- name of model parameter object used for creating the model, i.e. network architecture (default: {None})
+            model {object} -- the object defining the model
         """
         self.preprocessing_function = preprocessing
         self.preprocessing_param = preprocessing_param
@@ -302,7 +306,7 @@ class Model:
         self.training_function = train_function
         self.training_param = train_param
         self.model_param = model_param
-
+    
 class Function:
     """Function
     """
@@ -324,7 +328,13 @@ class CommitInfo:
         self.message = message
         self.author = author
         self.objects = objects
+        self.time = datetime.datetime.now()
 
+    def __str__(self):
+        """Get meaningfull string of object
+        """
+        result =  'time: ' + str(self.time) + ', author: ' + self.author + ', message: '+ self.message + ', objects: ' + str(self.objects)
+        return result
 class Label:
     """RepoObject to label a certain model
     """
@@ -362,6 +372,11 @@ class MeasureConfiguration:
                 else:
                     raise Exception('Given list of measures contains invalid element.')
 
+    def add_measure(self, measure, coords=None):
+        if not coords is None:
+            self.measures[MeasureConfiguration._create_name((measure,coords))] = (measure,coords)
+        else:
+            self.measures[MeasureConfiguration._create_name(measure)] = (measure,[MeasureConfiguration._ALL_COORDINATES])
     #region private
     @staticmethod
     def _create_name(measure_def):
