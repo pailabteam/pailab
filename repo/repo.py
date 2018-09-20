@@ -702,11 +702,11 @@ class MLRepo:
                 Exception if model_name is None and more then one model exists
         """
         if model is None:
-            m_names = self.get_names(MLObjectType.CALIBRATED_MODEL.value)
+            m_names = self.get_names(MLObjectType.CALIBRATED_MODEL)
             if len(m_names) == 0:
-                Exception('No model exists, please train a model first.')
+                raise Exception('No model exists, please train a model first.')
             if len(m_names) > 1:
-                Exception('More than one model in repository, please specify a model to evaluate.')
+                raise Exception('More than one model in repository, please specify a model to evaluate.')
             model = m_names[0]
         datasets_ = deepcopy(datasets)
         if len(datasets_) == 0: #if nothing is specified, add evaluation jobs on all training and test datasets
