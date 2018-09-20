@@ -275,7 +275,6 @@ class MeasureJob:
         self.data_version = data_version
 
     def run(self, repo, jobid):
-        print('running')
         target = repo._get(self.data_name, version=self.data_version, full_object = True)
         #todo die Namensgebung für model, calibrated_model etc. muss diskutiert un ggf. geaendert werden
         m_name = self.model_name.split('/')[0] #if given model name is a name of calibated model, split to find the evaluation
@@ -292,7 +291,6 @@ class MeasureJob:
             v = self._compute_max(target.y_data[:,columns], eval_data.x_data[:,columns])
         else:
             raise NotImplementedError
-        print('running')
         result_name = m_name + '/' + self.data_name + '/' + self.measure_type
         if not repo_objects.MeasureConfiguration._ALL_COORDINATES in self.coordinates:
             for x in self.coordinates:
@@ -300,7 +298,6 @@ class MeasureJob:
         result = repo_objects.Measure( v, 
                                 repo_info = {repo_objects.RepoInfoKey.NAME.value : result_name, repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.MEASURE.value})
         _add_modification_info(result, eval_data, target)
-        print('add measure ' + result_name)
         repo.add(result, 'computing  measure ' + self.measure_type + ' on data ' + self.data_name)
 
     def _compute_max(self, target_data, eval_data):
