@@ -71,6 +71,9 @@ class SimpleJobRunner:
         self._error_message = {}
         self._trace_back = {}
 
+    def set_repo(self, repo):
+        self._repo = repo
+
     def get_status(self, jobid):
         return self._job_status[jobid]
 
