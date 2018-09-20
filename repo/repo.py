@@ -683,7 +683,7 @@ class MLRepo:
             model = m_names[0]
         train_job = TrainingJob(model, self._user, training_function_version=training_function_version, model_version=model_version,
             training_data_version=training_data_version, training_param_version= training_param_version, model_param_version=model_param_version)
-        job_id = self._job_runner.add(train_job)
+        job_id = self._job_runner.add(train_job, self._user)
         logging.info('Training job added to jobrunner, job_id: ' + str(job_id))
         return job_id
         
@@ -716,7 +716,7 @@ class MLRepo:
         job_ids = []
         for n, v in datasets_.items():
             eval_job = EvalJob(model, n, self._user, model_version=model_version, data_version=v)
-            job_id = self._job_runner.add(eval_job)
+            job_id = self._job_runner.add(eval_job, self._user)
             logging.info('Eval job added to jobrunner, job_id: ' + str(job_id))
             job_ids.append(job_id)
         return job_ids
@@ -749,7 +749,7 @@ class MLRepo:
         for n, v in datasets_.items():
             for m_name, m in measures_to_run.items():
                 measure_job = MeasureJob(m_name, m[0], m[1], n, model, v, model_version)
-                job_id = self._job_runner.add(measure_job)
+                job_id = self._job_runner.add(measure_job, self._user)
                 job_ids.append(job_id)
                 logging.info('Measure job ' + m_name + ' added to jobrunner, job_id: ' + str(job_id))
         return job_ids
