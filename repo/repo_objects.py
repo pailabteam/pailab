@@ -114,6 +114,8 @@ class RepoInfo:
         """
         return _get_attribute_dict(self)
 
+    def __str__(self):
+        return str(self.get_dictionary())
 
 def create_repo_obj_dict(obj):
     """ Create from a repo_object a dictionary with all values to handle the object within the repo
@@ -350,7 +352,8 @@ class MeasureConfiguration:
     L2 = 'l2'
     MSE = 'mse'
     MAX = 'max'
-
+    R2 = 'r2'
+    
     _ALL_COORDINATES = '_all'
     
     @repo_object_init()

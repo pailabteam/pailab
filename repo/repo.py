@@ -2,6 +2,8 @@
 Machine learning repository
 """
 import importlib
+import abc
+
 from numpy import linalg
 from numpy import inf
 from enum import Enum
@@ -10,7 +12,7 @@ import logging
 import repo.repo_objects as repo_objects
 from repo.repo_objects import repo_object_init  # pylint: disable=E0401
 import repo.repo_store as repo_store
-LOGGER = logging.getLogger('repo')
+logger = logging.getLogger('repo')
 
 
 class MLObjectType(Enum):
@@ -143,8 +145,32 @@ def _add_modification_info(repo_obj, *args):
 
 # region Jobs
 
+class Job(abc.ABC):
+    """Abstract class defining the interfaces needed for a job to be used in the JobRunner
 
-class EvalJob:
+    """
+
+    def set_predecessor_jobs(self, predecessors):
+        """Add list of jobids which must have been run successfull before the job can be started
+
+        Arguments:
+            predecessors {list o jobids} -- predecessors
+        """
+        self._predecessors = predecessors
+
+    def get_predecessor_jobs(self):
+        """Return list of jobids which must have been run sucessfully before the job will be executed
+        """
+        if hasattr(self, _predecessors):
+            return self._predecessors
+        return []
+
+    @abc.abstractmethod
+    def run(self, ml_repo, job_id):
+        pass
+
+
+class EvalJob(Job):
     """definition of a model evaluation job
     """
     @repo_object_init()
@@ -158,9 +184,6 @@ class EvalJob:
         self.data_version = data_version
         # list of jobids which must have been run before this job should be excuted
         self.predecessors = []
-
-    def get_predecessor_jobs(self):
-        return self.predecessors
 
     def run(self, repo, jobid):
         """Run the job with data from the given repo
@@ -183,7 +206,7 @@ class EvalJob:
         f = getattr(tmp, eval_func.function_name)
         y = f(model, data.x_data)
         result = repo_objects.RawData(y, data.y_coord_names, repo_info={
-                            repo_objects.RepoInfoKey.NAME.value: MLRepo.get_default_eval_name(model_definition, data),
+                            repo_objects.RepoInfoKey.NAME.value: MLRepo.get_eval_name(model_definition, data),
                             repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.EVAL_DATA.value
                             }
                             )
@@ -192,7 +215,7 @@ class EvalJob:
                  self.data + ' with model ' + self.model)
 
 
-class TrainingJob:
+class TrainingJob(Job):
     """definition of a model training job
     """
     @repo_object_init()
@@ -208,9 +231,6 @@ class TrainingJob:
         self.training_data_version = training_data_version
         # list of jobids which must have been run before this job should be excuted
         self.predecessors = []
-
-    def get_predecessor_jobs(self):
-        return self.predecessors
 
     def run(self, repo, jobid):
         """Run the job with data from the given repo
@@ -250,7 +270,7 @@ class TrainingJob:
         repo.add(m, 'training of model ' + self.model)
 
 
-class MeasureJob:
+class MeasureJob(Job):
     @repo_object_init()
     def __init__(self, result_name, measure_type, coordinates, data_name, model_name, data_version=repo_store.RepoStore.LAST_VERSION,
                 model_version=repo_store.RepoStore.LAST_VERSION):
@@ -276,22 +296,24 @@ class MeasureJob:
 
     def run(self, repo, jobid):
         target = repo._get(self.data_name, version=self.data_version, full_object = True)
-        #todo die Namensgebung für model, calibrated_model etc. muss diskutiert un ggf. geaendert werden
+        #todo die Namensgebung für model, calibrated_model etc. muss diskutiert und ggf. geaendert werden
         m_name = self.model_name.split('/')[0] #if given model name is a name of calibated model, split to find the evaluation
-        eval_data_name = MLRepo.get_default_eval_name(m_name, self.data_name)
+        eval_data_name = MLRepo.get_eval_name(m_name, self.data_name)
         eval_data = repo._get(eval_data_name, modifier_versions={self.model_name: self.model_version, self.data_name: self.data_version}, full_object = True )
+        logger.info('run MeasureJob on data ' + self.data_name + ':' + str(self.data_version) 
+                        + ', ' + eval_data_name + ':' + str(eval_data.repo_info[repo_objects.RepoInfoKey.VERSION])
+                )
         #if len(self.coordinates) == 0 or repo_objects.MeasureConfiguration._ALL_COORDINATES in self.coordinates:
         #    return target.y_data, eval_data.x_data
         columns = []
         if not repo_objects.MeasureConfiguration._ALL_COORDINATES in self.coordinates:
             for x in self.coordinates:
                 columns.append(target.y_coord_names.index(x))
-        v = 0
-        if self.measure_type == repo_objects.MeasureConfiguration.MAX:
-            v = self._compute_max(target.y_data[:,columns], eval_data.x_data[:,columns])
+        if len(columns) == 0:
+            v = self._compute(target.y_data, eval_data.x_data)
         else:
-            raise NotImplementedError
-        result_name = m_name + '/' + self.data_name + '/' + self.measure_type
+            v = self._compute(target.y_data[:,columns], eval_data.x_data[:columns])
+        result_name = MLRepo.get_measure_result_name(self.data_name, self.measure_type, m_name, )
         if not repo_objects.MeasureConfiguration._ALL_COORDINATES in self.coordinates:
             for x in self.coordinates:
                 result_name = result_name + ':' + x
@@ -300,9 +322,21 @@ class MeasureJob:
         _add_modification_info(result, eval_data, target)
         repo.add(result, 'computing  measure ' + self.measure_type + ' on data ' + self.data_name)
 
-    def _compute_max(self, target_data, eval_data):
-        return linalg.norm(target_data-eval_data, inf)
+    def _compute(self, target_data, eval_data):
+        if self.measure_type == repo_objects.MeasureConfiguration.MAX:
+            return self._compute_max(target_data, eval_data)
+        if self.measure_type == repo_objects.MeasureConfiguration.R2:
+           return self._compute_r2(target_data, eval_data)
+        else:
+            raise NotImplementedError
         
+    def _compute_max(self, target_data, eval_data):
+        logger.debug('computing maximum error')
+        return linalg.norm(target_data-eval_data, inf)
+
+    def _compute_r2(self, target_data, eval_data):
+        from sklearn.metrics import r2_score
+        return r2_score(target_data, eval_data)        
 # endregion
 class DataSet:
     """Class used to access training or test data.
@@ -575,7 +609,14 @@ class MLRepo:
             coord = str(coordinates)
         self.add(measure_config, message='added measure ' + measure +' for coordinates '+ coord)
 
+    def get_ml_repo_store(self):
+        """Return the storage for the ml repo
         
+        Returns:
+            RepoStore -- the storage for the RepoObjects
+        """
+        return self._ml_repo
+
     def _get(self, name, version=repo_store.RepoStore.LAST_VERSION, full_object=False,
              modifier_versions=None, obj_fields=None,  repo_info_fields=None):
         """ Get repo objects. It throws an exception, if an object with the name does not exist.
@@ -593,10 +634,15 @@ class MLRepo:
             result = repo_objects.create_repo_obj(x)
             if isinstance(result, DataSet):
                 raw_data = self._get(result.raw_data, result.raw_data_version, full_object)
-                setattr(result, 'x_data', raw_data.x_data)
+                if raw_data.x_data is not None:
+                    if result.start_index > 0 and result.end_index > 0 and result.start_index >= result.end_index:
+                        raise Exception('Startindex must be less then endindex.')
+                    setattr(result, 'x_data', raw_data.x_data[result.start_index:result.end_index, :]) # todo more efficient implementation over numpy_repo to avoid loading all and then cutting off
+                if raw_data.y_data is not None:
+                    setattr(result, 'y_data', raw_data.y_data[result.start_index:result.end_index, :])
                 setattr(result, 'x_coord_names', raw_data.x_coord_names)
-                setattr(result, 'y_data', raw_data.y_data)
                 setattr(result, 'y_coord_names', raw_data.y_coord_names)
+                setattr(result, 'n_data', raw_data.n_data)
 
             numpy_dict = {}
             if len(result.repo_info[repo_objects.RepoInfoKey.BIG_OBJECTS]) > 0 and full_object:
@@ -611,18 +657,29 @@ class MLRepo:
             return tmp[0]
         return tmp
 
-    def get_default_measure_result_name(data):
-        data_name = data
-        if not isinstance(data, str):
-            data_name = data.repo_info[repo_objects.RepoInfoKey.NAME]
-        return '/measure_result/' + data_name
+    def get_measure_result_name(eval_data, measure_type, model_name = None):    
+        data_name = eval_data
+        if not isinstance(eval_data, str):
+            data_name = eval_data.repo_info[repo_objects.RepoInfoKey.NAME]
+        tmp = data_name.split('/')
+        if len(tmp) == 1:
+            if model_name is None:
+                raise Exception('Please specify a model name.')
+            return model_name + '/measure/' + tmp[0] + '/' + measure_type
+        if len(tmp) == 3:
+            return tmp[0] + '/measure/' + tmp[-1] + '/' + measure_type
+        raise Exception('Given data name is not valid.')
 
-    def get_default_eval_name( model, data ):
+    def get_calibrated_model_name(model_name):
+        tmp = model_name.split('/')
+        return tmp[0] + '/model'
+
+    def get_eval_name( model, data ):
         """Return name of the object containing evaluation results
         
         Arguments:
-            model {ModelDefinition object} -- 
-            data {RawData or DataSet object} --
+            model {ModelDefinition object or str} -- 
+            data {RawData or DataSet object or str} --
         
         Returns:
             string -- name of valuation results
@@ -666,7 +723,7 @@ class MLRepo:
         if isinstance(tmp, list):
             return tmp
         return [tmp]
-
+        
     def run_training(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, training_function_version=repo_store.RepoStore.LAST_VERSION,
                     training_data_version=repo_store.RepoStore.LAST_VERSION, training_param_version = repo_store.RepoStore.LAST_VERSION, 
                     model_param_version = repo_store.RepoStore.LAST_VERSION):
@@ -687,13 +744,14 @@ class MLRepo:
         logging.info('Training job added to jobrunner, job_id: ' + str(job_id))
         return job_id
         
-    def run_evaluation(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, datasets={}):
+    def run_evaluation(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, datasets={}, predecessors = []):
         """ Evaluate the model on all datasets. 
 
             :param model: name of model to evaluate, if None and only one model exists
             :message: message inserted into commit (default None), if Noe, an autmated message is created
             :param model_version: Version of model to be evaluated.
             :datasets: Dictionary of datasets (names and version numbers) on which the model is evaluated. 
+            :predecessors: list of jobs which shall have been completed successfull before the evaluation is started
                 Default is all datasets from testdata on latest version.
             Raises:
                 Exception if model_name is None and more then one model exists
@@ -716,12 +774,13 @@ class MLRepo:
         job_ids = []
         for n, v in datasets_.items():
             eval_job = EvalJob(model, n, self._user, model_version=model_version, data_version=v)
+            eval_job.set_predecessor_jobs(predecessors)
             job_id = self._job_runner.add(eval_job, self._user)
             logging.info('Eval job added to jobrunner, job_id: ' + str(job_id))
             job_ids.append(job_id)
         return job_ids
 
-    def run_measures(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, datasets={}, measures = {}):
+    def run_measures(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, datasets={}, measures = {}, predecessors = []):
         if model is None:
             m_names = self.get_names(MLObjectType.CALIBRATED_MODEL)
             if len(m_names) == 0:
@@ -749,12 +808,13 @@ class MLRepo:
         for n, v in datasets_.items():
             for m_name, m in measures_to_run.items():
                 measure_job = MeasureJob(m_name, m[0], m[1], n, model, v, model_version)
+                measure_job.set_predecessor_jobs(predecessors)
                 job_id = self._job_runner.add(measure_job, self._user)
                 job_ids.append(job_id)
                 logging.info('Measure job ' + m_name + ' added to jobrunner, job_id: ' + str(job_id))
         return job_ids
 
-    def run_tests(self, message='', model_version=repo_store.RepoStore.LAST_VERSION, tests={}, job_runner=None):
+    def run_tests(self, message='', model_version=repo_store.RepoStore.LAST_VERSION, tests={}, job_runner=None, predecessors = []):
         """ Run tests for a specific model version.
 
             :param message: Commit message for this operation.
