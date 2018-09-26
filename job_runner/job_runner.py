@@ -9,21 +9,6 @@ from repo.repo_objects import repo_object_init, RawData, RepoInfoKey  # pylint: 
 from repo.repo import MLObjectType  # pylint: disable=E0401
 
 
-class Job(abc.ABC):
-    """Abstract class defining the interfaces needed for a job to b used in the JobRunner
-
-    """
-    @abc.abstractmethod
-    def get_predecessor_jobs(self):
-        """Return list of jobids which must have been run sucessfully before the job will be executed
-        """
-        pass
-
-    @abc.abstractmethod
-    def run(self, ml_repo, job_id):
-        pass
-
-
 class JobState(Enum):
     """Job states
     """
