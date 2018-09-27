@@ -313,7 +313,7 @@ class MeasureJob(Job):
             v = self._compute(target.y_data, eval_data.x_data)
         else:
             v = self._compute(target.y_data[:,columns], eval_data.x_data[:columns])
-        result_name = MLRepo.get_measure_result_name(self.data_name, self.measure_type, m_name, )
+        result_name = MLRepo.get_measure_result_name(self.data_name, self.measure_type, m_name)
         if not repo_objects.MeasureConfiguration._ALL_COORDINATES in self.coordinates:
             for x in self.coordinates:
                 result_name = result_name + ':' + x
