@@ -14,6 +14,9 @@ class SKLearnModelParam:
         self.sklearn_class_name = model.__class__.__name__
         self.sklearn_params = sklearn_param
 
+    def get_params(self):
+        return self.sklearn_params
+
 
 class SKLearnModel:
     @repo_object_init()
