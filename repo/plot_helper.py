@@ -5,10 +5,14 @@ from repo.repo_store import RepoStore
 logger = logging.getLogger('repo.plot')
 
 
-def get_measure_by_model_parameter(ml_repo, measure_name, param_name):
-
+def get_measure_by_model_parameter(ml_repo, measure_name, param_name, data_versions=None):
+    if data_versions is not None:
+        raise NotImplementedError()
     measures = ml_repo._get(measure_name, version=(
         RepoStore.FIRST_VERSION, RepoStore.LAST_VERSION))
+    # else:
+    #    measures = ml_repo._get(measure_name, version=(
+    #        RepoStore.FIRST_VERSION, RepoStore.LAST_VERSION), )
     model_name = NamingConventions.CalibratedModel(
         NamingConventions.Measure(measure_name)
     )
@@ -19,7 +23,6 @@ def get_measure_by_model_parameter(ml_repo, measure_name, param_name):
     # eval_name
 
     result = []
-
     for x in measures:
         p = ml_repo._get(
             model_param_name, version=x.repo_info[RepoInfoKey.MODIFICATION_INFO][model_param_name])
