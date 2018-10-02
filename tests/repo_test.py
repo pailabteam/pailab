@@ -162,7 +162,7 @@ class RepoTest(unittest.TestCase):
         self.repository.add(measure_config, category=repo.MLObjectType.MEASURE_CONFIGURATION, message = 'adding measure configuration')
 
     def _add_calibrated_model(self):
-        dummy_model = TestClass(1,2, repo_info = {repo_objects.RepoInfoKey.NAME.value:'dummy_model'})
+        dummy_model = TestClass(1,2, repo_info = {repo_objects.RepoInfoKey.NAME.value:'dummy_model'}) # pylint: disable=E1123
         self.repository.add(dummy_model, message = 'add dummy model', category=repo.MLObjectType.CALIBRATED_MODEL)
 
     def setUp(self):

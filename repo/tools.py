@@ -1,7 +1,7 @@
 import logging
-from repo.repo import MLObjectType, MLRepo
-from repo.repo_objects import RepoInfoKey
-from repo.repo_store import RepoStore
+from repo.repo import MLObjectType, MLRepo  # pylint: disable=E0611, E0401
+from repo.repo_objects import RepoInfoKey  # pylint: disable=E0401
+from repo.repo_store import RepoStore  # pylint: disable=E0401
 logger = logging.getLogger('repo.analyzer')
 
 
