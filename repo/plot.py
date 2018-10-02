@@ -1,7 +1,7 @@
 import logging
 import pandas as pd
 import repo.plot_helper as plot_helper
-from repo.repo import NamingConventions
+from repo.repo import NamingConventions, MLObjectType
 from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
 import plotly.graph_objs as go
 logger = logging.getLogger('repo.plot')
@@ -21,15 +21,17 @@ def measure_by_model_parameter(ml_repo, measure_name, param_name, data_versions=
     data = []
 
     for d_version in data_versions:
+        # if True:
         df = measures.loc[measures['data_version'] == d_version]
+        text = ["model version: " + str(x['model_version']) + '<br>' +
+                data_name + ': ' + str(x['data_version']) + '<br>'
+                + 'train_data: ' + str(x['train_data_version'])
+                for index, x in df.iterrows()]
         data.append(
             go.Scatter(
-                x=df[param_name],  # [i for i in range(len(measures.index))],
+                x=df[param_name],
                 y=df['value'],
-                text=["model version: " +
-                      str(x['model_version']) +
-                      '<br>data_version: ' + str(x['data_version'])
-                      for index, x in df.iterrows()],
+                text=text,
                 name=data_name + ': ' + str(d_version),
                 mode='markers'
             )
