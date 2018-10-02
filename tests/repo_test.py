@@ -183,7 +183,7 @@ class RepoTest(unittest.TestCase):
         ## Setup dummy Test and Training DataSets on RawData
         training_data = repo.DataSet('raw_1', 0, -1, 
                                     repo_info = {repo_objects.RepoInfoKey.NAME.value: 'training_data_1', repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_DATA})
-        test_data_1 = repo.DataSet('raw_2', 0, -1, 
+        test_data_1 = repo.DataSet('raw_2', 0, None, 
                                     repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_1',  repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TEST_DATA})
         test_data_2 = repo.DataSet('raw_3', 0, -1, 
                                     repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_2',  repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TEST_DATA})

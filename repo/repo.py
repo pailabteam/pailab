@@ -359,6 +359,33 @@ class DataSet:
         self.end_index = end_index
         self.raw_data_version = raw_data_version
 
+    def set_data(self, raw_data):
+        """Set the data from the given raw_data.
+        
+        Arguments:
+            raw_data {RawData} -- the raw data used to set the data from
+        
+        Raises:
+            Exception -- if end_index id less than start_index
+        
+        """
+
+        def get_data_subset(data):
+            if self.end_index is not None:
+                if self.start_index > 0 and self.end_index > 0 and self.start_index >= self.end_index:
+                    raise Exception('Startindex must be less then endindex.')
+                return data[self.start_index:self.end_index, :]
+            return data[self.start_index:, :]
+        # \todo make it more efficient, reading from numpy store only the subset of data defined by start_index and end_index
+        if raw_data.x_data is not None:
+            setattr(self, 'x_data', get_data_subset(raw_data.x_data)) # todo more efficient implementation over numpy_repo to avoid loading all and then cutting off
+        if raw_data.y_data is not None:
+            setattr(self, 'y_data', get_data_subset(raw_data.y_data))
+        setattr(self, 'x_coord_names', raw_data.x_coord_names)
+        setattr(self, 'y_coord_names', raw_data.y_coord_names)
+        setattr(self, 'n_data', raw_data.n_data)
+        
+        
 
 class Name:
     def __init__(self, name_order, tag):
@@ -454,7 +481,7 @@ class NamingConventions:
     Model = Name('model', '')
     ModelParam = Name('model/*', 'model_param')
 
-class MLRepo:
+class MLRepo:   
     """ Repository for doing machine learning
 
         The repository and his extensions provide a solid fundament to do machine learning science supporting features such as:
@@ -728,15 +755,16 @@ class MLRepo:
             result = repo_objects.create_repo_obj(x)
             if isinstance(result, DataSet):
                 raw_data = self._get(result.raw_data, result.raw_data_version, full_object)
-                if raw_data.x_data is not None:
-                    if result.start_index > 0 and result.end_index > 0 and result.start_index >= result.end_index:
-                        raise Exception('Startindex must be less then endindex.')
-                    setattr(result, 'x_data', raw_data.x_data[result.start_index:result.end_index, :]) # todo more efficient implementation over numpy_repo to avoid loading all and then cutting off
-                if raw_data.y_data is not None:
-                    setattr(result, 'y_data', raw_data.y_data[result.start_index:result.end_index, :])
-                setattr(result, 'x_coord_names', raw_data.x_coord_names)
-                setattr(result, 'y_coord_names', raw_data.y_coord_names)
-                setattr(result, 'n_data', raw_data.n_data)
+                result.set_data(raw_data)
+                # if raw_data.x_data is not None:
+                #     if result.start_index > 0 and result.end_index > 0 and result.start_index >= result.end_index:
+                #         raise Exception('Startindex must be less then endindex.')
+                #     setattr(result, 'x_data', raw_data.x_data[result.start_index:result.end_index, :]) # todo more efficient implementation over numpy_repo to avoid loading all and then cutting off
+                # if raw_data.y_data is not None:
+                #     setattr(result, 'y_data', raw_data.y_data[result.start_index:result.end_index, :])
+                # setattr(result, 'x_coord_names', raw_data.x_coord_names)
+                # setattr(result, 'y_coord_names', raw_data.y_coord_names)
+                # setattr(result, 'n_data', raw_data.n_data)
 
             numpy_dict = {}
             if len(result.repo_info[repo_objects.RepoInfoKey.BIG_OBJECTS]) > 0 and full_object:
