@@ -1,7 +1,7 @@
 import logging
 import pandas as pd
-import repo.plot_helper as plot_helper
-from repo.repo import NamingConventions, MLObjectType
+import repo.plot_helper as plot_helper  # pylint: disable=E0611
+from repo.repo import NamingConventions, MLObjectType  # pylint: disable=E0611,E0401
 from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
 import plotly.graph_objs as go
 logger = logging.getLogger('repo.plot')
@@ -48,4 +48,4 @@ def measure_by_model_parameter(ml_repo, measure_name, param_name, data_versions=
     # py.iplot(data, filename='pandas/basic-line-plot')
     fig = go.Figure(data=data, layout=layout)
 
-    url = iplot(fig, filename='pandas/basic-line-plot')
+    iplot(fig, filename='pandas/basic-line-plot')

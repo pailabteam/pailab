@@ -1,7 +1,7 @@
 import logging
-from repo.repo import MLObjectType, MLRepo, NamingConventions
-from repo.repo_objects import RepoInfoKey
-from repo.repo_store import RepoStore
+from repo.repo import MLObjectType, MLRepo, NamingConventions  # pylint: disable=E0401,E0611
+from repo.repo_objects import RepoInfoKey  # pylint: disable=E0401
+from repo.repo_store import RepoStore  # pylint: disable=E0401
 logger = logging.getLogger('repo.plot')
 
 
