@@ -114,7 +114,7 @@ class RepoObjectMemoryStorage(RepoStore):
         for x in tmp:
             if self._is_in_versions(x['repo_info'][repo_objects.RepoInfoKey.NAME.value], x['repo_info'][repo_objects.RepoInfoKey.VERSION.value], versions):
                 if self._is_in_modifications(x, modifier_versions):
-                    result.append(x)
+                    result.append(deepcopy(x))
         return result
 
     def get_version_number(self, name, offset):

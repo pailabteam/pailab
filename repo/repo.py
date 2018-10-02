@@ -296,12 +296,11 @@ class MeasureJob(Job):
 
     def run(self, repo, jobid):
         target = repo._get(self.data_name, version=self.data_version, full_object = True)
-        #todo die Namensgebung für model, calibrated_model etc. muss diskutiert und ggf. geaendert werden
         m_name = self.model_name.split('/')[0] #if given model name is a name of calibated model, split to find the evaluation
-        eval_data_name = MLRepo.get_eval_name(m_name, self.data_name)
-        eval_data = repo._get(eval_data_name, modifier_versions={self.model_name: self.model_version, self.data_name: self.data_version}, full_object = True )
+        eval_data_name = NamingConventions.EvalData(data = self.data_name, model = m_name)
+        eval_data = repo._get(str(eval_data_name), modifier_versions={self.model_name: self.model_version, self.data_name: self.data_version}, full_object = True )
         logger.info('run MeasureJob on data ' + self.data_name + ':' + str(self.data_version) 
-                        + ', ' + eval_data_name + ':' + str(eval_data.repo_info[repo_objects.RepoInfoKey.VERSION])
+                        + ', ' + str(eval_data_name) + ':' + str(eval_data.repo_info[repo_objects.RepoInfoKey.VERSION])
                 )
         #if len(self.coordinates) == 0 or repo_objects.MeasureConfiguration._ALL_COORDINATES in self.coordinates:
         #    return target.y_data, eval_data.x_data
@@ -313,7 +312,7 @@ class MeasureJob(Job):
             v = self._compute(target.y_data, eval_data.x_data)
         else:
             v = self._compute(target.y_data[:,columns], eval_data.x_data[:columns])
-        result_name = MLRepo.get_measure_result_name(self.data_name, self.measure_type, m_name, )
+        result_name = str(NamingConventions.Measure(eval_data_name, measure_type = self.measure_type))
         if not repo_objects.MeasureConfiguration._ALL_COORDINATES in self.coordinates:
             for x in self.coordinates:
                 result_name = result_name + ':' + x
@@ -359,9 +358,130 @@ class DataSet:
         self.start_index = start_index
         self.end_index = end_index
         self.raw_data_version = raw_data_version
+
+    def set_data(self, raw_data):
+        """Set the data from the given raw_data.
+        
+        Arguments:
+            raw_data {RawData} -- the raw data used to set the data from
+        
+        Raises:
+            Exception -- if end_index id less than start_index
+        
+        """
+
+        def get_data_subset(data):
+            if self.end_index is not None:
+                if self.start_index > 0 and self.end_index > 0 and self.start_index >= self.end_index:
+                    raise Exception('Startindex must be less then endindex.')
+                return data[self.start_index:self.end_index, :]
+            return data[self.start_index:, :]
+        # \todo make it more efficient, reading from numpy store only the subset of data defined by start_index and end_index
+        if raw_data.x_data is not None:
+            setattr(self, 'x_data', get_data_subset(raw_data.x_data)) # todo more efficient implementation over numpy_repo to avoid loading all and then cutting off
+        if raw_data.y_data is not None:
+            setattr(self, 'y_data', get_data_subset(raw_data.y_data))
+        setattr(self, 'x_coord_names', raw_data.x_coord_names)
+        setattr(self, 'y_coord_names', raw_data.y_coord_names)
+        setattr(self, 'n_data', raw_data.n_data)
+        
         
 
-class MLRepo:
+class Name:
+    def __init__(self, name_order, tag):
+        self.name_order = name_order.split('/')
+        self.tag = tag
+        self.model = None
+
+        
+    def __str__(self):
+        result = self.values[self.name_order[0]]
+        for i in range(1,len(self.name_order)):
+            result = result + '/' + self.values[self.name_order[i]]
+        return result
+
+    def _set_from_string(self, v):
+        tmp = v.split('/')
+        if len(tmp) > len(self.name_order):
+            raise Exception('Incorrect name depth: ' + str(len(tmp)) + ' != ' + str(len(self.name_order))) 
+        for i in range(len(tmp)):
+            if  self.name_order[i] != '*':
+                self.values[self.name_order[i]] = tmp[i]
+        
+    def _set_from_dictionary(self, values):
+        for k,v in values.items():
+            if k in self.name_order and k != '*':
+                self.values[k] = v
+
+    def _set_from(self, v):
+        if isinstance(v, Name):
+            self._set_from_dictionary(v.values)
+        if isinstance(v,list):
+            for x in v:
+                self._set_from(x)
+        if isinstance(v, str):
+            self._set_from_string(v)
+        if isinstance(v, dict):
+            self._set_from_dictionary(v)
+        
+    def __call__(self, name=None, **args):
+        self.values = {'*': self.tag}
+        if args is not None:
+            self._set_from([name, args])
+        else:
+            self._set_from(name)
+        return self
+    
+class NamingConventions:
+    
+    evaluation_tag = 'eval'
+    measure_tag = 'measure'
+
+    def _get_object_name(name):
+        if not isinstance(name, str):
+            return eval_data.repo_info[repo_objects.RepoInfoKey.NAME]
+        return name
+
+    def get_measure_result_name(data_name, measure_type, model = None):
+        d_name = RepoNamingConventions._get_object_name(data_name)
+        model_name = RepoNamingConventions._get_object_name(model)
+        tmp = d_name.split('/')
+        #region validate
+        if len(tmp) < 3 and model_name is None:
+            raise Exception('Please specify a model name.')
+        if len(tmp) == 3 and not model_name is None:
+            if tmp[0] != model_name:
+                raise Exception('Model name does not equal model which was used to compute the veal results')
+        #endregion
+        if model_name is None:
+            model_name = tmp[0]
+        return model_name + '/' + RepoNamingConventions.measure_tag + '/' + tmp[-1] + '/' + measure_type
+
+    def get_model_from_name(name):
+        return name.split('/')[0]
+
+    def get_model_param_name(model_name):
+        return NamingConventions.get_model_from_name(model_name) +'/model_param'
+
+    def get_calibrated_model_name(model):
+        return model.split('/')[0]+'/model'
+
+    def get_eval_name(model_name, data_name):
+        return model_name + '/eval/' + data_name
+
+    def get_eval_name_from_measure_name(measure_name):
+        model = NamingConventions.get_model_from_name(measure_name)
+        data_name = measure_name.split('/')[2] 
+        return NamingConventions.get_eval_name(model, data_name)
+    
+    Measure = Name('model/*/data/measure_type', 'measure')
+    EvalData = Name('model/*/data', 'eval')
+    Data = Name('data', '')
+    CalibratedModel = Name('model/*', 'model')
+    Model = Name('model', '')
+    ModelParam = Name('model/*', 'model_param')
+
+class MLRepo:   
     """ Repository for doing machine learning
 
         The repository and his extensions provide a solid fundament to do machine learning science supporting features such as:
@@ -622,7 +742,8 @@ class MLRepo:
         """ Get repo objects. It throws an exception, if an object with the name does not exist.
 
             :param name: Object name
-            :param version: object version, default is latest (-1)
+            :param version: object version, default is latest (-1). If the fields are nested (an element of a dictionary which is an element of a 
+                    dictionary, use path notation to the element, i.e. p/elem1/elem2 to get p[elem1][elem2])
             :param full_object: flag to determine whether the numpy objects are loaded (True->load)
         """
         repo_dict = self._ml_repo.get(name, version, modifier_versions, obj_fields, repo_info_fields)
@@ -634,15 +755,16 @@ class MLRepo:
             result = repo_objects.create_repo_obj(x)
             if isinstance(result, DataSet):
                 raw_data = self._get(result.raw_data, result.raw_data_version, full_object)
-                if raw_data.x_data is not None:
-                    if result.start_index > 0 and result.end_index > 0 and result.start_index >= result.end_index:
-                        raise Exception('Startindex must be less then endindex.')
-                    setattr(result, 'x_data', raw_data.x_data[result.start_index:result.end_index, :]) # todo more efficient implementation over numpy_repo to avoid loading all and then cutting off
-                if raw_data.y_data is not None:
-                    setattr(result, 'y_data', raw_data.y_data[result.start_index:result.end_index, :])
-                setattr(result, 'x_coord_names', raw_data.x_coord_names)
-                setattr(result, 'y_coord_names', raw_data.y_coord_names)
-                setattr(result, 'n_data', raw_data.n_data)
+                result.set_data(raw_data)
+                # if raw_data.x_data is not None:
+                #     if result.start_index > 0 and result.end_index > 0 and result.start_index >= result.end_index:
+                #         raise Exception('Startindex must be less then endindex.')
+                #     setattr(result, 'x_data', raw_data.x_data[result.start_index:result.end_index, :]) # todo more efficient implementation over numpy_repo to avoid loading all and then cutting off
+                # if raw_data.y_data is not None:
+                #     setattr(result, 'y_data', raw_data.y_data[result.start_index:result.end_index, :])
+                # setattr(result, 'x_coord_names', raw_data.x_coord_names)
+                # setattr(result, 'y_coord_names', raw_data.y_coord_names)
+                # setattr(result, 'n_data', raw_data.n_data)
 
             numpy_dict = {}
             if len(result.repo_info[repo_objects.RepoInfoKey.BIG_OBJECTS]) > 0 and full_object:
