@@ -170,10 +170,6 @@ class repo_object_init:  # pylint: disable=too-few-public-methods
         """
         self._big_objects = big_objects
 
-    def __str__(repo_obj):
-        print('depp')
-        return str(repo_obj.to_dict())
-
     def init_repo_object(self, init_self, repo_info):  # pylint: disable=E0213
         repo_info[RepoInfoKey.CLASSNAME] = init_self.__class__.__module__ + \
             '.' + init_self.__class__.__name__
