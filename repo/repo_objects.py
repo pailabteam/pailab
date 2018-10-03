@@ -170,6 +170,10 @@ class repo_object_init:  # pylint: disable=too-few-public-methods
         """
         self._big_objects = big_objects
 
+    def __str__(repo_obj):
+        print('depp')
+        return str(repo_obj.to_dict())
+
     def init_repo_object(self, init_self, repo_info):  # pylint: disable=E0213
         repo_info[RepoInfoKey.CLASSNAME] = init_self.__class__.__module__ + \
             '.' + init_self.__class__.__name__
@@ -188,7 +192,8 @@ class repo_object_init:  # pylint: disable=too-few-public-methods
         if not hasattr(init_self, 'numpy_to_dict'):
             setattr(init_self, 'numpy_to_dict',  MethodType(
                 repo_object_init.numpy_to_dict, init_self))
-
+        
+                
     def __call__(self, f):
         def wrap(init_self, *args, **kwargs):
             repo_info = None
@@ -288,6 +293,9 @@ class RawData:
             self.y_data = y_data
             self.y_coord_names = y_coord_names
 
+    def __str__(self):
+        return str(self.to_dict())
+   
 class Model:
     @repo_object_init()
     def __init__(self, preprocessing = None, preprocessing_param = None, eval_function = None, train_function = None, train_param = None, model_param = None):
@@ -396,7 +404,13 @@ class MeasureConfiguration:
     
     #endregion
     
+    def __str__(self):
+        return str(self.to_dict())
+
 class Measure:
     @repo_object_init()
     def __init__(self, value):
         self.value = value
+    
+    def __str__(self):
+        return str(self.to_dict())

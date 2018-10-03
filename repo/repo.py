@@ -384,8 +384,9 @@ class DataSet:
         setattr(self, 'x_coord_names', raw_data.x_coord_names)
         setattr(self, 'y_coord_names', raw_data.y_coord_names)
         setattr(self, 'n_data', raw_data.n_data)
-        
-        
+    
+    def __str__(self):
+        return str(self.to_dict())
 
 class Name:
     def __init__(self, name_order, tag):
