@@ -1,0 +1,25 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "coverage repo",
+            "type": "shell",
+            "command": "coverage run ./tests/repo_test.py",
+            "problemMatcher": []
+        },
+        {
+            "label": "coverage report html",
+            "type": "shell",
+            "command": "coverage html",
+            "problemMatcher": []
+        },
+        {
+            "label": "generate html docu",
+            "type": "shell",
+            "command": "doc/make html",
+            "problemMatcher": []
+        }
+    ]
+}
