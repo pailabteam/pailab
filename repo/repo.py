@@ -589,20 +589,7 @@ class MLRepo:
         """
         if self._mapping[MLObjectType.TRAINING_DATA] is None:
             raise Exception("No training_data in repository.")
-        return self.get_data(self._mapping[MLObjectType.TRAINING_DATA][0], version, full_object)
-
-    def get_data(self, name, version=repo_store.RepoStore.LAST_VERSION, full_object=True):
-        """Return a data object
-
-        Arguments:
-            name {string} -- data object
-
-        Keyword Arguments:
-            version {integer} -- version of data object to be returned, default is latest object
-            full_object {bool} -- if true, the full object including numpy objects is returned (default: {True})
-        """
-        result = self._get(name, version, full_object)
-        return result
+        return self._get(self._mapping[MLObjectType.TRAINING_DATA][0], version, full_object)
 
     def add_eval_function(self, module_name, function_name, repo_name = None):
         """Add the function to evaluate the model
