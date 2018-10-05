@@ -814,6 +814,56 @@ class MLRepo:
         else:
             return self._ml_repo.get_names(ml_obj_type)
 
+    def append_raw_data(self, name, x_data, y_data = None):
+        """Append data to a RawData object
+
+           It appends data to the given RawData object and updates all training and test DataSets which implicitely changed by this update.
+        Args:
+            name (string): name of RawData object
+            x_data (numpy matrix): the x_data to append
+            y_data (numpy matrix, optional): Defaults to None. The y_data to append
+        
+        Raises:
+            Exception: If the data is not consistent to the RawData (e.g. different number of x-coordinates) it throws an exception.
+        """
+
+        raw_data = self._get(name)
+        if len(raw_data.x_coord_names) != x_data.shape[1]:
+            raise Exception('Number of columns of x_data of RawData object is not equal to number of columns of additional x_data.')
+        if raw_data.y_coord_names is None and y_data is not None:
+            raise Exception('RawData object does not contain y_data but y_data is given')
+        if raw_data.y_coord_names is not None:
+            if y_data is None:
+                raise Exception('RawData object has y_data but no y_data is given')
+            if y_data.shape[1] != len(raw_data.y_coord_names ):
+                raise Exception('Number of columns of y_data of RawData object is not equal to number of columns of additional y_data.')
+        numpy_dict = {'x_data' : x_data}
+        if raw_data.y_coord_names is not None:
+            numpy_dict['y_data'] = {'y_data': y_data}
+        raw_data.n_data += x_data.shape[0]
+        old_version = raw_data.repo_info[RepoInfoKey.VERSION]
+        new_version = self._add(raw_data)
+        self._numpy_repo.append(name, old_version, new_version, numpy_dict)
+        # now find all datasets which are affected by the updated data
+        changed_data_sets = []
+        training_data = self.get_training_data()
+        if isinstance(training_data, DataSet):
+            if training_data.raw_data == name and training_data.raw_data_version == repo_store.RepoStore.LAST_VERSION:
+                if training_data.end_index is None or training_data.end_index < 0:
+                    training_data.raw_data_version = new_version
+                    changed_data_sets.append(training_data)
+        test_data = self.get_names(MLObjectType.TEST_DATA)
+        for d in test_data:
+            data = self._get(d)
+            if isinstance(data, DataSet):
+                if data.raw_data == name and data.raw_data_version == repo_store.RepoStore.LAST_VERSION:
+                    if data.end_index is None or data.end_index < 0:
+                        data.raw_data_version = new_version
+                        changed_data_sets.append(data)
+        self.add(changed_data_sets, 'RawData ' + name + ' updated, add DataSets depending om the updated RawData.')
+                
+                    
+
     def get_history(self, name, repo_info_fields=None, obj_member_fields=None, version_start=repo_store.RepoStore.FIRST_VERSION, 
                     version_end=repo_store.RepoStore.LAST_VERSION):
         """ Return a list of histories of object member variables without bigobjects

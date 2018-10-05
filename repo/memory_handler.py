@@ -1,4 +1,5 @@
 from copy import deepcopy
+from numpy import concatenate
 import repo.repo_objects as repo_objects
 import repo.repo as repo
 from repo.repo_store import RepoStore
@@ -138,7 +139,7 @@ class RepoObjectMemoryStorage(RepoStore):
         """
         if not category in self._store.keys():
             return []
-            #raise Exception('Category ' + category + ' not in storage.')
+            # raise Exception('Category ' + category + ' not in storage.')
         return [x for x in self._store[category].keys()]
 
 
@@ -159,6 +160,14 @@ class NumpyMemoryStorage:
         else:
             self._store[name][version] = numpy_dict
 
+    def append(self, name, version_old, version_new, numpy_dict):
+        raise NotImplementedError()
+        if not name in self._store.keys():
+            raise Exception("Cannot append data because " +
+                            name + " does not exist.")
+        self._store[name][version_new] = {
+            'previous': version_old,  'numpy_dict': numpy_dict}
+
     def get(self, name, version):
         """
         """
@@ -168,4 +177,10 @@ class NumpyMemoryStorage:
         if not version in self._store[name].keys():
             raise Exception('No numpy data for object ' +
                             name + ' with version ' + str(version))
-        return self._store[name][version]
+        result = self._store[name][version]
+        if 'previous' in result.keys():
+            prev = self.get(name, result['previous'])
+            for k, v in result.items():
+                v = concatenate((v, prev[k]), axis=0)
+                result[k] = v
+        return result
