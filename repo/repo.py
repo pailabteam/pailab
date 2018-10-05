@@ -827,7 +827,7 @@ class MLRepo:
         Raises:
             Exception: If the data is not consistent to the RawData (e.g. different number of x-coordinates) it throws an exception.
         """
-
+        logger.info('Start appending ' + str(x_data.shape[0]) + ' datapoints to RawData' + name)
         raw_data = self._get(name)
         if len(raw_data.x_coord_names) != x_data.shape[1]:
             raise Exception('Number of columns of x_data of RawData object is not equal to number of columns of additional x_data.')
@@ -843,11 +843,11 @@ class MLRepo:
             numpy_dict['y_data'] = {'y_data': y_data}
         raw_data.n_data += x_data.shape[0]
         old_version = raw_data.repo_info[repo_objects.RepoInfoKey.VERSION]
-        new_version = self._add(raw_data)
+        new_version = self.add(raw_data)
         self._numpy_repo.append(name, old_version, new_version, numpy_dict)
         # now find all datasets which are affected by the updated data
         changed_data_sets = []
-        training_data = self.get_training_data()
+        training_data = self.get_training_data(full_object = False)
         if isinstance(training_data, DataSet):
             if training_data.raw_data == name and training_data.raw_data_version == repo_store.RepoStore.LAST_VERSION:
                 if training_data.end_index is None or training_data.end_index < 0:
@@ -862,6 +862,7 @@ class MLRepo:
                         data.raw_data_version = new_version
                         changed_data_sets.append(data)
         self.add(changed_data_sets, 'RawData ' + name + ' updated, add DataSets depending om the updated RawData.')
+        logger.info('Finished appending data to RawData' + name)
                 
                     
 
