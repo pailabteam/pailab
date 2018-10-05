@@ -161,7 +161,6 @@ class NumpyMemoryStorage:
             self._store[name][version] = numpy_dict
 
     def append(self, name, version_old, version_new, numpy_dict):
-        raise NotImplementedError()
         if not name in self._store.keys():
             raise Exception("Cannot append data because " +
                             name + " does not exist.")
@@ -180,7 +179,7 @@ class NumpyMemoryStorage:
         result = self._store[name][version]
         if 'previous' in result.keys():
             prev = self.get(name, result['previous'])
-            for k, v in result.items():
+            for k, v in result['numpy_dict'].items():
                 v = concatenate((v, prev[k]), axis=0)
                 result[k] = v
         return result
