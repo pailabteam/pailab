@@ -576,8 +576,9 @@ class MLRepo:
         commit_message = repo_objects.CommitInfo(message, self._user, result, repo_info = {repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.COMMIT_INFO.value,
                 repo_objects.RepoInfoKey.NAME.value: 'CommitInfo'} )
         self._add(commit_message)
-        if len(result) == 1 or (mapping_changed and len(result) == 2):
-            return result[repo_object.repo_info[repo_objects.RepoInfoKey.NAME]]
+        if not isinstance(repo_object, list):
+            if len(result) == 1 or (mapping_changed and len(result) == 2):
+                return result[repo_object.repo_info[repo_objects.RepoInfoKey.NAME]]
         return result
 
     def get_training_data(self, version=repo_store.RepoStore.LAST_VERSION, full_object=True):
@@ -841,7 +842,7 @@ class MLRepo:
         if raw_data.y_coord_names is not None:
             numpy_dict['y_data'] = {'y_data': y_data}
         raw_data.n_data += x_data.shape[0]
-        old_version = raw_data.repo_info[RepoInfoKey.VERSION]
+        old_version = raw_data.repo_info[repo_objects.RepoInfoKey.VERSION]
         new_version = self._add(raw_data)
         self._numpy_repo.append(name, old_version, new_version, numpy_dict)
         # now find all datasets which are affected by the updated data
