@@ -344,12 +344,12 @@ class RepoTest(unittest.TestCase):
         test_data = repo_objects.RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data'})
         repository.add(test_data, category=repo.MLObjectType.TEST_DATA)
         
-        test_data_2 = repository.get_data('test_data')
+        test_data_2 = repository._get('test_data')
         self.assertEqual(test_data_2.repo_info[repo_objects.RepoInfoKey.NAME], test_data.repo_info[repo_objects.RepoInfoKey.NAME])
         test_data = repo_objects.RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_2'})
         repository.add(test_data, category = repo.MLObjectType.TEST_DATA)
         
-        test_data_2 = repository.get_data('test_data_2')
+        test_data_2 = repository._get('test_data_2')
         self.assertEqual(test_data_2.repo_info[repo_objects.RepoInfoKey.NAME], test_data.repo_info[repo_objects.RepoInfoKey.NAME])
         commits = repository.get_commits()
         self.assertEqual(len(commits), 3)

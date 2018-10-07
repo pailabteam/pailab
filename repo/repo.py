@@ -576,8 +576,9 @@ class MLRepo:
         commit_message = repo_objects.CommitInfo(message, self._user, result, repo_info = {repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.COMMIT_INFO.value,
                 repo_objects.RepoInfoKey.NAME.value: 'CommitInfo'} )
         self._add(commit_message)
-        if len(result) == 1 or (mapping_changed and len(result) == 2):
-            return result[repo_object.repo_info[repo_objects.RepoInfoKey.NAME]]
+        if not isinstance(repo_object, list):
+            if len(result) == 1 or (mapping_changed and len(result) == 2):
+                return result[repo_object.repo_info[repo_objects.RepoInfoKey.NAME]]
         return result
 
     def get_training_data(self, version=repo_store.RepoStore.LAST_VERSION, full_object=True):
@@ -589,20 +590,7 @@ class MLRepo:
         """
         if self._mapping[MLObjectType.TRAINING_DATA] is None:
             raise Exception("No training_data in repository.")
-        return self.get_data(self._mapping[MLObjectType.TRAINING_DATA][0], version, full_object)
-
-    def get_data(self, name, version=repo_store.RepoStore.LAST_VERSION, full_object=True):
-        """Return a data object
-
-        Arguments:
-            name {string} -- data object
-
-        Keyword Arguments:
-            version {integer} -- version of data object to be returned, default is latest object
-            full_object {bool} -- if true, the full object including numpy objects is returned (default: {True})
-        """
-        result = self._get(name, version, full_object)
-        return result
+        return self._get(self._mapping[MLObjectType.TRAINING_DATA][0], version, full_object)
 
     def add_eval_function(self, module_name, function_name, repo_name = None):
         """Add the function to evaluate the model
@@ -826,6 +814,57 @@ class MLRepo:
             return self._ml_repo.get_names(ml_obj_type.value)
         else:
             return self._ml_repo.get_names(ml_obj_type)
+
+    def append_raw_data(self, name, x_data, y_data = None):
+        """Append data to a RawData object
+
+           It appends data to the given RawData object and updates all training and test DataSets which implicitely changed by this update.
+        Args:
+            name (string): name of RawData object
+            x_data (numpy matrix): the x_data to append
+            y_data (numpy matrix, optional): Defaults to None. The y_data to append
+        
+        Raises:
+            Exception: If the data is not consistent to the RawData (e.g. different number of x-coordinates) it throws an exception.
+        """
+        logger.info('Start appending ' + str(x_data.shape[0]) + ' datapoints to RawData' + name)
+        raw_data = self._get(name)
+        if len(raw_data.x_coord_names) != x_data.shape[1]:
+            raise Exception('Number of columns of x_data of RawData object is not equal to number of columns of additional x_data.')
+        if raw_data.y_coord_names is None and y_data is not None:
+            raise Exception('RawData object does not contain y_data but y_data is given')
+        if raw_data.y_coord_names is not None:
+            if y_data is None:
+                raise Exception('RawData object has y_data but no y_data is given')
+            if y_data.shape[1] != len(raw_data.y_coord_names ):
+                raise Exception('Number of columns of y_data of RawData object is not equal to number of columns of additional y_data.')
+        numpy_dict = {'x_data' : x_data}
+        if raw_data.y_coord_names is not None:
+            numpy_dict['y_data'] = {'y_data': y_data}
+        raw_data.n_data += x_data.shape[0]
+        old_version = raw_data.repo_info[repo_objects.RepoInfoKey.VERSION]
+        new_version = self.add(raw_data)
+        self._numpy_repo.append(name, old_version, new_version, numpy_dict)
+        # now find all datasets which are affected by the updated data
+        changed_data_sets = []
+        training_data = self.get_training_data(full_object = False)
+        if isinstance(training_data, DataSet):
+            if training_data.raw_data == name and training_data.raw_data_version == repo_store.RepoStore.LAST_VERSION:
+                if training_data.end_index is None or training_data.end_index < 0:
+                    training_data.raw_data_version = new_version
+                    changed_data_sets.append(training_data)
+        test_data = self.get_names(MLObjectType.TEST_DATA)
+        for d in test_data:
+            data = self._get(d)
+            if isinstance(data, DataSet):
+                if data.raw_data == name and data.raw_data_version == repo_store.RepoStore.LAST_VERSION:
+                    if data.end_index is None or data.end_index < 0:
+                        data.raw_data_version = new_version
+                        changed_data_sets.append(data)
+        self.add(changed_data_sets, 'RawData ' + name + ' updated, add DataSets depending om the updated RawData.')
+        logger.info('Finished appending data to RawData' + name)
+                
+                    
 
     def get_history(self, name, repo_info_fields=None, obj_member_fields=None, version_start=repo_store.RepoStore.FIRST_VERSION, 
                     version_end=repo_store.RepoStore.LAST_VERSION):
