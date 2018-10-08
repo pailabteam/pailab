@@ -1,3 +1,5 @@
+[![codecov](https://codecov.io/gh/favdo/ml_repo/branch/develop/graph/badge.svg?token=hlafckvwJw)](https://codecov.io/gh/favdo/ml_repo)
+
 # AIthing
 AIthing is an open source platform to version, analyze and automatize your machine learning model building processes and deployments.
 It keeps track of changes in your machine learning pipeline (code, data, parameters) similar to classical 
