@@ -840,7 +840,7 @@ class MLRepo:
                 raise Exception('Number of columns of y_data of RawData object is not equal to number of columns of additional y_data.')
         numpy_dict = {'x_data' : x_data}
         if raw_data.y_coord_names is not None:
-            numpy_dict['y_data'] = {'y_data': y_data}
+            numpy_dict['y_data'] =  y_data
         raw_data.n_data += x_data.shape[0]
         old_version = raw_data.repo_info[repo_objects.RepoInfoKey.VERSION]
         new_version = self.add(raw_data)
