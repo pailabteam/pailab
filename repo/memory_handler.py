@@ -2,7 +2,7 @@ from copy import deepcopy
 from numpy import concatenate
 import repo.repo_objects as repo_objects
 import repo.repo as repo
-from repo.repo_store import RepoStore
+from repo.repo_store import RepoStore, NumpyStore
 
 
 class RepoObjectMemoryStorage(RepoStore):
@@ -143,7 +143,7 @@ class RepoObjectMemoryStorage(RepoStore):
         return [x for x in self._store[category].keys()]
 
 
-class NumpyMemoryStorage:
+class NumpyMemoryStorage(NumpyStore):
     def __init__(self):
         self._store = {}
 
@@ -167,7 +167,7 @@ class NumpyMemoryStorage:
         self._store[name][version_new] = {
             'previous': version_old,  'numpy_dict': numpy_dict}
 
-    def get(self, name, version):
+    def get(self, name, version, from_index=0, to_index=None):
         """
         """
         if not name in self._store.keys():
@@ -182,4 +182,16 @@ class NumpyMemoryStorage:
             for k, v in result['numpy_dict'].items():
                 v = concatenate((v, prev[k]), axis=0)
                 result[k] = v
+        # adjust for given start and end indices
+        if from_index != 0 or (to_index is not None):
+            if from_index != 0 and (to_index is not None):
+                for k, v in result.items():
+                    result[k] = v[from_index:to_index, :]
+            else:
+                if from_index != 0:
+                    for k, v in result.items():
+                        result[k] = v[from_index:, :]
+                if to_index is not None:
+                    for k, v in result.items():
+                        result[k] = v[:to_index, :]
         return result
