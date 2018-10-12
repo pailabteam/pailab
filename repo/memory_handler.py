@@ -196,7 +196,7 @@ class NumpyMemoryStorage(NumpyStore):
             if from_index != 0 and (to_index is not None):
                 for k, v in new_result.items():
                     tmp[k] = v[from_index:to_index, :]
-                    logger.debug(k + ' added with new shape ' + str(v.shape()))
+                    logger.debug(k + ' added with new shape ' + str(v.shape))
             else:
                 if from_index != 0:
                     for k, v in new_result.items():
