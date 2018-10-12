@@ -4,7 +4,7 @@ import repo.repo_objects as repo_objects
 import repo.repo as repo
 from repo.repo_store import RepoStore, NumpyStore
 import logging
-logger = logging.getLogger('repo.memory_handler')
+logger = logging.getLogger(__name__)
 
 
 class RepoObjectMemoryStorage(RepoStore):

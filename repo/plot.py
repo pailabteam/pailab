@@ -5,7 +5,7 @@ from repo.repo_store import RepoStore
 from repo.repo import NamingConventions, MLObjectType  # pylint: disable=E0611,E0401
 from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
 import plotly.graph_objs as go
-logger = logging.getLogger('repo.plot')
+logger = logging.getLogger(__name__)
 
 init_notebook_mode(connected=True)
 
