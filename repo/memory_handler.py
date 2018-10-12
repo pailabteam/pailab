@@ -3,6 +3,8 @@ from numpy import concatenate
 import repo.repo_objects as repo_objects
 import repo.repo as repo
 from repo.repo_store import RepoStore, NumpyStore
+import logging
+logger = logging.getLogger('repo.memory_handler')
 
 
 class RepoObjectMemoryStorage(RepoStore):
@@ -155,6 +157,7 @@ class NumpyMemoryStorage(NumpyStore):
         :param numpy_dict: numpy dictionary
 
         """
+        logger.debug('Adding data for ' + name + ' an version ' + str(version))
         if not name in self._store.keys():
             self._store[name] = {version: numpy_dict}
         else:
@@ -170,6 +173,7 @@ class NumpyMemoryStorage(NumpyStore):
     def get(self, name, version, from_index=0, to_index=None):
         """
         """
+        logger.debug('Get data for ' + name + ' and version ' + str(version))
         if not name in self._store.keys():
             raise Exception('No numpy data for object ' +
                             name + ' with version ' + str(version))
@@ -177,21 +181,28 @@ class NumpyMemoryStorage(NumpyStore):
             raise Exception('No numpy data for object ' +
                             name + ' with version ' + str(version))
         result = self._store[name][version]
+        new_result = result
         if 'previous' in result.keys():
+            new_result = {}
             prev = self.get(name, result['previous'])
             for k, v in result['numpy_dict'].items():
-                v = concatenate((v, prev[k]), axis=0)
-                result[k] = v
+                new_result[k] = concatenate((v, prev[k]), axis=0)
+
         # adjust for given start and end indices
         if from_index != 0 or (to_index is not None):
+            tmp = {}
+            logger.debug('Slice data from_index: ' +
+                         str(from_index) + ', to_index: ' + str(to_index))
             if from_index != 0 and (to_index is not None):
-                for k, v in result.items():
-                    result[k] = v[from_index:to_index, :]
+                for k, v in new_result.items():
+                    tmp[k] = v[from_index:to_index, :]
+                    logger.debug(k + ' added with new shape ' + str(v.shape()))
             else:
                 if from_index != 0:
-                    for k, v in result.items():
-                        result[k] = v[from_index:, :]
+                    for k, v in new_result.items():
+                        tmp[k] = v[from_index:-1, :]
                 if to_index is not None:
-                    for k, v in result.items():
-                        result[k] = v[:to_index, :]
+                    for k, v in new_result.items():
+                        tmp[k] = v[0:to_index, :]
+            return tmp
         return result
