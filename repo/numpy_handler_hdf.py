@@ -31,7 +31,7 @@ class NumpyHDFStorage(NumpyStore):
         for k, v in numpy_dict.items():
             if len(v.shape) == 1:
                 tmp = data_grp.create_dataset(
-                    k, data=v, maxshape=(None))
+                    k, data=v, maxshape=(None, ))
                 ref_grp.create_dataset(k, data=tmp.regionref[0:v.shape[0]])
             else:
                 if len(v.shape) == 2:
