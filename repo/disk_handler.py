@@ -152,9 +152,9 @@ class RepoObjectDiskStorage(RepoStore):
         # endregion
 
     def get_version_condition(self, name, versions, version_column, time_column):
-        version_condition = ''
+        version_condition = ' and '
         if isinstance(versions, str):
-            version_condition = "and " + version_column + " = '" + \
+            version_condition += version_column + " = '" + \
                 self._replace_version_placeholder(name, versions) + "'"
         else:
             if isinstance(versions, tuple):
@@ -166,11 +166,11 @@ class RepoObjectDiskStorage(RepoStore):
                     self._replace_version_placeholder(name, versions[1]))
                 end_time = RepoObjectDiskStorage._get_time_from_uuid(
                     uid)
-                version_condition = "'" + str(
+                version_condition += "'" + str(
                     start_time) + "' <= " + time_column + " and " + time_column + "<= '" + str(end_time) + "'"
             else:
                 if isinstance(versions, list):
-                    version_condition = version_column + ' in ('
+                    version_condition += version_column + ' in ('
                     tmp = "','"
                     tmp = tmp.join([self._replace_version_placeholder(name, v)
                                     for v in versions])
@@ -216,7 +216,7 @@ class RepoObjectDiskStorage(RepoStore):
         if len(modifier_conditions) == 0:
             select_statement = "select file from versions where name = '" + name + "'"
             if version_condition != '':
-                select_statement += " and " + version_condition
+                select_statement += version_condition
         else:
             raise NotImplementedError()
 
