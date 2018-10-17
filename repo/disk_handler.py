@@ -70,12 +70,12 @@ class RepoObjectDiskStorage(RepoStore):
         return datetime(1582, 10, 15) + timedelta(microseconds=uid.time//10)
 
     def _get_last_version(self, name):
-        for row in self._execute("select version from versions where name = " + name + " order by uuid_time DESC LIMIT 1"):
+        for row in self._execute("select version from versions where name = '" + name + "' order by uuid_time DESC LIMIT 1"):
             return row[0]
         raise Exception('No object with name ' + name + ' exists.')
 
     def _get_first_version(self, name):
-        for row in self._execute("select version from versions where name = " + name + " order by uuid_time ASC LIMIT 1"):
+        for row in self._execute("select version from versions where name = '" + name + "' order by uuid_time ASC LIMIT 1"):
             return row[0]
         raise Exception('No object with name ' + name + ' exists.')
 
