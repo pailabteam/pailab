@@ -154,7 +154,7 @@ class RepoObjectDiskStorage(RepoStore):
     def get_version_condition(self, name, versions, version_column, time_column):
         version_condition = ''
         if isinstance(versions, str):
-            version_condition = "version = '" + \
+            version_condition = "and " + version_column + " = '" + \
                 self._replace_version_placeholder(name, versions) + "'"
         else:
             if isinstance(versions, tuple):
@@ -172,9 +172,10 @@ class RepoObjectDiskStorage(RepoStore):
                 if isinstance(versions, list):
                     version_condition = version_column + ' in ('
                     tmp = "','"
-                    tmp.join([self._replace_version_placeholder(name, v)
-                              for v in versions])
+                    tmp = tmp.join([self._replace_version_placeholder(name, v)
+                                    for v in versions])
                     version_condition += "'" + tmp + "')"
+        return version_condition
 
     def get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None):
         """Get a dictionary/list of dictionaries fulffilling the conditions.
@@ -201,60 +202,16 @@ class RepoObjectDiskStorage(RepoStore):
             category = repo.MLObjectType[row[0]]
         if category is None:
             raise Exception('no object ' + name + ' in storage.')
-        # region versions condition
-        version_condition = ''
-        if isinstance(versions, str):
-            version_condition = "version = '" + \
-                self._replace_version_placeholder(name, versions) + "'"
-        else:
-            if isinstance(versions, tuple):
-                uid = uuid.UUID(
-                    self._replace_version_placeholder(name, versions[0]))
-                start_time = RepoObjectDiskStorage._get_time_from_uuid(
-                    uid)
-                uid = uuid.UUID(
-                    self._replace_version_placeholder(name, versions[1]))
-                end_time = RepoObjectDiskStorage._get_time_from_uuid(
-                    uid)
-                version_condition = "'" + str(
-                    start_time) + "' <= uuid_time and uuid_time <= '" + str(end_time) + "'"
-            else:
-                if isinstance(versions, list):
-                    version_condition = "version in ('"
-                    tmp = "','"
-                    tmp = tmp.join([self._replace_version_placeholder(name, v)
-                                    for v in versions])
-                    version_condition += tmp + "')"
-        # endregion
+
+        version_condition = self.get_version_condition(
+            name, versions, 'version', 'uuid_time')
 
         # region modifier condition
         # as v, as m
         modifier_conditions = []
         if modifier_versions is not None:
             for k, v in modifier_versions.items():
-                if isinstance(v, str):
-                    modifier_conditions.append(
-                        "(m.modifier='" + k + "' and m.modifier_version='" + v + "')")
-                else:
-                    if isinstance(v, tuple):
-                        uid = uuid.UUID(
-                            self._replace_version_placeholder(k, v[0]))
-                        start_time = RepoObjectDiskStorage._get_time_from_uuid(
-                            uid)
-                        uid = uuid.UUID(
-                            self._replace_version_placeholder(k, v[1]))
-                        end_time = RepoObjectDiskStorage._get_time_from_uuid(
-                            uid)
-                        modifier_conditions.append("(m.modifier='" + k + " and ( '" + str(
-                            start_time) + "' <= m.modifier_uuid_time and m.modifier_uuid_time <= '" + str(end_time) + "' ) )")
-                    else:
-                        if isinstance(versions, list):
-                            mod_condition = 'm.modifier_version in ('
-                            tmp = "','"
-                            tmp.join([self._replace_version_placeholder(k, v)
-                                      for v in versions])
-                            mod_condition += "'" + tmp + "')"
-                            modifier_conditions.append(mod_condition)
+                tmp = self.get_version_condition()
         # endregion
         if len(modifier_conditions) == 0:
             select_statement = "select file from versions where name = '" + name + "'"
