@@ -70,12 +70,12 @@ class RepoObjectDiskStorage(RepoStore):
         return datetime(1582, 10, 15) + timedelta(microseconds=uid.time//10)
 
     def _get_last_version(self, name):
-        for row in self._execute("select version from versions order by uuid_time DESC LIMIT 1"):
+        for row in self._execute("select version from versions where name = " + name + " order by uuid_time DESC LIMIT 1"):
             return row[0]
         raise Exception('No object with name ' + name + ' exists.')
 
     def _get_first_version(self, name):
-        for row in self._execute("select version from versions order by uuid_time ASC LIMIT 1"):
+        for row in self._execute("select version from versions where name = " + name + " order by uuid_time ASC LIMIT 1"):
             return row[0]
         raise Exception('No object with name ' + name + ' exists.')
 
@@ -151,6 +151,31 @@ class RepoObjectDiskStorage(RepoStore):
             json.dump(obj, f, cls=RepoObjectDiskStorage.EnumEncoder)
         # endregion
 
+    def get_version_condition(self, name, versions, version_column, time_column):
+        version_condition = ''
+        if isinstance(versions, str):
+            version_condition = "version = '" + \
+                self._replace_version_placeholder(name, versions) + "'"
+        else:
+            if isinstance(versions, tuple):
+                uid = uuid.UUID(
+                    self._replace_version_placeholder(name, versions[0]))
+                start_time = RepoObjectDiskStorage._get_time_from_uuid(
+                    uid)
+                uid = uuid.UUID(
+                    self._replace_version_placeholder(name, versions[1]))
+                end_time = RepoObjectDiskStorage._get_time_from_uuid(
+                    uid)
+                version_condition = "'" + str(
+                    start_time) + "' <= " + time_column + " and " + time_column + "<= '" + str(end_time) + "'"
+            else:
+                if isinstance(versions, list):
+                    version_condition = version_column + ' in ('
+                    tmp = "','"
+                    tmp.join([self._replace_version_placeholder(name, v)
+                              for v in versions])
+                    version_condition += "'" + tmp + "')"
+
     def get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None):
         """Get a dictionary/list of dictionaries fulffilling the conditions.
 
@@ -195,11 +220,11 @@ class RepoObjectDiskStorage(RepoStore):
                     start_time) + "' <= uuid_time and uuid_time <= '" + str(end_time) + "'"
             else:
                 if isinstance(versions, list):
-                    version_condition = 'version in ('
+                    version_condition = "version in ('"
                     tmp = "','"
-                    tmp.join([self._replace_version_placeholder(name, v)
-                              for v in versions])
-                    version_condition += "'" + tmp + "')"
+                    tmp = tmp.join([self._replace_version_placeholder(name, v)
+                                    for v in versions])
+                    version_condition += tmp + "')"
         # endregion
 
         # region modifier condition
