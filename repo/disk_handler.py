@@ -152,7 +152,9 @@ class RepoObjectDiskStorage(RepoStore):
         # endregion
 
     def get_version_condition(self, name, versions, version_column, time_column):
-        version_condition = ' and '
+        version_condition = ''
+        if versions is not None:
+            version_condition = ' and '
         if isinstance(versions, str):
             version_condition += version_column + " = '" + \
                 self._replace_version_placeholder(name, versions) + "'"
@@ -206,19 +208,15 @@ class RepoObjectDiskStorage(RepoStore):
         version_condition = self.get_version_condition(
             name, versions, 'version', 'uuid_time')
 
-        # region modifier condition
-        # as v, as m
-        modifier_conditions = []
+        select_statement = "select file from versions where name = '" + \
+            name + "'" + version_condition
         if modifier_versions is not None:
             for k, v in modifier_versions.items():
-                tmp = self.get_version_condition()
-        # endregion
-        if len(modifier_conditions) == 0:
-            select_statement = "select file from versions where name = '" + name + "'"
-            if version_condition != '':
-                select_statement += version_condition
-        else:
-            raise NotImplementedError()
+                tmp = self.get_version_condition(
+                    k, v, 'modifier_version', 'modifier_uuid_time')
+                if tmp != '':
+                    select_statement += " and version in ( select version from modification_info where name ='" + \
+                        name + "' and modifier = '" + k + "'" + tmp + ")"
 
         files = [row[0] for row in self._execute(select_statement)]
         objects = []
