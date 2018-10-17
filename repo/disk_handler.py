@@ -191,8 +191,8 @@ class RepoObjectDiskStorage(RepoStore):
                     self._replace_version_placeholder(name, versions[1]))
                 end_time = RepoObjectDiskStorage._get_time_from_uuid(
                     uid)
-                version_condition = str(
-                    start_time) + ' <= uuid_time and uuid_time >= ' + str(end_time)
+                version_condition = "'" + str(
+                    start_time) + "' <= uuid_time and uuid_time <= '" + str(end_time) + "'"
             else:
                 if isinstance(versions, list):
                     version_condition = 'version in ('
@@ -221,7 +221,7 @@ class RepoObjectDiskStorage(RepoStore):
                         end_time = RepoObjectDiskStorage._get_time_from_uuid(
                             uid)
                         modifier_conditions.append("(m.modifier='" + k + " and ( '" + str(
-                            start_time) + "' <= m.modifier_uuid_time and m.modifier_uuid_time >= '" + str(end_time) + "' ) )")
+                            start_time) + "' <= m.modifier_uuid_time and m.modifier_uuid_time <= '" + str(end_time) + "' ) )")
                     else:
                         if isinstance(versions, list):
                             mod_condition = 'm.modifier_version in ('
