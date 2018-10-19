@@ -100,8 +100,8 @@ class RepoObjectDiskStorage(RepoStore):
             ml_obj_type {string} -- Value of MLObjectType-Enum specifying the category for which all names will be returned
         """
         result = []
-        for row in self._conn.execute('select name, category from  mapping where category = ' + ml_obj_type):
-            result.append(row['name'])
+        for row in self._execute("select name, category from  mapping where category = '" + ml_obj_type + "'"):
+            result.append(row[0])
         return result
 
     def add(self, obj):
@@ -133,15 +133,15 @@ class RepoObjectDiskStorage(RepoStore):
         file_sub_dir = category + '/' + name + '/'
         os.makedirs(self._main_dir + '/' + file_sub_dir, exist_ok=True)
         filename = file_sub_dir + '/' + str(uid) + '.json'
-        self._conn.execute("insert into versions (name, version, file, uuid_time) VALUES('" +
-                           name + "', '" + version + "','" + filename + "','" + str(uid_time) + "')")
+        self._execute("insert into versions (name, version, file, uuid_time) VALUES('" +
+                      name + "', '" + version + "','" + filename + "','" + str(uid_time) + "')")
         # endregion
         # region write modification info
         if repo_objects.RepoInfoKey.MODIFICATION_INFO.value in obj['repo_info']:
             for k, v in obj['repo_info'][repo_objects.RepoInfoKey.MODIFICATION_INFO.value].items():
                 tmp = RepoObjectDiskStorage._get_time_from_uuid(uuid.UUID(v))
-                self._conn.execute("insert into modification_info (name, version, modifier, modifier_version, modifier_uuid_time) VALUES ('"
-                                   + name + "','" + version + "','" + k + "','" + str(v) + "','" + str(tmp) + "')")
+                self._execute("insert into modification_info (name, version, modifier, modifier_version, modifier_uuid_time) VALUES ('"
+                              + name + "','" + version + "','" + k + "','" + str(v) + "','" + str(tmp) + "')")
         # endregion
         self._conn.commit()
         # region write file
@@ -150,6 +150,7 @@ class RepoObjectDiskStorage(RepoStore):
         with open(self._main_dir + '/' + filename, 'w') as f:
             json.dump(obj, f, cls=RepoObjectDiskStorage.EnumEncoder)
         # endregion
+        return version
 
     def get_version_condition(self, name, versions, version_column, time_column):
         version_condition = ''
