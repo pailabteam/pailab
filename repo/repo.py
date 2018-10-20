@@ -482,7 +482,7 @@ class NamingConventions:
     CalibratedModel = Name('model/*', 'model')
     Model = Name('model', '')
     ModelParam = Name('model/*', 'model_param')
-
+    
 class MLRepo:   
     """ Repository for doing machine learning
 
@@ -897,7 +897,9 @@ class MLRepo:
                 Exception('More than one model in repository, please specify a model to evaluate.')
             model = m_names[0]
         train_job = TrainingJob(model, self._user, training_function_version=training_function_version, model_version=model_version,
-            training_data_version=training_data_version, training_param_version= training_param_version, model_param_version=model_param_version)
+            training_data_version=training_data_version, training_param_version= training_param_version, 
+            model_param_version=model_param_version, repo_info = {repo_objects.RepoInfoKey.NAME.value: model + '/jobs/training',
+                repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.JOB.value})
         self._add(train_job)
         job_id = self._job_runner.add(train_job, self._user)
         logging.info('Training job added to jobrunner, job_id: ' + str(job_id))
@@ -932,7 +934,9 @@ class MLRepo:
             datasets_[training_data.repo_info[repo_objects.RepoInfoKey.NAME]] = training_data.repo_info[repo_objects.RepoInfoKey.VERSION] 
         job_ids = []
         for n, v in datasets_.items():
-            eval_job = EvalJob(model, n, self._user, model_version=model_version, data_version=v)
+            eval_job = EvalJob(model, n, self._user, model_version=model_version, data_version=v,
+                        repo_info = {repo_objects.RepoInfoKey.NAME.value: model + '/jobs/eval_job/' + n,
+                                    repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.JOB.value})
             eval_job.set_predecessor_jobs(predecessors)
             self._add(eval_job)
             job_id = self._job_runner.add(eval_job, self._user)
@@ -967,7 +971,9 @@ class MLRepo:
         job_ids = []
         for n, v in datasets_.items():
             for m_name, m in measures_to_run.items():
-                measure_job = MeasureJob(m_name, m[0], m[1], n, model, v, model_version)
+                measure_job = MeasureJob(m_name, m[0], m[1], n, model, v, model_version, 
+                        repo_info = {repo_objects.RepoInfoKey.NAME.value: model + '/jobs/measure/' + n + '/' + m[0],
+                        repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.JOB.value})
                 measure_job.set_predecessor_jobs(predecessors)
                 self._add(measure_job)
                 job_id = self._job_runner.add(measure_job, self._user)
