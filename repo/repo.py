@@ -37,9 +37,11 @@ class MLObjectType(Enum):
     MAPPING = 'mapping'
     MEASURE = 'measure'
     MEASURE_CONFIGURATION = 'measure_config'
+    JOB = 'job'
 
-    def _get_key(category):  # pylint: disable=E0213
-        """Returns a standardized ky for the given category
+    @staticmethod
+    def _get_key(category): 
+        """Returns a standardized key for the given category
 
         Arguments:
             category {MLObjectType or string (name or value of MLObjectType)} -- MLObjectType or string defining the enum
