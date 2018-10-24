@@ -10,6 +10,9 @@ from enum import Enum
 from repo.repo_objects import repo_object_init, RawData, RepoInfoKey  # pylint: disable=E0401
 from repo.repo import MLObjectType  # pylint: disable=E0401
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class JobState(Enum):
     """Job states
@@ -54,13 +57,13 @@ class JobRunnerBase(abc.ABC):
     """
 
     @abc.abstractmethod
-    def add(self, job, user):  # pragma: no cover
+    def add(self, job_name, job_version, user):  # pragma: no cover
         """[summary]
         """
         pass
 
     @abc.abstractmethod
-    def get_info(self, jobid):  # pragma: no cover
+    def get_info(self, job_name, job_version):  # pragma: no cover
         """[summary]
         """
         pass
@@ -74,15 +77,17 @@ class SimpleJobRunner:
     def set_repo(self, repo):
         self._repo = repo
 
-    def get_info(self, jobid):
+    def get_info(self, job_name, job_version):
+        jobid = job_name + ':' + str(job_version)
         return self._job_info[jobid]
 
-    def add(self, job, user):
-        job_id = uuid.uuid1()
+    def add(self, job_name, job_version, user):
+        job_id = job_name + ':' + str(job_version)
         job_info = JobInfo(user)
         job_info.set_state(JobState.RUNNING)
         job_info.start_time = datetime.datetime.now()
         self._job_info[job_id] = job_info
+        job = self._repo._get(job_name, version=job_version)
         try:
             job.run(self._repo, job_id)
             job_info.end_time = datetime.datetime.now()
@@ -96,62 +101,26 @@ class SimpleJobRunner:
         return job_id
 
 
-class JobHandler(abc.ABC):
-    @abc.abstractmethod
-    def get_next_unfinished_job(self):
-        """Returns jobname and version of next job.
-
-        """
-        pass
-
-    @abc.abstractmethod
-    def write_job_info(self, job_info):
-        """Write job info.
-
-        Args:
-            job_info_dict (JobInfo object): jobinfo to write
-        """
-        pass
-
-    @abc.abstractmethod
-    def update_job_info(self, job_info):
-        """Update job info.
-
-        Args:
-            job_info_dict (JobInfo object): jobinfo to write
-        """
-        pass
-
-    @abc.abstractmethod
-    def get_job_info(self, job, version):
-        """Return jobinfo
-
-        Args:
-            job (str): name of job
-            version (str): version of job
-        """
-        pass
-
-
-class SQLiteJobHandler(JobHandler):
+class SQLiteJobRunner(JobRunnerBase):
     # region private
     def _create_new_db(self):
-        self._conn = sqlite3.connect(self._sqlite_db_name())
+        logging.info('Creating new database for job runner.')
+        self._conn = sqlite3.connect(self._sqlite_db_name)
         self._execute('''CREATE TABLE predecessors (job_name TEXT NOT NULL, job_version TEXT NOT NULL, predecessor_name TEXT NOT NULL, predecessor_version TEXT NOT NULL, PRIMARY KEY(job_name, job_version))''')
         self._execute(
             '''CREATE TABLE jobs (job_name TEXT NOT NULL, job_version TEXT NOT NULL, job_state TEXT NOT NULL, start_time TIMESTAMP,
                                         end_time TIMESTAMP, error_message TEXT, stack_trace TEXT, insert_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-                                        unfinished_pred_jobs INTEGER, user TEXT NOT NULL, PRIMARY KEY(job_name, job_version)''')
+                                        unfinished_pred_jobs INTEGER, user TEXT NOT NULL, PRIMARY KEY(job_name, job_version))''')
         self._conn.commit()
 
     def _setup_new(self):
-        if not os.path.exists(self._sqlite_db_name()):
+        if not os.path.exists(self._sqlite_db_name):
             self._create_new_db()
         else:
-            self._conn = sqlite3.connect(self._sqlite_db_name())
+            self._conn = sqlite3.connect(self._sqlite_db_name)
 
     def _execute(self, command):
-        logging.info('Executing: ' + command)
+        logging.debug('Executing: ' + command)
         return self._conn.execute(command)
 
     @staticmethod
@@ -189,15 +158,17 @@ class SQLiteJobHandler(JobHandler):
                 self._conn.commit()
             self._execute("update jobs SET job_state='" + JobState.SUCCESSFULLY_FINISHED.value + "', end_time='" + str(datetime.datetime.now()
                                                                                                                        + " where job_name = '" + job_name + "' and job_version = '" + job_version + "'"))
+            self._conn.commit()
         else:
-            self._execute("update jobs SET job_state='" + JobState.FAILED.value + "', error_message='" + error_message + "' stack_trace='" + stack_trace + "', end_time='"
-                          + str(datetime.datetime.now()) + " where job_name = '" +
-                          job_name + "' and job_version = '" + job_version + "'")
+            self._execute("update jobs SET job_state='" + JobState.FAILED.value + "', error_message='" + error_message.replace("'", "") + "', stack_trace='" + stack_trace.replace("'", "") + "', end_time='"
+                          + str(datetime.datetime.now()) + "' where job_name = '" +
+                          job_name + "' and job_version = '" + str(job_version) + "'")
+            self._conn.commit()
 
     def _run_job(self, job_name, job_version):
-        job = self.repo._get(job_name, versions=job_version)
+        job = self._repo._get(job_name, version=job_version)
         try:
-            job.run(self._repo, job_id=0)
+            job.run(self._repo, 0)
         except Exception as e:
             return str(e), traceback.format_exc()
         return '', ''
@@ -214,53 +185,79 @@ class SQLiteJobHandler(JobHandler):
         self._setup_new()
         self._sleep = 1  # time to wait in sec before new request for open jobs to db
         self._repo = repo
+        self._id = str(uuid.uuid1())
 
-    def add(self, job, user):
+    def set_repo(self, repo):
+        self._repo = repo
+
+    def add(self, job_name, job_version, user):
+        job = self._repo._get(job_name, version=job_version)
         predecessors = job.get_predecessor_jobs()
         for predecessor in predecessors:
             self._execute("insert into predecessors (job_name, job_version, predecessor_name, predecessor_version, user) VALUES ("
-                          + SQLiteJobHandler.sqlite_name(job.repo_info[RepoInfoKey.NAME]) +
+                          + SQLiteJobRunner.sqlite_name(job_name) +
                           ", "
-                          + SQLiteJobHandler.sqlite_name(str(job.repo_info[RepoInfoKey.VERSION])) +
+                          + SQLiteJobRunner.sqlite_name(str(job_version)) +
                           ","
-                          + SQLiteJobHandler.sqlite_name(predecessor[0]) +
+                          + SQLiteJobRunner.sqlite_name(predecessor[0]) +
                           ","
-                          + SQLiteJobHandler.sqlite_name(str(predecessor[1])) +
+                          + SQLiteJobRunner.sqlite_name(str(predecessor[1])) +
                           ","
-                          + SQLiteJobHandler.sqlite_name(user) +
+                          + SQLiteJobRunner.sqlite_name(user) +
                           ")")
+            self._conn.commit()
         job_state = JobState.WAITING.value
         if len(predecessors) > 0:
             job_state = JobState.WAITING_PRED.value
-        self._execute("insert into jobs ( job_name, job_version, job_state,  unfinished_pred_jobs ) VALUES ("
-                      + SQLiteJobHandler.sqlite_name(job.repo_info[RepoInfoKey.NAME]) +
+        self._execute("insert into jobs ( job_name, job_version, job_state,  unfinished_pred_jobs, user ) VALUES ("
+                      + SQLiteJobRunner.sqlite_name(job.repo_info[RepoInfoKey.NAME]) +
                       ", "
-                      + SQLiteJobHandler.sqlite_name(str(job.repo_info[RepoInfoKey.VERSION])) +
-                      ","
+                      + SQLiteJobRunner.sqlite_name(str(job.repo_info[RepoInfoKey.VERSION])) +
+                      ",'"
                       + job_state +
-                      ","
-                      + str(len(predecessors)))
+                      "',"
+                      + str(len(predecessors)) +
+                      ", '" + user + "')")
         self._conn.commit()
 
     def run(self):
-        rows = self._execute("select job_name, job_version from jobs where job_state = '"
-                             + JobState.WAITING.value + "' order by insert_time desc")
-        run = False
-        for row in rows:
-            self._execute('update jobs SET start_time = ' + str(datetime.datetime.now()
-                                                                ) + ", job_state='" + JobState.RUNNING.value + "'")
-            self._conn.commit()
-            error, stack_trace = self._run_job(row[0], row[1])
-            self._set_finished(row[0], row[1], error, stack_trace)
-            run = True
-            break
-        if not run == True:
-            time.sleep(self._sleep)
+        wait = self._sleep
+        while True:
+            if wait > 30:
+                logging.info('heartbeat')
+                wait = 0
+            rows = self._execute("select job_name, job_version from jobs where job_state = '"
+                                 + JobState.WAITING.value + "' order by insert_time desc")
+            run = False
+            for row in rows:
+                logging.info('Start running job ' +
+                             row[0] + ', version ' + row[1])
+                self._execute("update jobs SET start_time = '" + str(
+                    datetime.datetime.now()) + "', job_state='" + JobState.RUNNING.value + "'")
+                self._conn.commit()
+                error, stack_trace = self._run_job(row[0], row[1])
+                self._set_finished(row[0], row[1], error, stack_trace)
+                if error == '' and stack_trace == '':
+                    logging.info('Finished running job ' +
+                                 row[0] + ', version ' + row[1] + ' successfully.')
+                else:
+                    logging.error('Finished running job ' + row[0] + ', version ' +
+                                  row[1] + ' with errors: ' + error + '   stacktrace: ' + stack_trace)
+                run = True
+                wait = 0
+                break
+            if not run == True:
+                time.sleep(self._sleep)
+                wait += self._sleep
 
     def get_info(self, job_name, job_version):
         result = {}
-        for row in self._execute("select * from jobs"):
+        rows = self._execute("select * from jobs where job_name='" +
+                             job_name + "' and job_version = '" + str(job_version) + "'")
+        column_names = [x[0] for x in rows.description]
+        # print(str(rows.description))
+        for row in rows:
             for i in range(len(row)):
-                result[row.keys()[i]] = row[i]
+                result[column_names[i]] = row[i]
             return result
         return {'message': 'no info available for ' + job_name + ', version ' + str(job_version)}
