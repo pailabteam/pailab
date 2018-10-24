@@ -20,17 +20,22 @@ class RepoObjectDiskStorage(RepoStore):
         # ...
     }
 
-    class EnumEncoder(json.JSONEncoder):
+    class CustomEncoder(json.JSONEncoder):
         def default(self, obj):
             if type(obj) in RepoObjectDiskStorage.PUBLIC_ENUMS.values():
                 return {"__enum__": str(obj)}
+            else:
+                if isinstance(obj, datetime):
+                    return {"__datetime__": str(obj)}
             return json.JSONEncoder.default(self, obj)
 
     @staticmethod
-    def as_enum(d):
+    def as_custom(d):
         if "__enum__" in d:
             name, member = d["__enum__"].split(".")
             return getattr(RepoObjectDiskStorage.PUBLIC_ENUMS[name], member)
+        if "__datetime__" in d:
+            return datetime.strptime(d["__datetime__"], 'YYYY-MM-DD HH:MM:SS.mmmmmm ')
         return d
     # endregion
 
@@ -117,7 +122,10 @@ class RepoObjectDiskStorage(RepoStore):
         uid = uuid.uuid1()
         uid_time = RepoObjectDiskStorage._get_time_from_uuid(uid)
         name = obj['repo_info'][repo_objects.RepoInfoKey.NAME.value]
-        category = obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value].name
+        if isinstance(obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value], repo.MLObjectType):
+            category = obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value].name
+        else:
+            category = obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value]
         obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value] = str(uid)
         exists = False
         # region write mapping
@@ -148,7 +156,7 @@ class RepoObjectDiskStorage(RepoStore):
         logging.debug(
             'Write object as json file with filename ' + filename)
         with open(self._main_dir + '/' + filename, 'w') as f:
-            json.dump(obj, f, cls=RepoObjectDiskStorage.EnumEncoder)
+            json.dump(obj, f, cls=RepoObjectDiskStorage.CustomEncoder)
         # endregion
         return version
 
@@ -202,7 +210,7 @@ class RepoObjectDiskStorage(RepoStore):
         """
         category = None
         for row in self._execute('select category from mapping where name = ' + "'" + name + "'"):
-            category = repo.MLObjectType[row[0]]
+            category = repo.MLObjectType(row[0])
         if category is None:
             raise Exception('no object ' + name + ' in storage.')
 
@@ -224,7 +232,7 @@ class RepoObjectDiskStorage(RepoStore):
         for filename in files:
             with open(self._main_dir + '/' + filename, 'r') as f:
                 objects.append(json.load(
-                    f, object_hook=RepoObjectDiskStorage.as_enum))
-        if len(objects) == 1:
-            return objects[0]
+                    f, object_hook=RepoObjectDiskStorage.as_custom))
+        # if len(objects) == 1:
+        #    return objects[0]
         return objects
