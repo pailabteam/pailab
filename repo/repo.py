@@ -18,26 +18,26 @@ logger = logging.getLogger(__name__)
 class MLObjectType(Enum):
     """Enums describing all ml object types.
     """
-    EVAL_DATA = 'eval_data'
-    RAW_DATA = 'raw_data'
-    TRAINING_DATA = 'training_data'
-    TEST_DATA = 'test_data'
-    TEST_RESULT = 'test_result'
-    MODEL_PARAM = 'model_param'
-    TRAINING_PARAM = 'training_param'
-    TRAINING_FUNCTION = 'training_function'
-    MODEL_EVAL_FUNCTION = 'model_eval_function'
-    PREP_PARAM = 'prep_param'
-    PREPROCESSOR = 'preprocessor'
-    MODEL_INFO = 'model_info'
-    LABEL = 'label'
-    MODEL = 'model'
-    CALIBRATED_MODEL = 'calib_model'
-    COMMIT_INFO = 'commit_info'
-    MAPPING = 'mapping'
-    MEASURE = 'measure'
-    MEASURE_CONFIGURATION = 'measure_config'
-    JOB = 'job'
+    EVAL_DATA = 'EVAL_DATA'
+    RAW_DATA = 'RAW_DATA'
+    TRAINING_DATA = 'TRAINING_DATA'
+    TEST_DATA = 'TEST_DATA'
+    TEST_RESULT = 'TEST_RESULT'
+    MODEL_PARAM = 'MODEL_PARAM'
+    TRAINING_PARAM = 'TRAINING_PARAM'
+    TRAINING_FUNCTION = 'TRAINING_FUNCTION'
+    MODEL_EVAL_FUNCTION = 'MODEL_EVAL_FUNCTION'
+    PREP_PARAM = 'PREP_PARAM'
+    PREPROCESSOR = 'PREPROCESSOR'
+    MODEL_INFO = 'MODEL_INFO'
+    LABEL = 'LABEL'
+    MODEL = 'MODEL'
+    CALIBRATED_MODEL = 'CALIBRATED_MODEL'
+    COMMIT_INFO = 'COMMIT_INFO'
+    MAPPING = 'MAPPING'
+    MEASURE = 'MEASURE'
+    MEASURE_CONFIGURATION = 'MEASURE_CONFIGURATION'
+    JOB = 'JOB'
 
     @staticmethod
     def _get_key(category): 
@@ -71,6 +71,7 @@ class Mapping:
     """
     @repo_object_init()
     def __init__(self, **kwargs):
+        logging.debug('Initializing map with kwargs: ' + str(kwargs))
         for key in MLObjectType:
             setattr(self, key.value, [])
         self.set_fields(kwargs)
@@ -124,6 +125,15 @@ class Mapping:
         category_name = MLObjectType._get_key(category)
         return getattr(self, category_name)
 
+    def __str__(self):
+        result = ''
+        for k in MLObjectType:
+            result += k.value +': '
+            if hasattr(self, k.value):
+                result +=str(getattr(self, k.value)) + ','
+            else:
+                result += '[],'
+        return result
 
 def _add_modification_info(repo_obj, *args):
     """Add modificaion info to a repo object from a list if repo objects which were used to create it.
@@ -163,15 +173,15 @@ class Job(abc.ABC):
     def get_predecessor_jobs(self):
         """Return list of jobids which must have been run sucessfully before the job will be executed
         """
-        if hasattr(self, _predecessors):
+        if hasattr(self, '_predecessors'):
             return self._predecessors
         return []
 
     @abc.abstractmethod
-    def run(self, ml_repo, job_id):
+    def run(self, ml_repo, jobid):
         pass
 
-
+ 
 class EvalJob(Job):
     """definition of a model evaluation job
     """
@@ -511,9 +521,17 @@ class MLRepo:
         self._user = user
         self._job_runner = job_runner
         # check if the ml mapping is already contained in the repo, otherwise add it
+        logging.info('Get mapping.')
+        repo_dict = []
         try:
-            self._mapping = self._ml_repo.get('repo_mapping', versions=repo_store.RepoStore.LAST_VERSION)
-        except Exception:
+            repo_dict = self._ml_repo.get('repo_mapping', versions=repo_store.RepoStore.LAST_VERSION)
+        except:
+            logging.info('No mapping found, creating new mapping.')
+        if len(repo_dict) > 1:
+            raise Exception('More than on mapping found.')
+        if len(repo_dict) == 1:
+           self._mapping = repo_objects.create_repo_obj(repo_dict[0])
+        else:
             self._mapping = Mapping(  # pylint: disable=E1123
                 repo_info={repo_objects.RepoInfoKey.NAME.value: 'repo_mapping', 
                 repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.MAPPING.value})
@@ -736,6 +754,7 @@ class MLRepo:
                     dictionary, use path notation to the element, i.e. p/elem1/elem2 to get p[elem1][elem2])
             :param full_object: flag to determine whether the numpy objects are loaded (True->load)
         """
+        logging.debug('Getting ' + name + ', version ' + str(version))
         repo_dict = self._ml_repo.get(name, version, modifier_versions, obj_fields, repo_info_fields)
         if len(repo_dict) == 0:
             raise Exception('No object found with name ' +  name + ' and version ' + str(version))
@@ -882,7 +901,8 @@ class MLRepo:
             return tmp
         return [tmp]
         
-    def run_training(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, training_function_version=repo_store.RepoStore.LAST_VERSION,
+    def run_training(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, 
+                    training_function_version=repo_store.RepoStore.LAST_VERSION,
                     training_data_version=repo_store.RepoStore.LAST_VERSION, training_param_version = repo_store.RepoStore.LAST_VERSION, 
                     model_param_version = repo_store.RepoStore.LAST_VERSION):
         """ Run the training algorithm. 
@@ -900,10 +920,11 @@ class MLRepo:
             training_data_version=training_data_version, training_param_version= training_param_version, 
             model_param_version=model_param_version, repo_info = {repo_objects.RepoInfoKey.NAME.value: model + '/jobs/training',
                 repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.JOB.value})
-        self._add(train_job)
-        job_id = self._job_runner.add(train_job, self._user)
-        logging.info('Training job added to jobrunner, job_id: ' + str(job_id))
-        return job_id
+        self.add(train_job)
+        self._job_runner.add(train_job.repo_info[repo_objects.RepoInfoKey.NAME], train_job.repo_info[repo_objects.RepoInfoKey.VERSION], self._user)
+        logging.info('Training job ' + train_job.repo_info[repo_objects.RepoInfoKey.NAME]+ ', version: ' 
+                + str(train_job.repo_info[repo_objects.RepoInfoKey.VERSION]) + ' added to jobrunner.')
+        return train_job.repo_info[repo_objects.RepoInfoKey.NAME], str(train_job.repo_info[repo_objects.RepoInfoKey.VERSION])
         
     def run_evaluation(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, datasets={}, predecessors = []):
         """ Evaluate the model on all datasets. 
@@ -939,9 +960,10 @@ class MLRepo:
                                     repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.JOB.value})
             eval_job.set_predecessor_jobs(predecessors)
             self._add(eval_job)
-            job_id = self._job_runner.add(eval_job, self._user)
-            logging.info('Eval job added to jobrunner, job_id: ' + str(job_id))
-            job_ids.append(job_id)
+            self._job_runner.add(eval_job.repo_info[repo_objects.RepoInfoKey.NAME], eval_job.repo_info[repo_objects.RepoInfoKey.VERSION], self._user)
+            logging.info('Eval job ' + eval_job.repo_info[repo_objects.RepoInfoKey.NAME]+ ', version: ' 
+                + str(eval_job.repo_info[repo_objects.RepoInfoKey.VERSION]) + ' added to jobrunner.')
+            job_ids.append((eval_job.repo_info[repo_objects.RepoInfoKey.NAME], str(eval_job.repo_info[repo_objects.RepoInfoKey.VERSION])))
         return job_ids
 
     def run_measures(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, datasets={}, measures = {}, predecessors = []):
@@ -976,9 +998,10 @@ class MLRepo:
                         repo_objects.RepoInfoKey.CATEGORY.value: MLObjectType.JOB.value})
                 measure_job.set_predecessor_jobs(predecessors)
                 self._add(measure_job)
-                job_id = self._job_runner.add(measure_job, self._user)
+                job_id = self._job_runner.add(measure_job.repo_info[repo_objects.RepoInfoKey.NAME], measure_job.repo_info[repo_objects.RepoInfoKey.VERSION], self._user)
                 job_ids.append(job_id)
-                logging.info('Measure job ' + m_name + ' added to jobrunner, job_id: ' + str(job_id))
+                logging.info('Measure job ' + measure_job.repo_info[repo_objects.RepoInfoKey.NAME]+ ', version: ' 
+                    + str(measure_job.repo_info[repo_objects.RepoInfoKey.VERSION]) + ' added to jobrunner.')
         return job_ids
 
     def run_tests(self, message='', model_version=repo_store.RepoStore.LAST_VERSION, tests={}, job_runner=None, predecessors = []):
