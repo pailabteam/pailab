@@ -156,8 +156,8 @@ class SQLiteJobRunner(JobRunnerBase):
                 self._execute("update jobs SET job_state=" + JobState.WAITING.value + " where job_name='" +
                               c[0] + "' and job_version='" + c[1] + "' and unfinished_pred_jobs <= 0")
                 self._conn.commit()
-            self._execute("update jobs SET job_state='" + JobState.SUCCESSFULLY_FINISHED.value + "', end_time='" + str(datetime.datetime.now()
-                                                                                                                       + " where job_name = '" + job_name + "' and job_version = '" + job_version + "'"))
+            self._execute("update jobs SET job_state='" + JobState.SUCCESSFULLY_FINISHED.value + "', end_time='" + str(datetime.datetime.now())
+                          + "' where job_name = '" + job_name + "' and job_version = '" + job_version + "'")
             self._conn.commit()
         else:
             self._execute("update jobs SET job_state='" + JobState.FAILED.value + "', error_message='" + error_message.replace("'", "") + "', stack_trace='" + stack_trace.replace("'", "") + "', end_time='"
