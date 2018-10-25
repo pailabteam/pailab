@@ -1,3 +1,5 @@
+
+
 import os
 import sqlite3
 import uuid
@@ -22,6 +24,16 @@ def pickle_load(file_prefix):
 
 
 def execute(cursor, cmd):
+    """Execute a sql statement (sqlite) with logging of statement 
+
+    Args:
+        cursor (cursor): cursor used to execute statement
+        cmd (str): sql statement which will be executed
+
+    Returns:
+        [type]: [description]
+    """
+
     logging.info('Executing: ' + cmd)
     return cursor.execute(cmd)
 
@@ -116,6 +128,14 @@ class RepoObjectDiskStorage(RepoStore):
     # endregion
 
     def __init__(self, folder, save_function=pickle_save, load_function=pickle_load):
+        """Constructor
+
+        Args:
+            folder (str): directory used to store the objects in files as well as the sqlite database
+            save_function (function, optional): Defaults to pickle_save. Function used to save the objects to disk.
+            load_function (function, optional): Defaults to pickle_load. Function used to load the objects from disk.
+        """
+
         self._main_dir = folder
         self._setup_new()
         self._save_function = save_function
