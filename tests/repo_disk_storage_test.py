@@ -47,8 +47,10 @@ class RepoDiskStorageTest(unittest.TestCase):
 
     def tearDown(self):
         try:
+            self._storage._conn.close()
             shutil.rmtree('tmp_disk_storage')
-        except OSError:
+        except OSError as e:
+            print(str(e))
             pass
 
     def test_get_by_version(self):
@@ -59,10 +61,10 @@ class RepoDiskStorageTest(unittest.TestCase):
         self.assertEqual(self._storage._get_first_version('obj'),
                          self._object_versions[0])
         # single version numbers
-        obj = self._storage.get('obj', versions=RepoStore.FIRST_VERSION)
+        obj = self._storage.get('obj', versions=RepoStore.FIRST_VERSION)[0]
         self.assertEqual(obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value],
                          self._object_versions[0])
-        obj = self._storage.get('obj', versions=RepoStore.LAST_VERSION)
+        obj = self._storage.get('obj', versions=RepoStore.LAST_VERSION)[0]
         self.assertEqual(obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value],
                          self._object_versions[-1])
         # range of version number
