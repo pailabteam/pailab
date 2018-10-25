@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import uuid
+import pickle
 from datetime import datetime, timedelta
 import json
 import repo.repo_objects as repo_objects
@@ -8,6 +9,16 @@ import repo.repo as repo
 from repo.repo_store import RepoStore
 import logging
 logger = logging.getLogger(__name__)
+
+
+def pickle_save(file_prefix, obj):
+    with open(file_prefix + '.pck', 'wb') as f:
+        pickle.dump(obj, f)
+
+
+def pickle_load(file_prefix):
+    with open(file_prefix+'.pck', 'rb') as f:
+        return pickle.load(f)
 
 
 class RepoObjectDiskStorage(RepoStore):
@@ -94,9 +105,11 @@ class RepoObjectDiskStorage(RepoStore):
 
     # endregion
 
-    def __init__(self, folder):
+    def __init__(self, folder, save_function=pickle_save, load_function=pickle_load):
         self._main_dir = folder
         self._setup_new()
+        self._save_function = save_function
+        self._load_function = load_function
 
     def get_names(self, ml_obj_type):
         """Return the names of all objects belonging to the given category.
@@ -119,45 +132,51 @@ class RepoObjectDiskStorage(RepoStore):
         Raises:
             Exception if an object with same name already exists.
         """
-        uid = uuid.uuid1()
-        uid_time = RepoObjectDiskStorage._get_time_from_uuid(uid)
-        name = obj['repo_info'][repo_objects.RepoInfoKey.NAME.value]
-        if isinstance(obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value], repo.MLObjectType):
-            category = obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value].name
-        else:
-            category = obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value]
-        obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value] = str(uid)
-        exists = False
-        # region write mapping
-        for row in self._execute('select * from mapping where name = ' + "'" + name + "'"):
-            exists = True
-            break
-        if not exists:
-            self._execute(
-                "insert into mapping (name, category) VALUES ('" + name + "', '" + category + "')")
-        # endregion
-        # region write file info
-        version = str(uid)
-        file_sub_dir = category + '/' + name + '/'
-        os.makedirs(self._main_dir + '/' + file_sub_dir, exist_ok=True)
-        filename = file_sub_dir + '/' + str(uid) + '.json'
-        self._execute("insert into versions (name, version, file, uuid_time) VALUES('" +
-                      name + "', '" + version + "','" + filename + "','" + str(uid_time) + "')")
-        # endregion
-        # region write modification info
-        if repo_objects.RepoInfoKey.MODIFICATION_INFO.value in obj['repo_info']:
-            for k, v in obj['repo_info'][repo_objects.RepoInfoKey.MODIFICATION_INFO.value].items():
-                tmp = RepoObjectDiskStorage._get_time_from_uuid(uuid.UUID(v))
-                self._execute("insert into modification_info (name, version, modifier, modifier_version, modifier_uuid_time) VALUES ('"
-                              + name + "','" + version + "','" + k + "','" + str(v) + "','" + str(tmp) + "')")
-        # endregion
-        self._conn.commit()
-        # region write file
-        logging.debug(
-            'Write object as json file with filename ' + filename)
-        with open(self._main_dir + '/' + filename, 'w') as f:
-            json.dump(obj, f, cls=RepoObjectDiskStorage.CustomEncoder)
-        # endregion
+        cursor = self._conn.cursor()
+        try:
+            uid = uuid.uuid1()
+            uid_time = RepoObjectDiskStorage._get_time_from_uuid(uid)
+            name = obj['repo_info'][repo_objects.RepoInfoKey.NAME.value]
+            if isinstance(obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value], repo.MLObjectType):
+                category = obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value].name
+            else:
+                category = obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value]
+            obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value] = str(uid)
+            exists = False
+            # region write mapping
+            for row in self._execute('select * from mapping where name = ' + "'" + name + "'"):
+                exists = True
+                break
+            if not exists:
+                self._execute(
+                    "insert into mapping (name, category) VALUES ('" + name + "', '" + category + "')")
+            # endregion
+            # region write file info
+            version = str(uid)
+            file_sub_dir = category + '/' + name + '/'
+            os.makedirs(self._main_dir + '/' + file_sub_dir, exist_ok=True)
+            filename = file_sub_dir + '/' + str(uid)
+            self._execute("insert into versions (name, version, file, uuid_time) VALUES('" +
+                          name + "', '" + version + "','" + filename + "','" + str(uid_time) + "')")
+            # endregion
+            # region write modification info
+            if repo_objects.RepoInfoKey.MODIFICATION_INFO.value in obj['repo_info']:
+                for k, v in obj['repo_info'][repo_objects.RepoInfoKey.MODIFICATION_INFO.value].items():
+                    tmp = RepoObjectDiskStorage._get_time_from_uuid(
+                        uuid.UUID(v))
+                    self._execute("insert into modification_info (name, version, modifier, modifier_version, modifier_uuid_time) VALUES ('"
+                                  + name + "','" + version + "','" + k + "','" + str(v) + "','" + str(tmp) + "')")
+            # endregion
+            self._conn.commit()
+            # region write file
+            logging.debug(
+                'Write object as json file with filename ' + filename)
+
+            self._save_function(self._main_dir + '/' + filename, obj)
+            # endregion
+        except:
+            logging.error('An error occured, rolling back changes.')
+            cursor.rollback()
         return version
 
     def get_version_condition(self, name, versions, version_column, time_column):
@@ -230,9 +249,6 @@ class RepoObjectDiskStorage(RepoStore):
         files = [row[0] for row in self._execute(select_statement)]
         objects = []
         for filename in files:
-            with open(self._main_dir + '/' + filename, 'r') as f:
-                objects.append(json.load(
-                    f, object_hook=RepoObjectDiskStorage.as_custom))
-        # if len(objects) == 1:
-        #    return objects[0]
+            objects.append(self._load_function(
+                self._main_dir + '/' + filename))
         return objects
