@@ -21,6 +21,11 @@ def pickle_load(file_prefix):
         return pickle.load(f)
 
 
+def execute(cursor, cmd):
+    logging.info('Executing: ' + cmd)
+    return cursor.execute(cmd)
+
+
 class RepoObjectDiskStorage(RepoStore):
 
     # region private
@@ -53,25 +58,28 @@ class RepoObjectDiskStorage(RepoStore):
     def _sqlite_db_name(self):
         return self._main_dir + '/.version.sqlite'
 
-    def _execute(self, command):
-        logging.info('Executing: ' + command)
-        return self._conn.execute(command)
-
     def _create_new_db(self):
         self._conn = sqlite3.connect(self._sqlite_db_name())
         # three tables: one with category->name mapping, one with category, version, and one with modification info
         # mapping
-        self._execute(
-            '''CREATE TABLE mapping (name text PRIMARY KEY, category text)''')
-        # versions
-        self._execute(
-            '''CREATE TABLE versions (name TEXT NOT NULL, version TEXT NOT NULL, file TEXT NOT NULL, uuid_time TIMESTAMP,
-                                    insert_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY(name, version) ) ''')
+        cursor = self._conn.cursor()
+        try:
+            logging.info('Executing')
+            execute(cursor,
+                    '''CREATE TABLE mapping (name text PRIMARY KEY, category text)''')
+            # versions
+            execute(cursor,
+                    '''CREATE TABLE versions (name TEXT NOT NULL, version TEXT NOT NULL, file TEXT NOT NULL, uuid_time TIMESTAMP,
+                                        insert_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY(name, version) ) ''')
 
-        # modification_info
-        self._execute(
-            '''CREATE TABLE modification_info (name TEXT NOT NULL, version TEXT NOT NULL, modifier TEXT NOT NULL, modifier_version TEXT NOT NULL, modifier_uuid_time TIMESTAMP, PRIMARY KEY(name, version, modifier) ) ''')
-        self._conn.commit()
+            # modification_info
+            execute(cursor,
+                    '''CREATE TABLE modification_info (name TEXT NOT NULL, version TEXT NOT NULL, modifier TEXT NOT NULL, modifier_version TEXT NOT NULL, modifier_uuid_time TIMESTAMP, PRIMARY KEY(name, version, modifier) ) ''')
+            self._conn.commit()
+        except:
+            logging.error(
+                'An error occured during creation of new db, rolling back.')
+            self._conn.rollback()
 
     def _setup_new(self):
         if not os.path.exists(self._main_dir):
@@ -86,12 +94,14 @@ class RepoObjectDiskStorage(RepoStore):
         return datetime(1582, 10, 15) + timedelta(microseconds=uid.time//10)
 
     def _get_last_version(self, name):
-        for row in self._execute("select version from versions where name = '" + name + "' order by uuid_time DESC LIMIT 1"):
+        cursor = self._conn.cursor()
+        for row in execute(cursor, "select version from versions where name = '" + name + "' order by uuid_time DESC LIMIT 1"):
             return row[0]
         raise Exception('No object with name ' + name + ' exists.')
 
     def _get_first_version(self, name):
-        for row in self._execute("select version from versions where name = '" + name + "' order by uuid_time ASC LIMIT 1"):
+        cursor = self._conn.cursor()
+        for row in execute(cursor, "select version from versions where name = '" + name + "' order by uuid_time ASC LIMIT 1"):
             return row[0]
         raise Exception('No object with name ' + name + ' exists.')
 
@@ -117,8 +127,9 @@ class RepoObjectDiskStorage(RepoStore):
         Arguments:
             ml_obj_type {string} -- Value of MLObjectType-Enum specifying the category for which all names will be returned
         """
+        cursor = self._conn.cursor()
         result = []
-        for row in self._execute("select name, category from  mapping where category = '" + ml_obj_type + "'"):
+        for row in execute(cursor, "select name, category from  mapping where category = '" + ml_obj_type + "'"):
             result.append(row[0])
         return result
 
@@ -144,28 +155,28 @@ class RepoObjectDiskStorage(RepoStore):
             obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value] = str(uid)
             exists = False
             # region write mapping
-            for row in self._execute('select * from mapping where name = ' + "'" + name + "'"):
+            for row in execute(cursor, 'select * from mapping where name = ' + "'" + name + "'"):
                 exists = True
                 break
             if not exists:
-                self._execute(
-                    "insert into mapping (name, category) VALUES ('" + name + "', '" + category + "')")
+                execute(cursor,
+                        "insert into mapping (name, category) VALUES ('" + name + "', '" + category + "')")
             # endregion
             # region write file info
             version = str(uid)
             file_sub_dir = category + '/' + name + '/'
             os.makedirs(self._main_dir + '/' + file_sub_dir, exist_ok=True)
             filename = file_sub_dir + '/' + str(uid)
-            self._execute("insert into versions (name, version, file, uuid_time) VALUES('" +
-                          name + "', '" + version + "','" + filename + "','" + str(uid_time) + "')")
+            execute(cursor, "insert into versions (name, version, file, uuid_time) VALUES('" +
+                    name + "', '" + version + "','" + filename + "','" + str(uid_time) + "')")
             # endregion
             # region write modification info
             if repo_objects.RepoInfoKey.MODIFICATION_INFO.value in obj['repo_info']:
                 for k, v in obj['repo_info'][repo_objects.RepoInfoKey.MODIFICATION_INFO.value].items():
                     tmp = RepoObjectDiskStorage._get_time_from_uuid(
                         uuid.UUID(v))
-                    self._execute("insert into modification_info (name, version, modifier, modifier_version, modifier_uuid_time) VALUES ('"
-                                  + name + "','" + version + "','" + k + "','" + str(v) + "','" + str(tmp) + "')")
+                    execute(cursor, "insert into modification_info (name, version, modifier, modifier_version, modifier_uuid_time) VALUES ('"
+                            + name + "','" + version + "','" + k + "','" + str(v) + "','" + str(tmp) + "')")
             # endregion
             self._conn.commit()
             # region write file
@@ -176,7 +187,7 @@ class RepoObjectDiskStorage(RepoStore):
             # endregion
         except:
             logging.error('An error occured, rolling back changes.')
-            cursor.rollback()
+            self._conn.rollback()
         return version
 
     def get_version_condition(self, name, versions, version_column, time_column):
@@ -228,7 +239,8 @@ class RepoObjectDiskStorage(RepoStore):
                                                         if None, no fields are returned, if set to 'all', all fields will be returned (default: {None})
         """
         category = None
-        for row in self._execute('select category from mapping where name = ' + "'" + name + "'"):
+        cursor = self._conn.cursor()
+        for row in execute(cursor, 'select category from mapping where name = ' + "'" + name + "'"):
             category = repo.MLObjectType(row[0])
         if category is None:
             raise Exception('no object ' + name + ' in storage.')
@@ -245,8 +257,7 @@ class RepoObjectDiskStorage(RepoStore):
                 if tmp != '':
                     select_statement += " and version in ( select version from modification_info where name ='" + \
                         name + "' and modifier = '" + k + "'" + tmp + ")"
-
-        files = [row[0] for row in self._execute(select_statement)]
+        files = [row[0] for row in execute(cursor, select_statement)]
         objects = []
         for filename in files:
             objects.append(self._load_function(
