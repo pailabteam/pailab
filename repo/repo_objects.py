@@ -290,7 +290,7 @@ class RawData:
             self.y_coord_names = y_coord_names
 
     def __str__(self):
-        return str(self.to_dict())
+        return str(self.to_dict()) # pylint: disable=E1101
    
 class Model:
     @repo_object_init()
@@ -401,7 +401,7 @@ class MeasureConfiguration:
     #endregion
     
     def __str__(self):
-        return str(self.to_dict())
+        return str(self.to_dict()) # pylint: disable=E1101
 
 class Measure:
     @repo_object_init()
@@ -409,4 +409,4 @@ class Measure:
         self.value = value
     
     def __str__(self):
-        return str(self.to_dict())
+        return str(self.to_dict()) # pylint: disable=E1101

@@ -12,7 +12,7 @@ import logging
 import repo.repo_objects as repo_objects
 from repo.repo_objects import repo_object_init  # pylint: disable=E0401
 import repo.repo_store as repo_store
-logger = logging.getLogger('repo')
+logger = logging.getLogger(__name__)
 
 
 class MLObjectType(Enum):
@@ -192,6 +192,7 @@ class EvalJob(Job):
             repo {MLrepository} -- repository used to get and store the data
             jobid {string} -- id of job which will be run
         """
+        logging.info('Start evaluation job ' + str(jobid) +' on model ' + self.model + ' ' + str(self.model_version) + ' ')
         model = repo._get(self.model, self.model_version)
         model_definition_name = self.model.split('/')[0]
         model_def_version = model.repo_info[repo_objects.RepoInfoKey.MODIFICATION_INFO.value][model_definition_name]
@@ -213,7 +214,8 @@ class EvalJob(Job):
         _add_modification_info(result, model, data)
         repo.add(result, 'evaluate data ' +
                  self.data + ' with model ' + self.model)
-
+        logging.info('Finished evaluation job ' + str(jobid))
+        
 
 class TrainingJob(Job):
     """definition of a model training job
@@ -345,19 +347,23 @@ class DataSet:
     """
     @repo_object_init()
     def __init__(self, raw_data, start_index=0, 
-        end_index=-1, raw_data_version=repo_store.RepoStore.LAST_VERSION):
+        end_index=None, raw_data_version=repo_store.RepoStore.LAST_VERSION):
         """Constructor
 
         Arguments:
             :argument raw_data: {string} -- id of raw_data the dataset refers to
             :argument start_index: {integer} -- index of first entry of the raw data used in the dataset
-            :argument end_index: {integer} -- end_index of last entry of the raw data used in the dataset
+            :argument end_index: {integer} -- end_index of last entry of the raw data used in the dataset (if None, all including last element are used)
             :argument raw_data_version: {integer} -- version of RawData object the DataSet refers to (default is latest)
         """
         self.raw_data = raw_data
         self.start_index = start_index
         self.end_index = end_index
         self.raw_data_version = raw_data_version
+        
+        if self.end_index is not None:
+            if self.start_index > 0 and self.end_index > 0 and self.start_index >= self.end_index:
+                raise Exception('Startindex must be less then endindex.')
 
     def set_data(self, raw_data):
         """Set the data from the given raw_data.
@@ -370,17 +376,10 @@ class DataSet:
         
         """
 
-        def get_data_subset(data):
-            if self.end_index is not None:
-                if self.start_index > 0 and self.end_index > 0 and self.start_index >= self.end_index:
-                    raise Exception('Startindex must be less then endindex.')
-                return data[self.start_index:self.end_index, :]
-            return data[self.start_index:, :]
-        # \todo make it more efficient, reading from numpy store only the subset of data defined by start_index and end_index
         if raw_data.x_data is not None:
-            setattr(self, 'x_data', get_data_subset(raw_data.x_data)) # todo more efficient implementation over numpy_repo to avoid loading all and then cutting off
+            setattr(self, 'x_data',raw_data.x_data) # todo more efficient implementation over numpy_repo to avoid loading all and then cutting off
         if raw_data.y_data is not None:
-            setattr(self, 'y_data', get_data_subset(raw_data.y_data))
+            setattr(self, 'y_data', raw_data.y_data)
         setattr(self, 'x_coord_names', raw_data.x_coord_names)
         setattr(self, 'y_coord_names', raw_data.y_coord_names)
         setattr(self, 'n_data', raw_data.n_data)
@@ -743,17 +742,12 @@ class MLRepo:
         for x in repo_dict:
             result = repo_objects.create_repo_obj(x)
             if isinstance(result, DataSet):
-                raw_data = self._get(result.raw_data, result.raw_data_version, full_object)
+                raw_data = self._get(result.raw_data, result.raw_data_version, False)
+                if full_object:
+                    numpy_data = self._numpy_repo.get(result.raw_data, raw_data.repo_info[repo_objects.RepoInfoKey.VERSION], 
+                                                        result.start_index, result.end_index)
+                    repo_objects.repo_object_init.numpy_from_dict(raw_data, numpy_data)
                 result.set_data(raw_data)
-                # if raw_data.x_data is not None:
-                #     if result.start_index > 0 and result.end_index > 0 and result.start_index >= result.end_index:
-                #         raise Exception('Startindex must be less then endindex.')
-                #     setattr(result, 'x_data', raw_data.x_data[result.start_index:result.end_index, :]) # todo more efficient implementation over numpy_repo to avoid loading all and then cutting off
-                # if raw_data.y_data is not None:
-                #     setattr(result, 'y_data', raw_data.y_data[result.start_index:result.end_index, :])
-                # setattr(result, 'x_coord_names', raw_data.x_coord_names)
-                # setattr(result, 'y_coord_names', raw_data.y_coord_names)
-                # setattr(result, 'n_data', raw_data.n_data)
 
             numpy_dict = {}
             if len(result.repo_info[repo_objects.RepoInfoKey.BIG_OBJECTS]) > 0 and full_object:

@@ -181,11 +181,11 @@ class RepoTest(unittest.TestCase):
         raw_data = repo_objects.RawData(np.zeros([10,1]), ['x0'], np.zeros([10,1]), ['y0'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'raw_3'})
         self.repository.add(raw_data, category=repo.MLObjectType.RAW_DATA)
         ## Setup dummy Test and Training DataSets on RawData
-        training_data = repo.DataSet('raw_1', 0, -1, 
+        training_data = repo.DataSet('raw_1', 0, None, 
                                     repo_info = {repo_objects.RepoInfoKey.NAME.value: 'training_data_1', repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_DATA})
         test_data_1 = repo.DataSet('raw_2', 0, None, 
                                     repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_1',  repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TEST_DATA})
-        test_data_2 = repo.DataSet('raw_3', 0, -1, 
+        test_data_2 = repo.DataSet('raw_3', 0, 2, 
                                     repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_2',  repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TEST_DATA})
         self.repository.add([training_data, test_data_1, test_data_2])
 
@@ -232,7 +232,7 @@ class RepoTest(unittest.TestCase):
     def test_commit_increase_add(self):
         '''Check if adding a new object in repository increases commit and does also change the mapping
         '''
-        obj = repo.DataSet('raw_data_1', repo_store.RepoStore.FIRST_VERSION, repo_store.RepoStore.LAST_VERSION, 
+        obj = repo.DataSet('raw_data_1', 0, None, 
             repo_info={RepoInfoKey.NAME.value: 'test...', RepoInfoKey.CATEGORY.value: repo.MLObjectType.TEST_DATA})
         old_num_commits = len(self.repository.get_commits())
         old_version_mapping = self.repository._get('repo_mapping').repo_info[RepoInfoKey.VERSION]
@@ -266,6 +266,11 @@ class RepoTest(unittest.TestCase):
             self.assertEqual(raw_obj.y_coord_names[i], obj.y_coord_names[i])
         self.assertEqual(raw_obj.x_data.shape[0], obj.x_data.shape[0])
 
+        obj = self.repository._get('test_data_2', version = repo_store.RepoStore.LAST_VERSION, full_object = True)
+        self.assertEqual(obj.x_data.shape[0], 2)
+    
+        obj = self.repository._get('training_data_1', version = repo_store.RepoStore.LAST_VERSION, full_object = True)
+        self.assertEqual(obj.x_data.shape[0], 10)
     
     def test_repo_RawData(self):
         """Test RawData within repo

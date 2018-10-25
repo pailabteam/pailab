@@ -1,5 +1,25 @@
 import abc
-from repo.repo_objects import RepoInfoKey
+from repo.repo_objects import RepoInfoKey  # pylint: disable=E0401
+
+
+class RepoScriptStore(abc.ABC):
+    @abc.abstractmethod
+    def add(self, script_file):
+        """Add a script to the storage.
+
+
+        Arguments:
+            script_file {string} -- file (incluing path) of script
+
+        """
+        pass
+
+    @abc.abstractmethod
+    def get(self, name, versions=None):
+        """
+
+        """
+        pass
 
 
 class RepoStore(abc.ABC):
@@ -89,3 +109,38 @@ class RepoStore(abc.ABC):
         """
         obj = self.get(name, versions=[version])
         return len(obj) != 0
+
+
+class NumpyStore(abc.ABC):
+    @abc.abstractmethod
+    def add(self, name, version, numpy_dict):
+        """ Add numpy data from an object to the storage.
+
+        :param name: Name (as string) of object
+        :param version: object version
+        :param numpy_dict: numpy dictionary
+
+        """
+        pass
+
+    @abc.abstractmethod
+    def append(self, name, version_old, version_new, numpy_dict):
+        """Append data
+
+        Args:
+            name (string): name of data object to be returned
+            version_old (version): version of the object where the data will be appended
+            version_new (version): version of the new objct after appending the data
+            numpy_dict (dict): dictionary containign the values
+
+        """
+        pass
+
+    @abc.abstractmethod
+    def get(self, name, version, from_index=0, to_index=None):
+        """Get specific data
+
+        Args:
+            name ([type]): [description]
+            version ([type]): [description]
+        """
