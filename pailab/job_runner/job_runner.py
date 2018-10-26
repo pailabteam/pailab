@@ -69,7 +69,7 @@ class JobRunnerBase(abc.ABC):
         pass
 
 
-class SimpleJobRunner:
+class SimpleJobRunner(JobRunnerBase):
     def __init__(self, repo):
         self._repo = repo
         self._job_info = {}
