@@ -42,7 +42,7 @@ class RepoInfo:
     It must be a member of all objects which are handled by the repo.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, kwargs):
         for key in RepoInfoKey:
             setattr(self, key.value, None)
         self.set_fields(kwargs)
@@ -59,6 +59,9 @@ class RepoInfo:
         Args:
             :param kwargs: dictionary
         """
+        for k,v in kwargs.items():
+            self[k] = v
+        return 
         if not kwargs is None:
             for key in RepoInfoKey:
                 if key.name in kwargs.keys():
@@ -197,7 +200,7 @@ class repo_object_init:  # pylint: disable=too-few-public-methods
                 repo_info = kwargs['repo_info']
                 del kwargs['repo_info']
                 if isinstance(repo_info, dict):
-                    repo_info = RepoInfo(**repo_info)
+                    repo_info = RepoInfo(repo_info)
                 if not '_init_from_dict' in kwargs.keys():
                     f(init_self, *args, **kwargs)
                 self.init_repo_object(init_self, repo_info)

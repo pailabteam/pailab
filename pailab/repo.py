@@ -222,8 +222,8 @@ class EvalJob(Job):
         f = getattr(tmp, eval_func.function_name)
         y = f(model, data.x_data)
         result = repo_objects.RawData(y, data.y_coord_names, repo_info={
-                            RepoInfoKey.NAME.value: MLRepo.get_eval_name(model_definition, data),
-                            RepoInfoKey.CATEGORY.value: MLObjectType.EVAL_DATA.value
+                            RepoInfoKey.NAME: MLRepo.get_eval_name(model_definition, data),
+                            RepoInfoKey.CATEGORY: MLObjectType.EVAL_DATA.value
                             }
                             )
         _add_modification_info(result, model, data)
@@ -334,7 +334,7 @@ class MeasureJob(Job):
             for x in self.coordinates:
                 result_name = result_name + ':' + x
         result = repo_objects.Measure( v, 
-                                repo_info = {RepoInfoKey.NAME.value : result_name, RepoInfoKey.CATEGORY.value: MLObjectType.MEASURE.value})
+                                repo_info = {RepoInfoKey.NAME : result_name, RepoInfoKey.CATEGORY: MLObjectType.MEASURE.value})
         _add_modification_info(result, eval_data, target)
         repo.add(result, 'computing  measure ' + self.measure_type + ' on data ' + self.data_name)
 
@@ -536,8 +536,8 @@ class MLRepo:
            self._mapping = repo_objects.create_repo_obj(repo_dict[0])
         else:
             self._mapping = Mapping(  # pylint: disable=E1123
-                repo_info={RepoInfoKey.NAME.value: 'repo_mapping', 
-                RepoInfoKey.CATEGORY.value: MLObjectType.MAPPING.value})
+                repo_info={RepoInfoKey.NAME: 'repo_mapping', 
+                RepoInfoKey.CATEGORY: MLObjectType.MAPPING.value})
            
     def _add(self, repo_object, message='', category = None):
             """ Add a repo_object to the repository.
@@ -551,11 +551,11 @@ class MLRepo:
 
                 :return version number of object added and boolean if mapping has changed
             """        
-            if repo_object.repo_info[RepoInfoKey.CATEGORY.value] is None:
+            if repo_object.repo_info[RepoInfoKey.CATEGORY] is None:
                 if category is None:
                     raise Exception('Category of repo_object not set and no fallback category defined.')
                 else:
-                    repo_object.repo_info[RepoInfoKey.CATEGORY.value] = category
+                    repo_object.repo_info[RepoInfoKey.CATEGORY] = category
             
             mapping_changed = self._mapping.add(repo_object.repo_info[RepoInfoKey.CATEGORY], repo_object.repo_info[RepoInfoKey.NAME])
 
@@ -595,8 +595,8 @@ class MLRepo:
             mapping_version, dummy = self._add(self._mapping)
             result['repo_mapping'] = mapping_version
             
-        commit_message = repo_objects.CommitInfo(message, self._user, result, repo_info = {RepoInfoKey.CATEGORY.value: MLObjectType.COMMIT_INFO.value,
-                RepoInfoKey.NAME.value: 'CommitInfo'} )
+        commit_message = repo_objects.CommitInfo(message, self._user, result, repo_info = {RepoInfoKey.CATEGORY: MLObjectType.COMMIT_INFO.value,
+                RepoInfoKey.NAME: 'CommitInfo'} )
         self._add(commit_message)
         if not isinstance(repo_object, list):
             if len(result) == 1 or (mapping_changed and len(result) == 2):
@@ -626,8 +626,8 @@ class MLRepo:
         if name is None:
             name = module_name + "." + function_name
         func = repo_objects.Function(module_name, function_name, repo_info={
-                                     RepoInfoKey.NAME.value: name,
-                                     RepoInfoKey.CATEGORY.value: MLObjectType.MODEL_EVAL_FUNCTION.value})
+                                     RepoInfoKey.NAME: name,
+                                     RepoInfoKey.CATEGORY: MLObjectType.MODEL_EVAL_FUNCTION.value})
         self.add(func, 'add model evaluation function ' + name)
     
     def add_training_function(self, module_name, function_name, repo_name = None):
@@ -642,8 +642,8 @@ class MLRepo:
         if name is None:
             name = module_name + "." + function_name
         func = repo_objects.Function(module_name, function_name, repo_info={
-                                     RepoInfoKey.NAME.value: name,
-                                     RepoInfoKey.CATEGORY.value: MLObjectType.TRAINING_FUNCTION.value})
+                                     RepoInfoKey.NAME: name,
+                                     RepoInfoKey.CATEGORY: MLObjectType.TRAINING_FUNCTION.value})
         self.add(func, 'add model training function ' + name)
 
     def add_data(self, data_name, data, input_variables = None, target_variables = None):
@@ -659,9 +659,9 @@ class MLRepo:
         """
         if target_variables is not None:
             raw_data = repo_objects.RawData(data.as_matrix(columns=input_variables), input_variables, data.as_matrix(columns=target_variables), 
-                target_variables, repo_info = {RepoInfoKey.NAME.value: data_name})
+                target_variables, repo_info = {RepoInfoKey.NAME: data_name})
         else:
-            raw_data = repo_objects.RawData(data.as_matrix(), list(data), repo_info = {RepoInfoKey.NAME.value: data_name})
+            raw_data = repo_objects.RawData(data.as_matrix(), list(data), repo_info = {RepoInfoKey.NAME: data_name})
         self.add(raw_data, 'data ' + data_name + ' added to repository' , category = MLObjectType.RAW_DATA)
 
     def add_model(self, model_name, model_eval = None, model_training = None, model_param = None, training_param = None):
@@ -680,8 +680,8 @@ class MLRepo:
             training_param {string} -- identifier of the training parameter (default: {None}), if None and there is only one training_parameter object in the repo, 
                                         this will be used. If an empty string is given as training parameter, we assume that the algorithm does not need a training pram.
         """
-        model = repo_objects.Model(repo_info={RepoInfoKey.CATEGORY.value: MLObjectType.MODEL.value, 
-                                               RepoInfoKey.NAME.value: model_name })
+        model = repo_objects.Model(repo_info={RepoInfoKey.CATEGORY: MLObjectType.MODEL.value, 
+                                               RepoInfoKey.NAME: model_name })
         model.eval_function = model_eval
         if model.eval_function is None:
             mapping = self._mapping[MLObjectType.MODEL_EVAL_FUNCTION]
@@ -732,8 +732,8 @@ class MLRepo:
         if len(tmp) > 0:
             measure_config = self._get(tmp[0])
         else:
-            measure_config = repo_objects.MeasureConfiguration([], repo_info={RepoInfoKey.NAME.value: 'measure_config', 
-                    RepoInfoKey.CATEGORY.value: MLObjectType.MEASURE_CONFIGURATION.value})
+            measure_config = repo_objects.MeasureConfiguration([], repo_info={RepoInfoKey.NAME: 'measure_config', 
+                    RepoInfoKey.CATEGORY: MLObjectType.MEASURE_CONFIGURATION.value})
         measure_config.add_measure(measure, coordinates)
         coord = 'all'
         if not coordinates is None:
@@ -921,8 +921,8 @@ class MLRepo:
             model = m_names[0]
         train_job = TrainingJob(model, self._user, training_function_version=training_function_version, model_version=model_version,
             training_data_version=training_data_version, training_param_version= training_param_version, 
-            model_param_version=model_param_version, repo_info = {RepoInfoKey.NAME.value: model + '/jobs/training',
-                RepoInfoKey.CATEGORY.value: MLObjectType.JOB.value})
+            model_param_version=model_param_version, repo_info = {RepoInfoKey.NAME: model + '/jobs/training',
+                RepoInfoKey.CATEGORY: MLObjectType.JOB.value})
         self.add(train_job)
         self._job_runner.add(train_job.repo_info[RepoInfoKey.NAME], train_job.repo_info[RepoInfoKey.VERSION], self._user)
         logging.info('Training job ' + train_job.repo_info[RepoInfoKey.NAME]+ ', version: ' 
@@ -959,8 +959,8 @@ class MLRepo:
         job_ids = []
         for n, v in datasets_.items():
             eval_job = EvalJob(model, n, self._user, model_version=model_version, data_version=v,
-                        repo_info = {RepoInfoKey.NAME.value: model + '/jobs/eval_job/' + n,
-                                    RepoInfoKey.CATEGORY.value: MLObjectType.JOB.value})
+                        repo_info = {RepoInfoKey.NAME: model + '/jobs/eval_job/' + n,
+                                    RepoInfoKey.CATEGORY: MLObjectType.JOB.value})
             eval_job.set_predecessor_jobs(predecessors)
             self._add(eval_job)
             self._job_runner.add(eval_job.repo_info[RepoInfoKey.NAME], eval_job.repo_info[RepoInfoKey.VERSION], self._user)
@@ -997,8 +997,8 @@ class MLRepo:
         for n, v in datasets_.items():
             for m_name, m in measures_to_run.items():
                 measure_job = MeasureJob(m_name, m[0], m[1], n, model, v, model_version, 
-                        repo_info = {RepoInfoKey.NAME.value: model + '/jobs/measure/' + n + '/' + m[0],
-                        RepoInfoKey.CATEGORY.value: MLObjectType.JOB.value})
+                        repo_info = {RepoInfoKey.NAME: model + '/jobs/measure/' + n + '/' + m[0],
+                        RepoInfoKey.CATEGORY: MLObjectType.JOB.value})
                 measure_job.set_predecessor_jobs(predecessors)
                 self._add(measure_job)
                 job_id = self._job_runner.add(measure_job.repo_info[RepoInfoKey.NAME], measure_job.repo_info[RepoInfoKey.VERSION], self._user)
@@ -1032,8 +1032,8 @@ class MLRepo:
         # check if a model with this version exists
         if not self._ml_repo.object_exists(model_name, model_version):
             raise Exception('Cannot set label, model ' + model_name + ' with version ' + str(model_version) + ' does not exist.')
-        label = repo_objects.Label(model_name, model_version, repo_info={RepoInfoKey.NAME.value: label_name, 
-            RepoInfoKey.CATEGORY.value: MLObjectType.LABEL.value})
+        label = repo_objects.Label(model_name, model_version, repo_info={RepoInfoKey.NAME: label_name, 
+            RepoInfoKey.CATEGORY: MLObjectType.LABEL.value})
         self._ml_repo.add(label)        
         
 

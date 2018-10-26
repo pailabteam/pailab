@@ -27,7 +27,7 @@ class RepoInfoTest(unittest.TestCase):
     def test_repo_info(self):
         name = 'dummy'
         version = '1.0.2'
-        repo_info = repo_objects.RepoInfo(**{'version': version, 'NAME': name})
+        repo_info = repo_objects.RepoInfo({'version': version, 'NAME': name})
         self.assertEqual(repo_info.name, 'dummy')
         self.assertEqual(repo_info['name'], 'dummy')
         self.assertEqual(repo_info['NAME'], 'dummy')
@@ -185,17 +185,17 @@ class RepoTest(unittest.TestCase):
         self.repository.add(raw_data, category=repo.MLObjectType.RAW_DATA)
         ## Setup dummy Test and Training DataSets on RawData
         training_data = repo.DataSet('raw_1', 0, None, 
-                                    repo_info = {repo_objects.RepoInfoKey.NAME.value: 'training_data_1', repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_DATA})
+                                    repo_info = {repo_objects.RepoInfoKey.NAME.value: 'training_data_1', repo_objects.RepoInfoKey.CATEGORY: repo.MLObjectType.TRAINING_DATA})
         test_data_1 = repo.DataSet('raw_2', 0, None, 
-                                    repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_1',  repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TEST_DATA})
+                                    repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_1',  repo_objects.RepoInfoKey.CATEGORY: repo.MLObjectType.TEST_DATA})
         test_data_2 = repo.DataSet('raw_3', 0, 2, 
-                                    repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_2',  repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TEST_DATA})
+                                    repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_2',  repo_objects.RepoInfoKey.CATEGORY: repo.MLObjectType.TEST_DATA})
         self.repository.add([training_data, test_data_1, test_data_2])
 
         self.repository.add_eval_function('tests.repo_test', 'eval_func_test')
         self.repository.add_training_function('tests.repo_test', 'train_func_test')
         self.repository.add(TestClass(1,2, repo_info={repo_objects.RepoInfoKey.NAME.value: 'training_param', # pylint: disable=E1123
-                                            repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_PARAM}))
+                                            repo_objects.RepoInfoKey.CATEGORY: repo.MLObjectType.TRAINING_PARAM}))
         ## setup dummy model definition
         self.repository.add_model('model')
         # setup measure configuration
@@ -207,7 +207,7 @@ class RepoTest(unittest.TestCase):
         '''Tests if adding new training data leads to an exception
         '''
         with self.assertRaises(Exception):
-            test_obj = repo.DataSet('raw_data', repo_info = {repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_DATA.value, 'name': 'test_object'})
+            test_obj = repo.DataSet('raw_data', repo_info = {repo_objects.RepoInfoKey.CATEGORY: repo.MLObjectType.TRAINING_DATA.value, 'name': 'test_object'})
             self.repository.add(test_obj)
 
     def test_version_increase(self):
@@ -236,7 +236,7 @@ class RepoTest(unittest.TestCase):
         '''Check if adding a new object in repository increases commit and does also change the mapping
         '''
         obj = repo.DataSet('raw_data_1', 0, None, 
-            repo_info={RepoInfoKey.NAME.value: 'test...', RepoInfoKey.CATEGORY.value: repo.MLObjectType.TEST_DATA})
+            repo_info={RepoInfoKey.NAME.value: 'test...', RepoInfoKey.CATEGORY: repo.MLObjectType.TEST_DATA})
         old_num_commits = len(self.repository.get_commits())
         old_version_mapping = self.repository._get('repo_mapping').repo_info[RepoInfoKey.VERSION]
         self.repository.add(obj)
@@ -300,9 +300,9 @@ class RepoTest(unittest.TestCase):
     def test_add_model_defaults(self):
         """test add_model using defaults to check whether default logic applies correctly
         """
-        model_param = TestClass(3,4, repo_info={RepoInfoKey.NAME.value: 'model_param', RepoInfoKey.CATEGORY.value: repo.MLObjectType.MODEL_PARAM.value}) # pylint: disable=E1123
+        model_param = TestClass(3,4, repo_info={RepoInfoKey.NAME.value: 'model_param', RepoInfoKey.CATEGORY: repo.MLObjectType.MODEL_PARAM.value}) # pylint: disable=E1123
         self.repository.add(model_param)
-        training_param = TestClass(3,4, repo_info={RepoInfoKey.NAME.value: 'training_param', RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_PARAM.value}) # pylint: disable=E1123
+        training_param = TestClass(3,4, repo_info={RepoInfoKey.NAME.value: 'training_param', RepoInfoKey.CATEGORY: repo.MLObjectType.TRAINING_PARAM.value}) # pylint: disable=E1123
         self.repository.add(training_param)
         self.repository.add_model('model1')
         model = self.repository._get('model1')

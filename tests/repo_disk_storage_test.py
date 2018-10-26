@@ -30,15 +30,15 @@ class RepoDiskStorageTest(unittest.TestCase):
         self._object_versions = []
         for i in range(5):
             modifier = TestClass(repo_info={repo_objects.RepoInfoKey.NAME.value: 'modifier_1',
-                                            repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_DATA})
+                                            repo_objects.RepoInfoKey.CATEGORY: repo.MLObjectType.TRAINING_DATA})
             self._modifier1_versions.append(
                 self._storage.add(repo_objects.create_repo_obj_dict(modifier)))
             for j in range(2):
                 modifier2 = TestClass(repo_info={repo_objects.RepoInfoKey.NAME.value: 'modifier_2',
-                                                 repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_DATA})
+                                                 repo_objects.RepoInfoKey.CATEGORY: repo.MLObjectType.TRAINING_DATA})
                 self._modifier2_versions.append(
                     self._storage.add(repo_objects.create_repo_obj_dict(modifier2)))
-                obj = TestClass(repo_info={repo_objects.RepoInfoKey.NAME.value: 'obj', repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_DATA,
+                obj = TestClass(repo_info={repo_objects.RepoInfoKey.NAME.value: 'obj', repo_objects.RepoInfoKey.CATEGORY: repo.MLObjectType.TRAINING_DATA,
                                            repo_objects.RepoInfoKey.MODIFICATION_INFO.value: {'modifier_1': self._modifier1_versions[-1],
                                                                                               'modifier_2': self._modifier2_versions[-1]}})
                 self._object_versions.append(self._storage.add(

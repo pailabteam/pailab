@@ -60,7 +60,7 @@ def add_model(repo, skl_learner, model_name=None, model_param=None):
             param[k] = v
     model_p = SKLearnModelParam(
         skl_learner, param, repo_info={RepoInfoKey.NAME.value: m_name + '/model_param',
-                                       RepoInfoKey.CATEGORY.value: MLObjectType.MODEL_PARAM.value})
+                                       RepoInfoKey.CATEGORY: MLObjectType.MODEL_PARAM.value})
 
     repo.add(model_p, 'adding model and training parameter')
 
