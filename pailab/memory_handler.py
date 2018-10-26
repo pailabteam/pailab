@@ -1,8 +1,8 @@
 from copy import deepcopy
 from numpy import concatenate
-import repo.repo_objects as repo_objects
-import repo.repo as repo
-from repo.repo_store import RepoStore, NumpyStore
+import pailab.repo_objects as repo_objects
+import pailab.repo as repo
+from pailab.repo_store import RepoStore, NumpyStore
 import logging
 logger = logging.getLogger(__name__)
 

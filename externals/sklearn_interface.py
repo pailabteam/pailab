@@ -1,6 +1,6 @@
-from repo.repo_objects import repo_object_init
-from repo.repo_objects import RepoInfoKey
-from repo.repo import MLObjectType
+from pailab.repo_objects import repo_object_init
+from pailab.repo_objects import RepoInfoKey
+from pailab.repo import MLObjectType
 
 
 def get_classname(x):

@@ -1,6 +1,6 @@
 import h5py
 import logging
-from repo.repo_store import NumpyStore
+from pailab.repo_store import NumpyStore
 logger = logging.getLogger(__name__)
 
 

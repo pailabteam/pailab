@@ -1,13 +1,13 @@
 import unittest
-from repo.numpy_handler_hdf import NumpyHDFStorage
+from pailab.numpy_handler_hdf import NumpyHDFStorage
 import os
 
-from repo.repo_objects import RepoInfoKey  # pylint: disable=E0401
-from repo.repo_objects import repo_object_init  # pylint: disable=E0401
-import repo.repo as repo
-import repo.repo_objects as repo_objects
-import repo.memory_handler as memory_handler
-import repo.repo_store as repo_store
+from pailab.repo_objects import RepoInfoKey  # pylint: disable=E0401
+from pailab.repo_objects import repo_object_init  # pylint: disable=E0401
+import pailab.repo as repo
+import pailab.repo_objects as repo_objects
+import pailab.memory_handler as memory_handler
+import pailab.repo_store as repo_store
 import numpy as np
 from job_runner.job_runner import SimpleJobRunner # pylint: disable=E0401
 

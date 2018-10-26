@@ -6,9 +6,9 @@ import uuid
 import pickle
 from datetime import datetime, timedelta
 import json
-import repo.repo_objects as repo_objects
-import repo.repo as repo
-from repo.repo_store import RepoStore
+import pailab.repo_objects as repo_objects
+import pailab.repo as repo
+from pailab.repo_store import RepoStore
 import logging
 logger = logging.getLogger(__name__)
 

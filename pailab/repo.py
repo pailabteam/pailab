@@ -1,4 +1,6 @@
-"""
+"""Machine Learning Repository
+
+This module contains pailab's machine learning repository, i.e. the repository 
 Machine learning repository
 """
 import importlib
@@ -9,9 +11,9 @@ from numpy import inf
 from enum import Enum
 from copy import deepcopy
 import logging
-import repo.repo_objects as repo_objects
-from repo.repo_objects import repo_object_init  # pylint: disable=E0401
-import repo.repo_store as repo_store
+import pailab.repo_objects as repo_objects
+from pailab.repo_objects import repo_object_init  # pylint: disable=E0401
+import pailab.repo_store as repo_store
 logger = logging.getLogger(__name__)
 
 

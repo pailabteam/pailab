@@ -1,5 +1,5 @@
 import abc
-from repo.repo_objects import RepoInfoKey  # pylint: disable=E0401
+from pailab.repo_objects import RepoInfoKey  # pylint: disable=E0401
 
 
 class RepoScriptStore(abc.ABC):

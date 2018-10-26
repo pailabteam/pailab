@@ -1,8 +1,8 @@
 import logging
 import pandas as pd
-import repo.plot_helper as plot_helper  # pylint: disable=E0611
-from repo.repo_store import RepoStore
-from repo.repo import NamingConventions, MLObjectType  # pylint: disable=E0611,E0401
+import pailab.plot_helper as plot_helper  # pylint: disable=E0611
+from pailab.repo_store import RepoStore
+from pailab.repo import NamingConventions, MLObjectType  # pylint: disable=E0611,E0401
 from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
 import plotly.graph_objs as go
 logger = logging.getLogger(__name__)

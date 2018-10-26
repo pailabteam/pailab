@@ -1,11 +1,11 @@
 import unittest
-from repo.numpy_handler_hdf import NumpyHDFStorage
+from pailab.numpy_handler_hdf import NumpyHDFStorage
 import os
 import shutil
-import repo.repo as repo
-import repo.repo_objects as repo_objects
-from repo.repo_store import RepoStore
-import repo.disk_handler as disk_handler
+import pailab.repo as repo
+import pailab.repo_objects as repo_objects
+from pailab.repo_store import RepoStore
+import pailab.disk_handler as disk_handler
 import time
 
 
