@@ -63,6 +63,8 @@ class RepoStore(abc.ABC):
                                                         if None, no fields are returned, if set to 'all', all fields will be returned  (default: {None})
             repo_info_fields {list of strings or string} -- list of strings identifying the fields of the repo_info dict which will be returned in the dictionary,
                                                         if None, no fields are returned, if set to 'all', all fields will be returned (default: {None})
+        Returns:
+            List of all objects fullfilling the conditions.
         """
         pass
 
@@ -96,7 +98,7 @@ class RepoStore(abc.ABC):
         Returns:
             version number -- latest version number
         """
-        return self.get(name, versions=RepoStore.LAST_VERSION, repo_info_fields=[RepoInfoKey.VERSION.value])['repo_info'][RepoInfoKey.VERSION.value]
+        return self.get(name, versions=RepoStore.LAST_VERSION, repo_info_fields=[RepoInfoKey.VERSION.value])[0]['repo_info'][RepoInfoKey.VERSION.value]
 
     def object_exists(self, name, version=LAST_VERSION):
         """Returns True if an object with the given name and version exists.
