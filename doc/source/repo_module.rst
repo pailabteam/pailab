@@ -29,7 +29,7 @@ repo stores
 
 job runner
 =========================
-.. automodule:: job_runner.job_runner
+.. automodule:: pailab.job_runner.job_runner
     :members:
     :private-members:
 	
