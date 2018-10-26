@@ -9,7 +9,7 @@ import pailab.repo_objects as repo_objects
 import pailab.memory_handler as memory_handler
 import pailab.repo_store as repo_store
 import numpy as np
-from job_runner.job_runner import SimpleJobRunner # pylint: disable=E0401
+from pailab.job_runner.job_runner import SimpleJobRunner # pylint: disable=E0401
 
 class TestClass:
     @repo_object_init(['mat'])
