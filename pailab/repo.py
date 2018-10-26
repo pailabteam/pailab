@@ -559,7 +559,8 @@ class MLRepo:
             
             mapping_changed = self._mapping.add(repo_object.repo_info[RepoInfoKey.CATEGORY], repo_object.repo_info[RepoInfoKey.NAME])
 
-            repo_object.repo_info[RepoInfoKey.COMMIT_MESSAGE.value] = message
+            repo_object.repo_info[RepoInfoKey.COMMIT_MESSAGE] = message
+            repo_object.repo_info[RepoInfoKey.AUTHOR] = self._user
             obj_dict = repo_objects.create_repo_obj_dict(repo_object)
             version = self._ml_repo.add(obj_dict)
             repo_object.repo_info[RepoInfoKey.VERSION.value] = version

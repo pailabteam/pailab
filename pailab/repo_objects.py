@@ -33,7 +33,7 @@ class RepoInfoKey(Enum):
     CATEGORY = 'category'
     BIG_OBJECTS = 'big_objects'
     COMMIT_MESSAGE = 'commit_message'
-
+    AUTHOR = 'author'
 
 class RepoInfo:
     """Contains all repo relevent information
