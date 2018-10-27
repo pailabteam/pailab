@@ -44,6 +44,15 @@ class RepoStore(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def replace(self, obj):
+        """Overwrite existing object without incrementing version
+
+        Args:
+            obj (RepoObject): repo object to be overwritten
+        """
+        pass
+
+    @abc.abstractmethod
     def get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None):
         """Get a dictionary/list of dictionaries fulffilling the conditions.
 

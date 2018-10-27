@@ -144,6 +144,28 @@ class RepoObjectMemoryStorage(RepoStore):
             # raise Exception('Category ' + category + ' not in storage.')
         return [x for x in self._store[category].keys()]
 
+    def replace(self, obj):
+        """Overwrite existing object without incrementing version
+
+        Args:
+            obj (RepoObject): repo object to be overwritten
+        """
+        category = obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value]
+        if not isinstance(category, str):
+            category = category.value
+        name = obj['repo_info'][repo_objects.RepoInfoKey.NAME.value]
+        if not category in self._store.keys():
+            self._store[category] = {}
+        tmp = self._store[category]
+        if not name in tmp.keys():
+            raise Exception('Cannot replace object: No object with name ' +
+                            name + ' and category ' + category + ' exists.')
+        version = int(obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value])
+        if version >= len(tmp.name):
+            raise Exception('Cannot replace objct: The version ' + str(obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value])
+                            + ' does not exist in storage.')
+        tmp[name][version] = obj
+
 
 class NumpyMemoryStorage(NumpyStore):
     def __init__(self):

@@ -283,3 +283,22 @@ class RepoObjectDiskStorage(RepoStore):
             objects.append(self._load_function(
                 self._main_dir + '/' + filename))
         return objects
+
+    def object_exists(self, name, version=RepoStore.LAST_VERSION):
+        """Returns True if an object with the given name and version exists.
+
+        Arguments:
+            name {string} -- object name
+
+        Keyword Arguments:
+            version {version number} -- version number (default: {LAST_VERSION})
+        """
+        raise NotImplementedError()
+
+    def replace(self, obj):
+        """Overwrite existing object without incrementing version
+
+        Args:
+            obj (RepoObject): repo object to be overwritten
+        """
+        raise NotImplementedError()
