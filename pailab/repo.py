@@ -210,7 +210,7 @@ class EvalJob(Job):
         logging.info('Start evaluation job ' + str(jobid) +' on model ' + self.model + ' ' + str(self.model_version) + ' ')
         model = repo._get(self.model, self.model_version)
         model_definition_name = self.model.split('/')[0]
-        model_def_version = model.repo_info[RepoInfoKey.MODIFICATION_INFO.value][model_definition_name]
+        model_def_version = model.repo_info[RepoInfoKey.MODIFICATION_INFO][model_definition_name]
         model_definition = repo._get(model_definition_name, model_def_version)
         
         data = repo._get(self.data, self.data_version, full_object=True)
@@ -563,7 +563,7 @@ class MLRepo:
             repo_object.repo_info[RepoInfoKey.AUTHOR] = self._user
             obj_dict = repo_objects.create_repo_obj_dict(repo_object)
             version = self._ml_repo.add(obj_dict)
-            repo_object.repo_info[RepoInfoKey.VERSION.value] = version
+            repo_object.repo_info[RepoInfoKey.VERSION] = version
             if len(repo_object.repo_info[RepoInfoKey.BIG_OBJECTS]) > 0:
                 np_dict = repo_object.numpy_to_dict()
                 self._numpy_repo.add(repo_object.repo_info[RepoInfoKey.NAME],
