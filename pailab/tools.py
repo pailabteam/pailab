@@ -22,7 +22,7 @@ def check_model(repo, model_name, correct=False, model_version=RepoStore.LAST_VE
 
     result = {}
 
-    m = repo._get(MLRepo.get_calibrated_model_name(
+    m = repo.get(MLRepo.get_calibrated_model_name(
         model_name), version=model_version)
     # first check if all versions of the models modifiers are still the latest version
     repo_store = repo.get_ml_repo_store()

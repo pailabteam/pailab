@@ -87,7 +87,7 @@ class SimpleJobRunner(JobRunnerBase):
         job_info.set_state(JobState.RUNNING)
         job_info.start_time = datetime.datetime.now()
         self._job_info[job_id] = job_info
-        job = self._repo._get(job_name, version=job_version)
+        job = self._repo.get(job_name, version=job_version)
         try:
             job.run(self._repo, job_id)
             job_info.end_time = datetime.datetime.now()
@@ -166,7 +166,7 @@ class SQLiteJobRunner(JobRunnerBase):
             self._conn.commit()
 
     def _run_job(self, job_name, job_version):
-        job = self._repo._get(job_name, version=job_version)
+        job = self._repo.get(job_name, version=job_version)
         try:
             job.run(self._repo, 0)
         except Exception as e:
@@ -191,7 +191,7 @@ class SQLiteJobRunner(JobRunnerBase):
         self._repo = repo
 
     def add(self, job_name, job_version, user):
-        job = self._repo._get(job_name, version=job_version)
+        job = self._repo.get(job_name, version=job_version)
         predecessors = job.get_predecessor_jobs()
         for predecessor in predecessors:
             self._execute("insert into predecessors (job_name, job_version, predecessor_name, predecessor_version, user) VALUES ("

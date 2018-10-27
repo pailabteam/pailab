@@ -64,7 +64,7 @@ def histogram(ml_repo, data, x_coordinate=None, y_coordinate=None):
         if not isinstance(d, str):
             name = d[0]
             version = d[1]
-        tmp = ml_repo._get(name, version=version, full_object=True)
+        tmp = ml_repo.get(name, version=version, full_object=True)
         if x_coordinate is not None:
             i = tmp.x_coord_names.index(x_coordinate)
             data = tmp.x_data
