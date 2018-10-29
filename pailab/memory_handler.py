@@ -69,11 +69,14 @@ class RepoObjectMemoryStorage(RepoStore):
         :return list of versions of object
         """
         if not name in self._name_to_category.keys():
+            logger.error('No object with name ' + name + ' in store.')
             raise Exception('No object with name ' + name + ' in store.')
         category = self._name_to_category[name]
         if not category in self._store.keys():
+            logger.error('No object ' + name + ' in category ' + category)
             raise Exception('No object ' + name + ' in category ' + category)
         if not name in self._store[category].keys():
+            logger.error('No object ' + name + ' in category ' + category)
             raise Exception('No object ' + name + ' in category ' + category)
         return self._store[category][name]
 # endregion
@@ -96,6 +99,7 @@ class RepoObjectMemoryStorage(RepoStore):
         if not isinstance(category, str):
             category = category.value
         name = obj['repo_info'][repo_objects.RepoInfoKey.NAME.value]
+
         if not category in self._store.keys():
             self._store[category] = {}
         tmp = self._store[category]
@@ -109,6 +113,9 @@ class RepoObjectMemoryStorage(RepoStore):
         if not category in self._categories.keys():
             self._categories[category] = set()
         self._categories[category].add(name)
+        logger.debug(obj['repo_info'][repo_objects.RepoInfoKey.NAME.value] +
+                     ' added with version ' + str(obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value]) + ', category: ' + category)
+
         return obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value]
 
     def get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None):
@@ -158,10 +165,14 @@ class RepoObjectMemoryStorage(RepoStore):
             self._store[category] = {}
         tmp = self._store[category]
         if not name in tmp.keys():
+            logger.error('Cannot replace object: No object with name ' +
+                            name + ' and category ' + category + ' exists.')
             raise Exception('Cannot replace object: No object with name ' +
                             name + ' and category ' + category + ' exists.')
         version = int(obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value])
-        if version >= len(tmp.name):
+        if version >= len(tmp[name]):
+            logger.error('Cannot replace objct: The version ' + str(obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value])
+                            + ' does not exist in storage.')
             raise Exception('Cannot replace objct: The version ' + str(obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value])
                             + ' does not exist in storage.')
         tmp[name][version] = obj
@@ -187,6 +198,8 @@ class NumpyMemoryStorage(NumpyStore):
 
     def append(self, name, version_old, version_new, numpy_dict):
         if not name in self._store.keys():
+            logger.error("Cannot append data because " +
+                            name + " does not exist.")
             raise Exception("Cannot append data because " +
                             name + " does not exist.")
         self._store[name][version_new] = {
