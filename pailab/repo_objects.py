@@ -4,7 +4,8 @@ import numpy as np
 from enum import Enum
 from types import MethodType
 
-
+import logging
+logger = logging.getLogger(__name__)
 
 def _get_attribute_dict(clazz, excluded=set()):
     """Return dictionary of non-static members and their values for an instance of  class
@@ -241,6 +242,8 @@ def create_repo_obj(obj):
 
     """
     if not 'repo_info' in obj.keys():
+        logger.error('Given dictionary is not a repo dictionary, '
+                        'since repo_info key is missing.')
         raise Exception('Given dictionary is not a repo dictionary, '
                         'since repo_info key is missing.')
     repo_info = obj['repo_info']
@@ -273,11 +276,13 @@ class RawData:
         """
         x_data = RawData._cast_data_to_numpy(x_data)
         if x_data.shape[1] != len(x_coord_names):  # pylint: disable=E1101
+            logger.error('Number of x-coordinates does not equal number of names for x-coordinates.')
             raise Exception(
                 'Number of x-coordinates does not equal number of names for x-coordinates.')
         y_data = RawData._cast_data_to_numpy(y_data)
         if not y_data is None:
             if y_data.shape[1] != len(y_coord_names):  # pylint: disable=E1101
+                logger.error('Nmber of y-coordinates does not equal number of names for y-coordinates.')
                 raise Exception(
                     'Nmber of y-coordinates does not equal number of names for y-coordinates.')
             if y_data.shape[0] != x_data.shape[0]:  # pylint: disable=E1101

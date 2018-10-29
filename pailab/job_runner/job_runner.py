@@ -93,6 +93,7 @@ class SimpleJobRunner(JobRunnerBase):
             job_info.end_time = datetime.datetime.now()
             job_info.set_state(JobState.SUCCESSFULLY_FINISHED)
         except Exception as e:
+            logger.error(str(e) + ': ' + str(traceback.format_exc()))
             job_info.end_time = datetime.datetime.now()
             job_info.set_state(JobState.FAILED)
             job_info.error_message = str(e)
@@ -170,6 +171,7 @@ class SQLiteJobRunner(JobRunnerBase):
         try:
             job.run(self._repo, 0)
         except Exception as e:
+            logger.error(str(e) + ': ' + str(traceback.format_exc()))
             return str(e), traceback.format_exc()
         return '', ''
 
