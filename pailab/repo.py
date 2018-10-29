@@ -139,39 +139,82 @@ class Mapping:
         return result
 
 def _add_modification_info(repo_obj, *args):
-    """Add modificaion info to a repo object from a list if repo objects which were used to create it.
+    """Add/update modificaion info to a repo object from a list if repo objects which were used to create it.
 
     Arguments:
         repo_obj {repoobject} -- the object the modification info is added to
     """
-    result = {}
+    mod_info =  repo_obj.repo_info[RepoInfoKey.MODIFICATION_INFO]
     for v in args:
         if v is not None:
-            result[v.repo_info[RepoInfoKey.NAME]
+            mod_info[v.repo_info[RepoInfoKey.NAME]
                 ] = v.repo_info[RepoInfoKey.VERSION]
             for k, w in v.repo_info[RepoInfoKey.MODIFICATION_INFO].items():
                 # check if there is a bad inconsistency: if an object modifying the current object has already been used with a different version
                 # number, this must be annotated
-                if k in result.keys() and result[k] != w:
-                    result['inconsistency'] = 'object ' + k + \
+                if k in mod_info.keys() and mod_info[k] != w:
+                    mod_info['inconsistency'] = 'object ' + k + \
                         ' has already been used with a different version number'
-                result[k] = w
-    repo_obj.repo_info[RepoInfoKey.MODIFICATION_INFO] = result
-
+                mod_info[k] = w
+    
 # region Jobs
 
 class Job(abc.ABC):
+
+    class RepoWrapper:
+        
+        def __init__(self, job, ml_repo):
+            self.versions = {}
+            self.ml_repo = ml_repo
+            for k in job.get_predecessor_jobs():
+                job = ml_repo.get(k[0], version=k[1])
+                for k,v in job.repo_info[RepoInfoKey.MODIFICATION_INFO].items():
+                    self.version[k] = v
+            self.modification_info = {}
+
+        def _get_version(self, name, orig_version):
+            if orig_version is None:
+                return orig_version
+            if name in self.versions.keys():
+                return self.version[name]
+            return orig_version
+
+        def get(self, obj_name, obj_version=None, full_object = False,
+                modifier_versions=None, obj_fields=None,  repo_info_fields=None):
+            new_v = self._get_version(obj_name, obj_version)
+            m_v = None
+            if modifier_versions is not None:
+                m_v = deepcopy(modifier_versions)
+                for k,v in m_v.items():
+                    m_v[k] = self._get_version(k,v)
+            obj = self.ml_repo.get(obj_name, version=new_v, full_object=full_object,
+                modifier_versions=m_v, obj_fields=obj_fields,  repo_info_fields=repo_info_fields)
+            self.modification_info[obj_name] = obj.repo_info[RepoInfoKey.VERSION]
+            return obj
+
+        def add(self, obj, message , category = None):
+            self.ml_repo.add(obj, message, category = category)
+            self.modification_info[obj.repo_info[RepoInfoKey.NAME]] = obj.repo_info[RepoInfoKey.VERSION]
+
+        def get_training_data(self, obj_version, full_object):
+            tmp = self.ml_repo.get_training_data(obj_version, full_object = False) # TODO: replace get_trainign data by get using the training data name
+            return self.get(tmp.repo_info[RepoInfoKey.NAME], obj_version, full_object=full_object)    
+            
     """Abstract class defining the interfaces needed for a job to be used in the JobRunner
 
     """
-
-    def set_predecessor_jobs(self, predecessors):
-        """Add list of jobids which must have been run successfull before the job can be started
+    def add_predecessor_job(self, job):
+        """Add job as predecessor which must have been run successfull before the job can be started
 
         Arguments:
             predecessors {list o jobids} -- predecessors
         """
-        self._predecessors = predecessors
+        self._predecessors.append((job.repo_info[RepoInfoKey.NAME], job.repo_info[RepoInfoKey.VERSION]))
+
+    def set_predecessor_jobs(self, predecessors):
+        self._predecessors=[]
+        for obj in predecessors:
+            self.add_predecessor_job(obj)
 
     def get_predecessor_jobs(self):
         """Return list of jobids which must have been run sucessfully before the job will be executed
@@ -180,8 +223,14 @@ class Job(abc.ABC):
             return self._predecessors
         return []
 
-    @abc.abstractmethod
     def run(self, ml_repo, jobid):
+        wrapper = Job.RepoWrapper(self, ml_repo)
+        self._run(wrapper,  jobid)
+        self.repo_info[RepoInfoKey.MODIFICATION_INFO] = wrapper.modification_info
+        ml_repo._update_job(self)
+
+    @abc.abstractmethod
+    def _run(self, ml_repo, jobid):
         pass
 
  
@@ -200,7 +249,7 @@ class EvalJob(Job):
         # list of jobids which must have been run before this job should be excuted
         self.predecessors = []
 
-    def run(self, repo, jobid):
+    def _run(self, repo, jobid):
         """Run the job with data from the given repo
 
         Arguments:
@@ -249,7 +298,7 @@ class TrainingJob(Job):
         # list of jobids which must have been run before this job should be excuted
         self.predecessors = []
 
-    def run(self, repo, jobid):
+    def _run(self, repo, jobid):
         """Run the job with data from the given repo
 
         Arguments:
@@ -257,8 +306,7 @@ class TrainingJob(Job):
             jobid {string} -- id of job which will be run
         """
         model = repo.get(self.model, self.model_version)
-        train_data = repo.get_training_data(
-            self.training_data_version, full_object=True)
+        train_data = repo.get_training_data(self.training_data_version, full_object = True)
         train_func = repo.get(model.training_function,
                                self.training_function_version)
         train_param = None
@@ -311,8 +359,8 @@ class MeasureJob(Job):
         self.data_name = data_name
         self.data_version = data_version
 
-    def run(self, repo, jobid):
-        target = repo.get(self.data_name, version=self.data_version, full_object = True)
+    def _run(self, repo, jobid):
+        target = repo.get(self.data_name, self.data_version, full_object = True)
         m_name = self.model_name.split('/')[0] #if given model name is a name of calibated model, split to find the evaluation
         eval_data_name = NamingConventions.EvalData(data = self.data_name, model = m_name)
         eval_data = repo.get(str(eval_data_name), modifier_versions={self.model_name: self.model_version, self.data_name: self.data_version}, full_object = True )
@@ -571,6 +619,22 @@ class MLRepo:
                                     np_dict)
             return version, mapping_changed
 
+    def _update_job(self, job_object):
+        """Update a job object without incrementing version number
+        
+            Updates a repo object without incrementing version number or adding commit message. This should be only used internally by the jobs
+            to update the job objects according to their state, modification info and runtime.
+        Args:
+            job_object (Job-object): the job object to be updated
+
+        Raises:
+        exception if given object is not a job object
+        """
+        obj_dict = repo_objects.create_repo_obj_dict(job_object)
+        self._ml_repo.replace(obj_dict)
+        if len(job_object.repo_info[RepoInfoKey.BIG_OBJECTS]) > 0:
+            raise Exception('Jobs with big objects cannot be updated.')
+
     def add(self, repo_object, message='', category = None):
         """ Add a repo_object or list of repo objects to the repository.
 
@@ -761,6 +825,7 @@ class MLRepo:
         logging.debug('Getting ' + name + ', version ' + str(version))
         repo_dict = self._ml_repo.get(name, version, modifier_versions, obj_fields, repo_info_fields)
         if len(repo_dict) == 0:
+            logger.error('No object found with name ' +  name + ' and version ' + str(version) + 'modifier_versions: ' + str(modifier_versions))
             raise Exception('No object found with name ' +  name + ' and version ' + str(version))
         
         tmp = []
@@ -1002,8 +1067,8 @@ class MLRepo:
                         RepoInfoKey.CATEGORY: MLObjectType.JOB.value})
                 measure_job.set_predecessor_jobs(predecessors)
                 self._add(measure_job)
-                job_id = self._job_runner.add(measure_job.repo_info[RepoInfoKey.NAME], measure_job.repo_info[RepoInfoKey.VERSION], self._user)
-                job_ids.append(job_id)
+                self._job_runner.add(measure_job.repo_info[RepoInfoKey.NAME], measure_job.repo_info[RepoInfoKey.VERSION], self._user)
+                job_ids.append((measure_job.repo_info[RepoInfoKey.NAME], measure_job.repo_info[RepoInfoKey.VERSION]))
                 logging.info('Measure job ' + measure_job.repo_info[RepoInfoKey.NAME]+ ', version: ' 
                     + str(measure_job.repo_info[RepoInfoKey.VERSION]) + ' added to jobrunner.')
         return job_ids
