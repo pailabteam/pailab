@@ -109,12 +109,14 @@ class RepoObjectDiskStorage(RepoStore):
         cursor = self._conn.cursor()
         for row in execute(cursor, "select version from versions where name = '" + name + "' order by uuid_time DESC LIMIT 1"):
             return row[0]
+        logger.error('No object with name ' + name + ' exists.')
         raise Exception('No object with name ' + name + ' exists.')
 
     def _get_first_version(self, name):
         cursor = self._conn.cursor()
         for row in execute(cursor, "select version from versions where name = '" + name + "' order by uuid_time ASC LIMIT 1"):
             return row[0]
+        logger.error('No object with name ' + name + ' exists.')
         raise Exception('No object with name ' + name + ' exists.')
 
     def _replace_version_placeholder(self, name, version):
@@ -263,6 +265,7 @@ class RepoObjectDiskStorage(RepoStore):
         for row in execute(cursor, 'select category from mapping where name = ' + "'" + name + "'"):
             category = repo.MLObjectType(row[0])
         if category is None:
+            logger.error('no object ' + name + ' in storage.')
             raise Exception('no object ' + name + ' in storage.')
 
         version_condition = self.get_version_condition(
