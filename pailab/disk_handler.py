@@ -35,7 +35,7 @@ def execute(cursor, cmd):
         [type]: [description]
     """
 
-    logging.info('Executing: ' + cmd)
+    logger.info('Executing: ' + cmd)
     return cursor.execute(cmd)
 
 
@@ -77,7 +77,7 @@ class RepoObjectDiskStorage(RepoStore):
         # mapping
         cursor = self._conn.cursor()
         try:
-            logging.info('Executing')
+            logger.info('Executing')
             execute(cursor,
                     '''CREATE TABLE mapping (name text PRIMARY KEY, category text)''')
             # versions
@@ -90,7 +90,7 @@ class RepoObjectDiskStorage(RepoStore):
                     '''CREATE TABLE modification_info (name TEXT NOT NULL, version TEXT NOT NULL, modifier TEXT NOT NULL, modifier_version TEXT NOT NULL, modifier_uuid_time TIMESTAMP, PRIMARY KEY(name, version, modifier) ) ''')
             self._conn.commit()
         except:
-            logging.error(
+            logger.error(
                 'An error occured during creation of new db, rolling back.')
             self._conn.rollback()
 
@@ -203,13 +203,13 @@ class RepoObjectDiskStorage(RepoStore):
             # endregion
             self._conn.commit()
             # region write file
-            logging.debug(
+            logger.debug(
                 'Write object as json file with filename ' + filename)
 
             self._save_function(self._main_dir + '/' + filename, obj)
             # endregion
         except:
-            logging.error('An error occured, rolling back changes.')
+            logger.error('An error occured, rolling back changes.')
             self._conn.rollback()
         return version
 
@@ -312,3 +312,8 @@ class RepoObjectDiskStorage(RepoStore):
         for row in execute(cursor, select_statement):
             self._save_function(self._main_dir + '/' + str(row[0]), obj)
         raise NotImplementedError()
+
+    def close_connection(self):
+        """Closes the database connection
+        """
+        self._conn.close()
