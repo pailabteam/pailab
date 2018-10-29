@@ -1,4 +1,5 @@
 import h5py
+import os
 import logging
 from pailab.repo_store import NumpyStore
 logger = logging.getLogger(__name__)
@@ -24,6 +25,8 @@ class NumpyHDFStorage(NumpyStore):
 
     def __init__(self, main_dir):
         self.main_dir = main_dir
+        if not os.path.exists(self.main_dir):
+            os.makedirs(self.main_dir)
 
     @staticmethod
     @trace
