@@ -7,6 +7,7 @@ import pickle
 from datetime import datetime, timedelta
 import json
 import pailab.repo_objects as repo_objects
+from pailab.repo_store import RepoInfoKey
 import pailab.repo as repo
 from pailab.repo_store import RepoStore
 import logging
@@ -304,4 +305,10 @@ class RepoObjectDiskStorage(RepoStore):
         Args:
             obj (RepoObject): repo object to be overwritten
         """
+        select_statement = "select file from versions where name = '" +\
+            obj.repo_info[RepoInfoKey.NAME] + "' and version = '" +\
+            str(obj.repo_info[RepoInfoKey.VERSION]) + "'"
+        cursor = self._conn.cursor()
+        for row in execute(cursor, select_statement):
+            self._save_function(self._main_dir + '/' + str(row[0]), obj)
         raise NotImplementedError()
