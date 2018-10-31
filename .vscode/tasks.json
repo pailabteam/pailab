@@ -4,21 +4,23 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "coverage repo",
+            "label": "coverage",
             "type": "shell",
-            "command": "coverage run ./tests/repo_test.py",
-            "problemMatcher": []
-        },
-        {
-            "label": "coverage report html",
-            "type": "shell",
-            "command": "coverage html",
-            "problemMatcher": []
+            "windows": {
+                "command": ".\\run_coverage.bat"
+            },
+            "group": "test"
         },
         {
             "label": "generate html docu",
             "type": "shell",
             "command": "doc/make html",
+            "problemMatcher": []
+        },
+        {
+            "label": "publish",
+            "type": "shell",
+            "command": "codecov --token 4662074f-5b97-431e-b671-c2a2454689bc",
             "problemMatcher": []
         }
     ]
