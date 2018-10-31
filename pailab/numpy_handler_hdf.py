@@ -1,5 +1,6 @@
 import h5py
 import os
+import pathlib
 import logging
 from pailab.repo_store import NumpyStore
 logger = logging.getLogger(__name__)
@@ -61,7 +62,12 @@ class NumpyHDFStorage(NumpyStore):
         :param numpy_dict: numpy dictionary
 
         """
-        with h5py.File(self.main_dir + '/' + name, 'a') as f:
+        #dir_name = os.path.dirname(self.main_dir + '/' + name )
+        tmp = pathlib.Path(self.main_dir + '/' + name + 'hdf')
+        save_dir = tmp.parent
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        with h5py.File(self.main_dir + '/' + name, 'w') as f:
             grp_name = '/data/' + version + '/'
             logging.debug('Saving data ' + name +
                           ' in hdf5 to group ' + grp_name)
