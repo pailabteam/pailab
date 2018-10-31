@@ -973,7 +973,7 @@ class MLRepo:
     def run_training(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, 
                     training_function_version=repo_store.RepoStore.LAST_VERSION,
                     training_data_version=repo_store.RepoStore.LAST_VERSION, training_param_version = repo_store.RepoStore.LAST_VERSION, 
-                    model_param_version = repo_store.RepoStore.LAST_VERSION):
+                    model_param_version = repo_store.RepoStore.LAST_VERSION, run_descendants = False):
         """ Run the training algorithm. 
 
         :param message: commit message
@@ -989,24 +989,16 @@ class MLRepo:
             training_data_version=training_data_version, training_param_version= training_param_version, 
             model_param_version=model_param_version, repo_info = {RepoInfoKey.NAME: model + '/jobs/training',
                 RepoInfoKey.CATEGORY: MLObjectType.JOB.value})
+        if run_descendants:
+            pass
         self.add(train_job)
         self._job_runner.add(train_job.repo_info[RepoInfoKey.NAME], train_job.repo_info[RepoInfoKey.VERSION], self._user)
+        
         logging.info('Training job ' + train_job.repo_info[RepoInfoKey.NAME]+ ', version: ' 
                 + str(train_job.repo_info[RepoInfoKey.VERSION]) + ' added to jobrunner.')
         return train_job.repo_info[RepoInfoKey.NAME], str(train_job.repo_info[RepoInfoKey.VERSION])
-        
-    def run_evaluation(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, datasets={}, predecessors = []):
-        """ Evaluate the model on all datasets. 
 
-            :param model: name of model to evaluate, if None and only one model exists
-            :message: message inserted into commit (default None), if Noe, an autmated message is created
-            :param model_version: Version of model to be evaluated.
-            :datasets: Dictionary of datasets (names and version numbers) on which the model is evaluated. 
-            :predecessors: list of jobs which shall have been completed successfull before the evaluation is started
-                Default is all datasets from testdata on latest version.
-            Raises:
-                Exception if model_name is None and more then one model exists
-        """
+    def _create_evaluation_jobs(self, model=None,model_version=repo_store.RepoStore.LAST_VERSION, datasets={}, predecessors = []):
         if model is None:
             m_names = self.get_names(MLObjectType.CALIBRATED_MODEL)
             if len(m_names) == 0:
@@ -1022,17 +1014,35 @@ class MLRepo:
                 datasets_[n] = v
             training_data = self.get_training_data(full_object = False)
             datasets_[training_data.repo_info[RepoInfoKey.NAME]] = training_data.repo_info[RepoInfoKey.VERSION] 
-        job_ids = []
+        jobs = []
         for n, v in datasets_.items():
             eval_job = EvalJob(model, n, self._user, model_version=model_version, data_version=v,
                         repo_info = {RepoInfoKey.NAME: model + '/jobs/eval_job/' + n,
                                     RepoInfoKey.CATEGORY: MLObjectType.JOB.value})
             eval_job.set_predecessor_jobs(predecessors)
-            self._add(eval_job)
-            self._job_runner.add(eval_job.repo_info[RepoInfoKey.NAME], eval_job.repo_info[RepoInfoKey.VERSION], self._user)
-            logging.info('Eval job ' + eval_job.repo_info[RepoInfoKey.NAME]+ ', version: ' 
-                + str(eval_job.repo_info[RepoInfoKey.VERSION]) + ' added to jobrunner.')
-            job_ids.append((eval_job.repo_info[RepoInfoKey.NAME], str(eval_job.repo_info[RepoInfoKey.VERSION])))
+            jobs.append(eval_job)
+        return jobs
+
+    def run_evaluation(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, datasets={}, predecessors = []):
+        """ Evaluate the model on all datasets. 
+
+            :param model: name of model to evaluate, if None and only one model exists
+            :message: message inserted into commit (default None), if Noe, an autmated message is created
+            :param model_version: Version of model to be evaluated.
+            :datasets: Dictionary of datasets (names and version numbers) on which the model is evaluated. 
+            :predecessors: list of jobs which shall have been completed successfull before the evaluation is started
+                Default is all datasets from testdata on latest version.
+            Raises:
+                Exception if model_name is None and more then one model exists
+        """
+        jobs = self._create_evaluation_jobs(model, model_version, datasets, predecessors)
+        job_ids = []
+        for job in jobs:
+            self._add(job)
+            self._job_runner.add(job.repo_info[RepoInfoKey.NAME], job.repo_info[RepoInfoKey.VERSION], self._user)
+            logging.info('Eval job ' + job.repo_info[RepoInfoKey.NAME]+ ', version: ' 
+                + str(job.repo_info[RepoInfoKey.VERSION]) + ' added to jobrunner.')
+            job_ids.append((job.repo_info[RepoInfoKey.NAME], str(job.repo_info[RepoInfoKey.VERSION])))
         return job_ids
 
     def run_measures(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, datasets={}, measures = {}, predecessors = []):
