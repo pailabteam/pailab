@@ -306,12 +306,11 @@ class RepoObjectDiskStorage(RepoStore):
             obj (RepoObject): repo object to be overwritten
         """
         select_statement = "select file from versions where name = '" +\
-            obj.repo_info[RepoInfoKey.NAME] + "' and version = '" +\
-            str(obj.repo_info[RepoInfoKey.VERSION]) + "'"
+            obj["repo_info"][RepoInfoKey.NAME.value] + "' and version = '" +\
+            str(obj["repo_info"][RepoInfoKey.VERSION.value]) + "'"
         cursor = self._conn.cursor()
         for row in execute(cursor, select_statement):
             self._save_function(self._main_dir + '/' + str(row[0]), obj)
-        raise NotImplementedError()
 
     def close_connection(self):
         """Closes the database connection
