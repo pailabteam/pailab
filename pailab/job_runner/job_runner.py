@@ -154,7 +154,7 @@ class SQLiteJobRunner(JobRunnerBase):
                 self._execute("update jobs SET unfinished_pred_jobs=unfinished_pred_jobs-1  where job_name='" +
                               c[0] + "' and job_version='" + c[1] + "'")
                 self._conn.commit()
-                self._execute("update jobs SET job_state=" + JobState.WAITING.value + " where job_name='" +
+                self._execute("update jobs SET job_state='" + JobState.WAITING.value + "' where job_name='" +
                               c[0] + "' and job_version='" + c[1] + "' and unfinished_pred_jobs <= 0")
                 self._conn.commit()
             self._execute("update jobs SET job_state='" + JobState.SUCCESSFULLY_FINISHED.value + "', end_time='" + str(datetime.datetime.now())
@@ -196,7 +196,7 @@ class SQLiteJobRunner(JobRunnerBase):
         job = self._repo.get(job_name, version=job_version)
         predecessors = job.get_predecessor_jobs()
         for predecessor in predecessors:
-            self._execute("insert into predecessors (job_name, job_version, predecessor_name, predecessor_version, user) VALUES ("
+            self._execute("insert into predecessors (job_name, job_version, predecessor_name, predecessor_version) VALUES ("
                           + SQLiteJobRunner.sqlite_name(job_name) +
                           ", "
                           + SQLiteJobRunner.sqlite_name(str(job_version)) +
@@ -204,8 +204,6 @@ class SQLiteJobRunner(JobRunnerBase):
                           + SQLiteJobRunner.sqlite_name(predecessor[0]) +
                           ","
                           + SQLiteJobRunner.sqlite_name(str(predecessor[1])) +
-                          ","
-                          + SQLiteJobRunner.sqlite_name(user) +
                           ")")
             self._conn.commit()
         job_state = JobState.WAITING.value
@@ -222,7 +220,7 @@ class SQLiteJobRunner(JobRunnerBase):
                       ", '" + user + "')")
         self._conn.commit()
 
-    def run(self, max_steps = None):
+    def run(self, max_steps=None):
         wait = self._sleep
         step = 0
         while True:
