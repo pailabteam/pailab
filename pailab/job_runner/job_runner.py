@@ -222,9 +222,14 @@ class SQLiteJobRunner(JobRunnerBase):
                       ", '" + user + "')")
         self._conn.commit()
 
-    def run(self):
+    def run(self, max_steps = None):
         wait = self._sleep
+        step = 0
         while True:
+            if max_steps is not None:
+                step += 1
+                if step > max_steps:
+                    return
             if wait > 30:
                 logging.info('heartbeat')
                 wait = 0
@@ -263,3 +268,8 @@ class SQLiteJobRunner(JobRunnerBase):
                 result[column_names[i]] = row[i]
             return result
         return {'message': 'no info available for ' + job_name + ', version ' + str(job_version)}
+
+    def close_connection(self):
+        """Closes the database connection
+        """
+        self._conn.close()
