@@ -9,11 +9,12 @@ import pailab.memory_handler as memory_handler
 import pailab.repo_store as repo_store
 from pailab.job_runner.job_runner import SimpleJobRunner # pylint: disable=E0401
 from pailab.numpy_handler_hdf import NumpyHDFStorage
-
+import logging
+logging.basicConfig(level=logging.FATAL) # since we also test for errors we switch off the logging in this level
 
 class TestClass:
     @repo_object_init(['mat'])
-    def __init__(self, a, b, mat=None):
+    def __init__(self, a, b, mat=np.zeros([10,1]),):
         self.a = a
         self._b = b
         self.mat = mat
