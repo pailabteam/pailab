@@ -238,7 +238,8 @@ class SQLiteJobRunner(JobRunnerBase):
                 logging.info('Start running job ' +
                              row[0] + ', version ' + row[1])
                 self._execute("update jobs SET start_time = '" + str(
-                    datetime.datetime.now()) + "', job_state='" + JobState.RUNNING.value + "'")
+                    datetime.datetime.now()) + "', job_state='" + JobState.RUNNING.value + "' where job_name = '"
+                    + row[0] + "' and job_version='" + row[1] + "'")
                 self._conn.commit()
                 error, stack_trace = self._run_job(row[0], row[1])
                 self._set_finished(row[0], row[1], error, stack_trace)
@@ -266,6 +267,18 @@ class SQLiteJobRunner(JobRunnerBase):
                 result[column_names[i]] = row[i]
             return result
         return {'message': 'no info available for ' + job_name + ', version ' + str(job_version)}
+
+    def get_waiting_jobs(self):
+        """Return list of open jobs
+
+        Returns:
+            list of tuples: list containing tuples of job names and versions of the jobs currently waiting
+        """
+        open_jobs = []
+        for row in self._execute("select job_name, job_version from jobs where job_state in ('"
+                                 + JobState.WAITING.value + "','" + JobState.WAITING_PRED.value + "')"):
+            open_jobs.append((row[0], row[1]))
+        return open_jobs
 
     def close_connection(self):
         """Closes the database connection
