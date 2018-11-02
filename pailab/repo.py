@@ -169,14 +169,14 @@ class Job(abc.ABC):
             for k in job.get_predecessor_jobs():
                 job = ml_repo.get(k[0], version=k[1])
                 for k,v in job.repo_info[RepoInfoKey.MODIFICATION_INFO].items():
-                    self.version[k] = v
+                    self.versions[k] = v
             self.modification_info = {}
 
         def _get_version(self, name, orig_version):
             if orig_version is None:
                 return orig_version
             if name in self.versions.keys():
-                return self.version[name]
+                return self.versions[name]
             return orig_version
 
         def get(self, obj_name, obj_version=None, full_object = False,
@@ -209,7 +209,10 @@ class Job(abc.ABC):
         Arguments:
             predecessors {list o jobids} -- predecessors
         """
-        self._predecessors.append((job.repo_info[RepoInfoKey.NAME], job.repo_info[RepoInfoKey.VERSION]))
+        if isinstance(job, tuple):
+            self._predecessors.append(job)    
+        else:
+            self._predecessors.append((job.repo_info[RepoInfoKey.NAME], job.repo_info[RepoInfoKey.VERSION]))
 
     def set_predecessor_jobs(self, predecessors):
         self._predecessors=[]
@@ -258,6 +261,8 @@ class EvalJob(Job):
         """
         logging.info('Start evaluation job ' + str(jobid) +' on model ' + self.model + ' ' + str(self.model_version) + ' ')
         model = repo.get(self.model, self.model_version)
+        #if model.repo_info[RepoInfoKey.CATEGORY] == MLObjectType.Model:
+        #    model = repo.get(self.model + '/model', self.model_version)
         model_definition_name = self.model.split('/')[0]
         model_def_version = model.repo_info[RepoInfoKey.MODIFICATION_INFO][model_definition_name]
         model_definition = repo.get(model_definition_name, model_def_version)
@@ -989,13 +994,15 @@ class MLRepo:
             training_data_version=training_data_version, training_param_version= training_param_version, 
             model_param_version=model_param_version, repo_info = {RepoInfoKey.NAME: model + '/jobs/training',
                 RepoInfoKey.CATEGORY: MLObjectType.JOB.value})
-        if run_descendants:
-            pass
         self.add(train_job)
         self._job_runner.add(train_job.repo_info[RepoInfoKey.NAME], train_job.repo_info[RepoInfoKey.VERSION], self._user)
-        
         logging.info('Training job ' + train_job.repo_info[RepoInfoKey.NAME]+ ', version: ' 
                 + str(train_job.repo_info[RepoInfoKey.VERSION]) + ' added to jobrunner.')
+        if run_descendants:
+            eval_jobs = self.run_evaluation(model + '/model', 'evaluation triggered as descendant of run_training', 
+                predecessors=[(train_job.repo_info[RepoInfoKey.NAME], train_job.repo_info[RepoInfoKey.VERSION])], run_descendants=True)
+        
+            
         return train_job.repo_info[RepoInfoKey.NAME], str(train_job.repo_info[RepoInfoKey.VERSION])
 
     def _create_evaluation_jobs(self, model=None,model_version=repo_store.RepoStore.LAST_VERSION, datasets={}, predecessors = []):
@@ -1023,7 +1030,7 @@ class MLRepo:
             jobs.append(eval_job)
         return jobs
 
-    def run_evaluation(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, datasets={}, predecessors = []):
+    def run_evaluation(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, datasets={}, predecessors = [], run_descendants=False):
         """ Evaluate the model on all datasets. 
 
             :param model: name of model to evaluate, if None and only one model exists
@@ -1043,6 +1050,9 @@ class MLRepo:
             logging.info('Eval job ' + job.repo_info[RepoInfoKey.NAME]+ ', version: ' 
                 + str(job.repo_info[RepoInfoKey.VERSION]) + ' added to jobrunner.')
             job_ids.append((job.repo_info[RepoInfoKey.NAME], str(job.repo_info[RepoInfoKey.VERSION])))
+            if run_descendants:
+                self.run_measures(model, 'run_mesaures started as predecessor of run_evaluation', datasets={job.data: repo_store.RepoStore.LAST_VERSION}, 
+                        predecessors=[(job.repo_info[RepoInfoKey.NAME], job.repo_info[RepoInfoKey.VERSION])])
         return job_ids
 
     def run_measures(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, datasets={}, measures = {}, predecessors = []):
