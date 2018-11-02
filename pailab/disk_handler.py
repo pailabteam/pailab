@@ -208,8 +208,8 @@ class RepoObjectDiskStorage(RepoStore):
 
             self._save_function(self._main_dir + '/' + filename, obj)
             # endregion
-        except:
-            logger.error('An error occured, rolling back changes.')
+        except Exception as e:
+            logger.error('Error: ' + str(e) + ', rolling back changes.')
             self._conn.rollback()
         return version
 
