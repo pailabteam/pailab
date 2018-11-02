@@ -33,25 +33,26 @@ class NumpyHDFStorage(NumpyStore):
     @trace
     def _save(data_grp, ref_grp, numpy_dict):
         for k, v in numpy_dict.items():
-            if len(v.shape) == 1:
-                tmp = data_grp.create_dataset(
-                    k, data=v, maxshape=(None, ))
-                ref_grp.create_dataset(k, data=tmp.regionref[0:v.shape[0]])
-            else:
-                if len(v.shape) == 2:
+            if v is not None:
+                if len(v.shape) == 1:
                     tmp = data_grp.create_dataset(
-                        k, data=v, maxshape=(None, v.shape[1]))
-                    ref_grp.create_dataset(
-                        k, data=tmp.regionref[0:v.shape[0], 0:v.shape[1]])
+                        k, data=v, maxshape=(None, ))
+                    ref_grp.create_dataset(k, data=tmp.regionref[0:v.shape[0]])
                 else:
-                    if len(v.shape) == 3:
+                    if len(v.shape) == 2:
                         tmp = data_grp.create_dataset(
-                            k, data=v, maxshape=(None, v.shape[1], v.shape[2]))
+                            k, data=v, maxshape=(None, v.shape[1]))
                         ref_grp.create_dataset(
-                            k, data=tmp.regionref[0:v.shape[0], 0:v.shape[1], 0:v.shape[1]])
+                            k, data=tmp.regionref[0:v.shape[0], 0:v.shape[1]])
                     else:
-                        raise NotImplementedException(
-                            'Not implemenet for dim>3.')
+                        if len(v.shape) == 3:
+                            tmp = data_grp.create_dataset(
+                                k, data=v, maxshape=(None, v.shape[1], v.shape[2]))
+                            ref_grp.create_dataset(
+                                k, data=tmp.regionref[0:v.shape[0], 0:v.shape[1], 0:v.shape[1]])
+                        else:
+                            raise NotImplementedException(
+                                'Not implemenet for dim>3.')
 
     @trace
     def add(self, name, version, numpy_dict):
