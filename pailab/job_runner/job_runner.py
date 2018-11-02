@@ -101,6 +101,14 @@ class SimpleJobRunner(JobRunnerBase):
 
         return job_id
 
+    def get_waiting_jobs(self):
+        """Return list of open jobs
+
+        Returns:
+            empty list because by construction, this JobRunner can only return something if the jobs have been finished
+        """
+        return []
+
 
 class SQLiteJobRunner(JobRunnerBase):
     # region private
@@ -177,7 +185,7 @@ class SQLiteJobRunner(JobRunnerBase):
 
     # endregion
 
-    def __init__(self, sqlite_db_name, repo):
+    def __init__(self, sqlite_db_name, repo, sleep = 1, steps_to_heartbeat = 30):
         '''Contructor
 
         Args:
@@ -185,7 +193,8 @@ class SQLiteJobRunner(JobRunnerBase):
         '''
         self._sqlite_db_name = sqlite_db_name
         self._setup_new()
-        self._sleep = 1  # time to wait in sec before new request for open jobs to db
+        self._sleep = sleep  # time to wait in sec before new request for open jobs to db
+        self._steps_to_heartbeat = steps_to_heartbeat
         self._repo = repo
         self._id = str(uuid.uuid1())
 
@@ -228,7 +237,7 @@ class SQLiteJobRunner(JobRunnerBase):
                 step += 1
                 if step > max_steps:
                     return
-            if wait > 30:
+            if wait > self._steps_to_heartbeat:
                 logging.info('heartbeat')
                 wait = 0
             rows = self._execute("select job_name, job_version from jobs where job_state = '"
