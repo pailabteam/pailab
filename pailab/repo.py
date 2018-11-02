@@ -381,7 +381,7 @@ class MeasureJob(Job):
         if len(columns) == 0:
             v = self._compute(target.y_data, eval_data.x_data)
         else:
-            v = self._compute(target.y_data[:,columns], eval_data.x_data[:columns])
+            v = self._compute(target.y_data[:,columns], eval_data.x_data[:,columns])
         result_name = str(NamingConventions.Measure(eval_data_name, measure_type = self.measure_type))
         if not repo_objects.MeasureConfiguration._ALL_COORDINATES in self.coordinates:
             for x in self.coordinates:
