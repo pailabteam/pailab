@@ -385,7 +385,7 @@ class MeasureJob(Job):
         result_name = str(NamingConventions.Measure(eval_data_name, measure_type = self.measure_type))
         if not repo_objects.MeasureConfiguration._ALL_COORDINATES in self.coordinates:
             for x in self.coordinates:
-                result_name = result_name + ':' + x
+                result_name = result_name + '_' + x
         result = repo_objects.Measure( v, 
                                 repo_info = {RepoInfoKey.NAME : result_name, RepoInfoKey.CATEGORY: MLObjectType.MEASURE.value})
         _add_modification_info(result, eval_data, target)
