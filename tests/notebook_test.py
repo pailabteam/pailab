@@ -12,6 +12,7 @@ def _notebook_run(path):
        :returns (parsed nb object, execution errors)
     """
     dirname, nb_name = os.path.split(main_path + path)
+    curr_dir = os.getcwd()
     os.chdir(dirname)
     args = ["jupyter", "nbconvert", "--to", "notebook", "--execute",
             "--ExecutePreprocessor.timeout=600",
@@ -25,6 +26,7 @@ def _notebook_run(path):
               if output.output_type == "error"]
     f.close()
     os.remove('tmp.ipynb')
+    os.chdir(curr_dir)
     return nb, errors
 
 
