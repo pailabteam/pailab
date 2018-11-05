@@ -189,6 +189,8 @@ class Job(abc.ABC):
                     m_v[k] = self._get_version(k,v)
             obj = self.ml_repo.get(obj_name, version=new_v, full_object=full_object,
                 modifier_versions=m_v, obj_fields=obj_fields,  repo_info_fields=repo_info_fields)
+            if isinstance(obj, list):
+                raise Exception("More than one object found meeting the conditions.")
             self.modification_info[obj_name] = obj.repo_info[RepoInfoKey.VERSION]
             return obj
 
@@ -789,7 +791,8 @@ class MLRepo:
     def add_measure(self, measure, coordinates = None):
         """Add a measure to the repository
         
-        If the measure already exists, it returns the message
+            If the measure already exists, it returns the message
+
         Arguments:
             measure {str} -- string defining the measure, i.e MAX,...
         
@@ -908,6 +911,7 @@ class MLRepo:
         """Append data to a RawData object
 
            It appends data to the given RawData object and updates all training and test DataSets which implicitely changed by this update.
+
         Args:
             name (string): name of RawData object
             x_data (numpy matrix): the x_data to append
@@ -1033,12 +1037,13 @@ class MLRepo:
     def run_evaluation(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, datasets={}, predecessors = [], run_descendants=False):
         """ Evaluate the model on all datasets. 
 
-            :param model: name of model to evaluate, if None and only one model exists
-            :message: message inserted into commit (default None), if Noe, an autmated message is created
-            :param model_version: Version of model to be evaluated.
-            :datasets: Dictionary of datasets (names and version numbers) on which the model is evaluated. 
-            :predecessors: list of jobs which shall have been completed successfull before the evaluation is started
-                Default is all datasets from testdata on latest version.
+        Args:
+            model: name of model to evaluate, if None and only one model exists
+            message: message inserted into commit (default None), if Noe, an autmated message is created
+            model_version: Version of model to be evaluated.
+            datasets: Dictionary of datasets (names and version numbers) on which the model is evaluated. 
+            predecessors: list of jobs which shall have been completed successfull before the evaluation is started. Default is all datasets from testdata on latest version.
+
             Raises:
                 Exception if model_name is None and more then one model exists
         """
