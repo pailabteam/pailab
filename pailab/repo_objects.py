@@ -252,6 +252,10 @@ def create_repo_obj(obj):
 
 
 class RawData:
+    """Class to store numpy data.
+    
+    """
+
     def _cast_data_to_numpy(data):  # pylint: disable=E0213
         if data is None:
             return data
