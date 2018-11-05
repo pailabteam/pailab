@@ -1,6 +1,7 @@
 Tutorial
 ===================
 
+
 Creating a new repository
 --------------------------
 
@@ -95,3 +96,20 @@ The training job is executed via the JobRunner you specified setting up the repo
     :language: python
     :start-after: run training
     :end-before: end running training
+
+Define error measures and evaluate the model
+----------------------------------------------
+To measure errors and to provide plots the model must be evaluated on all test and training datasets. This can simply be accomplished by calling 
+:py:meth:`pailab.repo.MLRepo.run_evaluation`.
+
+.. literalinclude:: ../../tests/tutorial_test.py
+    :language: python
+    :start-after: run evaluation
+    :end-before: end running evaluation
+
+Based on the evaluations one can define specify different kinds of measures to measure the error between the target and model values. 
+
+.. literalinclude:: ../../tests/tutorial_test.py
+    :language: python
+    :start-after: run measures
+    :end-before: end running measures
