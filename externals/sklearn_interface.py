@@ -1,3 +1,9 @@
+"""Module for pailab to sklearn
+
+    This module defines all necessary objects and functions to use sklearn from within pailab.
+"""
+
+
 from pailab.repo_objects import repo_object_init
 from pailab.repo_objects import RepoInfoKey
 from pailab.repo import MLObjectType
@@ -8,6 +14,10 @@ def get_classname(x):
 
 
 class SKLearnModelParam:
+    """Interfaces the parameters of the sklearn algorithms
+
+    """
+
     @repo_object_init()
     def __init__(self, model, sklearn_param):
         self.sklearn_module_name = model.__class__.__module__
@@ -19,12 +29,25 @@ class SKLearnModelParam:
 
 
 class SKLearnModel:
+    """Class to store all sklearn models in pailab's MLRepo
+    """
+
     @repo_object_init()
     def __init__(self, model):
         self.model = model
 
 
 def eval_sklearn(model, data):
+    """Function to evaluate an sklearn model
+
+    Args:
+        model ([type]): [description]
+        data ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
+
     return model.model.predict(data)
 
 
@@ -46,6 +69,15 @@ def train_sklearn(model_param, data_x, data_y):
 
 
 def add_model(repo, skl_learner, model_name=None, model_param=None):
+    """Adds a new sklearn model to a pailab MLRepo
+
+    Args:
+        repo ([type]): [description]
+        skl_learner ([type]): [description]
+        model_name ([type], optional): Defaults to None. [description]
+        model_param ([type], optional): Defaults to None. [description]
+    """
+
     repo.add_eval_function('externals.sklearn_interface',
                            'eval_sklearn', repo_name='eval_sklearn')
     repo.add_training_function(
