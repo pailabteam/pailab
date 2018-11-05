@@ -135,7 +135,6 @@ class SQLiteJobRunner_Test(unittest.TestCase):
                 if job_info['job_state'] == JobState.WAITING_PRED.value:
                     n_waiting_pred += 1
             return n_waiting_pred
-
         job = self.repository.run_training(run_descendants=True)
         tmp = self.job_runner.get_info(job[0], job[1])
         # check if traning job is in waiting state
