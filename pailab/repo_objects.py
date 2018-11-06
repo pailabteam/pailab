@@ -27,7 +27,6 @@ class RepoInfoKey(Enum):
     """
     VERSION = 'version'
     NAME = 'name'
-    HISTORY = 'history'
     CLASSNAME = 'classname'
     MODIFICATION_INFO = 'modification_info'
     DESCRIPTION = 'description'
