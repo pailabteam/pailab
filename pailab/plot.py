@@ -1,8 +1,8 @@
 import logging
 import pandas as pd
-import repo.plot_helper as plot_helper  # pylint: disable=E0611
-from repo.repo_store import RepoStore
-from repo.repo import NamingConventions, MLObjectType  # pylint: disable=E0611,E0401
+import pailab.plot_helper as plot_helper  # pylint: disable=E0611
+from pailab.repo_store import RepoStore
+from pailab.repo import NamingConventions, MLObjectType  # pylint: disable=E0611,E0401
 from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
 import plotly.graph_objs as go
 logger = logging.getLogger(__name__)
@@ -64,7 +64,7 @@ def histogram(ml_repo, data, x_coordinate=None, y_coordinate=None):
         if not isinstance(d, str):
             name = d[0]
             version = d[1]
-        tmp = ml_repo._get(name, version=version, full_object=True)
+        tmp = ml_repo.get(name, version=version, full_object=True)
         if x_coordinate is not None:
             i = tmp.x_coord_names.index(x_coordinate)
             data = tmp.x_data

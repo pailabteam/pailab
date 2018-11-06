@@ -4,7 +4,8 @@ import numpy as np
 from enum import Enum
 from types import MethodType
 
-
+import logging
+logger = logging.getLogger(__name__)
 
 def _get_attribute_dict(clazz, excluded=set()):
     """Return dictionary of non-static members and their values for an instance of  class
@@ -33,7 +34,7 @@ class RepoInfoKey(Enum):
     CATEGORY = 'category'
     BIG_OBJECTS = 'big_objects'
     COMMIT_MESSAGE = 'commit_message'
-
+    AUTHOR = 'author'
 
 class RepoInfo:
     """Contains all repo relevent information
@@ -42,7 +43,7 @@ class RepoInfo:
     It must be a member of all objects which are handled by the repo.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, kwargs):
         for key in RepoInfoKey:
             setattr(self, key.value, None)
         self.set_fields(kwargs)
@@ -59,6 +60,9 @@ class RepoInfo:
         Args:
             :param kwargs: dictionary
         """
+        for k,v in kwargs.items():
+            self[k] = v
+        return 
         if not kwargs is None:
             for key in RepoInfoKey:
                 if key.name in kwargs.keys():
@@ -197,7 +201,7 @@ class repo_object_init:  # pylint: disable=too-few-public-methods
                 repo_info = kwargs['repo_info']
                 del kwargs['repo_info']
                 if isinstance(repo_info, dict):
-                    repo_info = RepoInfo(**repo_info)
+                    repo_info = RepoInfo(repo_info)
                 if not '_init_from_dict' in kwargs.keys():
                     f(init_self, *args, **kwargs)
                 self.init_repo_object(init_self, repo_info)
@@ -238,6 +242,8 @@ def create_repo_obj(obj):
 
     """
     if not 'repo_info' in obj.keys():
+        logger.error('Given dictionary is not a repo dictionary, '
+                        'since repo_info key is missing.')
         raise Exception('Given dictionary is not a repo dictionary, '
                         'since repo_info key is missing.')
     repo_info = obj['repo_info']
@@ -246,6 +252,10 @@ def create_repo_obj(obj):
 
 
 class RawData:
+    """Class to store numpy data.
+    
+    """
+
     def _cast_data_to_numpy(data):  # pylint: disable=E0213
         if data is None:
             return data
@@ -270,11 +280,13 @@ class RawData:
         """
         x_data = RawData._cast_data_to_numpy(x_data)
         if x_data.shape[1] != len(x_coord_names):  # pylint: disable=E1101
+            logger.error('Number of x-coordinates does not equal number of names for x-coordinates.')
             raise Exception(
                 'Number of x-coordinates does not equal number of names for x-coordinates.')
         y_data = RawData._cast_data_to_numpy(y_data)
         if not y_data is None:
             if y_data.shape[1] != len(y_coord_names):  # pylint: disable=E1101
+                logger.error('Nmber of y-coordinates does not equal number of names for y-coordinates.')
                 raise Exception(
                     'Nmber of y-coordinates does not equal number of names for y-coordinates.')
             if y_data.shape[0] != x_data.shape[0]:  # pylint: disable=E1101

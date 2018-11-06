@@ -1,19 +1,20 @@
 import unittest
-from repo.numpy_handler_hdf import NumpyHDFStorage
 import os
-
-from repo.repo_objects import RepoInfoKey  # pylint: disable=E0401
-from repo.repo_objects import repo_object_init  # pylint: disable=E0401
-import repo.repo as repo
-import repo.repo_objects as repo_objects
-import repo.memory_handler as memory_handler
-import repo.repo_store as repo_store
 import numpy as np
-from job_runner.job_runner import SimpleJobRunner # pylint: disable=E0401
+
+from pailab import RepoInfoKey, MLObjectType, repo_object_init, RepoInfoKey, DataSet, RawData, MLRepo  # pylint: disable=E0401
+from pailab.repo_objects import RepoInfo
+import pailab.repo_objects as repo_objects
+import pailab.memory_handler as memory_handler
+import pailab.repo_store as repo_store
+from pailab.job_runner.job_runner import SimpleJobRunner # pylint: disable=E0401
+from pailab.numpy_handler_hdf import NumpyHDFStorage
+import logging
+logging.basicConfig(level=logging.FATAL) # since we also test for errors we switch off the logging in this level
 
 class TestClass:
     @repo_object_init(['mat'])
-    def __init__(self, a, b, mat=None):
+    def __init__(self, a, b, mat=np.zeros([10,1]),):
         self.a = a
         self._b = b
         self.mat = mat
@@ -27,7 +28,7 @@ class RepoInfoTest(unittest.TestCase):
     def test_repo_info(self):
         name = 'dummy'
         version = '1.0.2'
-        repo_info = repo_objects.RepoInfo(**{'version': version, 'NAME': name})
+        repo_info = RepoInfo({'version': version, 'NAME': name})
         self.assertEqual(repo_info.name, 'dummy')
         self.assertEqual(repo_info['name'], 'dummy')
         self.assertEqual(repo_info['NAME'], 'dummy')
@@ -162,40 +163,40 @@ class RepoTest(unittest.TestCase):
                                         repo_objects.MeasureConfiguration.MAX],
                                         repo_info={RepoInfoKey.NAME.value: 'measure_config'}
                                     )
-        self.repository.add(measure_config, category=repo.MLObjectType.MEASURE_CONFIGURATION, message = 'adding measure configuration')
+        self.repository.add(measure_config, category=MLObjectType.MEASURE_CONFIGURATION, message = 'adding measure configuration')
 
     def _add_calibrated_model(self):
         dummy_model = TestClass(1,2, repo_info = {repo_objects.RepoInfoKey.NAME.value:'dummy_model'}) # pylint: disable=E1123
-        self.repository.add(dummy_model, message = 'add dummy model', category=repo.MLObjectType.CALIBRATED_MODEL)
+        self.repository.add(dummy_model, message = 'add dummy model', category=MLObjectType.CALIBRATED_MODEL)
 
     def setUp(self):
         '''Setup a complete ML repo with two different test data objetcs, training data, model definition etc.
         '''
         handler = memory_handler.RepoObjectMemoryStorage()
         numpy_handler = memory_handler.NumpyMemoryStorage()
-        self.repository = repo.MLRepo('doeltz', handler, numpy_handler, handler, None)
+        self.repository = MLRepo('doeltz', handler, numpy_handler, handler, None)
         job_runner = SimpleJobRunner(self.repository)
         self.repository._job_runner = job_runner
         #### Setup dummy RawData
         raw_data = repo_objects.RawData(np.zeros([10,1]), ['x0'], np.zeros([10,1]), ['y0'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'raw_1'})
-        self.repository.add(raw_data, category=repo.MLObjectType.RAW_DATA)
+        self.repository.add(raw_data, category=MLObjectType.RAW_DATA)
         raw_data = repo_objects.RawData(np.zeros([10,1]), ['x0'], np.zeros([10,1]), ['y0'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'raw_2'})
-        self.repository.add(raw_data, category=repo.MLObjectType.RAW_DATA)
+        self.repository.add(raw_data, category=MLObjectType.RAW_DATA)
         raw_data = repo_objects.RawData(np.zeros([10,1]), ['x0'], np.zeros([10,1]), ['y0'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'raw_3'})
-        self.repository.add(raw_data, category=repo.MLObjectType.RAW_DATA)
+        self.repository.add(raw_data, category=MLObjectType.RAW_DATA)
         ## Setup dummy Test and Training DataSets on RawData
-        training_data = repo.DataSet('raw_1', 0, None, 
-                                    repo_info = {repo_objects.RepoInfoKey.NAME.value: 'training_data_1', repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_DATA})
-        test_data_1 = repo.DataSet('raw_2', 0, None, 
-                                    repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_1',  repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TEST_DATA})
-        test_data_2 = repo.DataSet('raw_3', 0, 2, 
-                                    repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_2',  repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TEST_DATA})
+        training_data = DataSet('raw_1', 0, None, 
+                                    repo_info = {repo_objects.RepoInfoKey.NAME.value: 'training_data_1', repo_objects.RepoInfoKey.CATEGORY: MLObjectType.TRAINING_DATA})
+        test_data_1 = DataSet('raw_2', 0, None, 
+                                    repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_1',  repo_objects.RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA})
+        test_data_2 = DataSet('raw_3', 0, 2, 
+                                    repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_2',  repo_objects.RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA})
         self.repository.add([training_data, test_data_1, test_data_2])
 
         self.repository.add_eval_function('tests.repo_test', 'eval_func_test')
         self.repository.add_training_function('tests.repo_test', 'train_func_test')
         self.repository.add(TestClass(1,2, repo_info={repo_objects.RepoInfoKey.NAME.value: 'training_param', # pylint: disable=E1123
-                                            repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_PARAM}))
+                                            repo_objects.RepoInfoKey.CATEGORY: MLObjectType.TRAINING_PARAM}))
         ## setup dummy model definition
         self.repository.add_model('model')
         # setup measure configuration
@@ -207,41 +208,41 @@ class RepoTest(unittest.TestCase):
         '''Tests if adding new training data leads to an exception
         '''
         with self.assertRaises(Exception):
-            test_obj = repo.DataSet('raw_data', repo_info = {repo_objects.RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_DATA.value, 'name': 'test_object'})
+            test_obj = DataSet('raw_data', repo_info = {repo_objects.RepoInfoKey.CATEGORY: MLObjectType.TRAINING_DATA.value, 'name': 'test_object'})
             self.repository.add(test_obj)
 
     def test_version_increase(self):
         '''Test if updating an existing object increases the version
         '''
-        obj = self.repository._get('raw_1')
+        obj = self.repository.get('raw_1')
         old_version = obj.repo_info[RepoInfoKey.VERSION]
         self.repository.add(obj)
-        obj = self.repository._get('raw_1')
+        obj = self.repository.get('raw_1')
         new_version = obj.repo_info[RepoInfoKey.VERSION]
         self.assertEqual(old_version+1, new_version)
 
     def test_commit_increase_update(self):
         '''Check if updating an object in repository increases commit but does not change mapping
         '''
-        obj = self.repository._get('raw_1')
+        obj = self.repository.get('raw_1')
         old_num_commits = len(self.repository.get_commits())
-        old_version_mapping = self.repository._get('repo_mapping').repo_info[RepoInfoKey.VERSION]
+        old_version_mapping = self.repository.get('repo_mapping').repo_info[RepoInfoKey.VERSION]
         self.repository.add(obj)
         new_num_commits = len(self.repository.get_commits())
-        new_version_mapping = self.repository._get('repo_mapping').repo_info[RepoInfoKey.VERSION]
+        new_version_mapping = self.repository.get('repo_mapping').repo_info[RepoInfoKey.VERSION]
         self.assertEqual(old_num_commits+1, new_num_commits)
         self.assertEqual(old_version_mapping, new_version_mapping)
         
     def test_commit_increase_add(self):
         '''Check if adding a new object in repository increases commit and does also change the mapping
         '''
-        obj = repo.DataSet('raw_data_1', 0, None, 
-            repo_info={RepoInfoKey.NAME.value: 'test...', RepoInfoKey.CATEGORY.value: repo.MLObjectType.TEST_DATA})
+        obj = DataSet('raw_data_1', 0, None, 
+            repo_info={RepoInfoKey.NAME.value: 'test...', RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA})
         old_num_commits = len(self.repository.get_commits())
-        old_version_mapping = self.repository._get('repo_mapping').repo_info[RepoInfoKey.VERSION]
+        old_version_mapping = self.repository.get('repo_mapping').repo_info[RepoInfoKey.VERSION]
         self.repository.add(obj)
         new_num_commits = len(self.repository.get_commits())
-        new_version_mapping = self.repository._get('repo_mapping').repo_info[RepoInfoKey.VERSION]
+        new_version_mapping = self.repository.get('repo_mapping').repo_info[RepoInfoKey.VERSION]
         self.assertEqual(old_num_commits+1, new_num_commits)
         self.assertEqual(old_version_mapping+1, new_version_mapping)
         commits = self.repository.get_commits()
@@ -251,8 +252,8 @@ class RepoTest(unittest.TestCase):
     def test_DataSet_get(self):
         '''Test if getting a DataSet does include all informations from the underlying RawData (excluding numpy data)
         '''
-        obj = self.repository._get('test_data_1')
-        raw_obj = self.repository._get(obj.raw_data)
+        obj = self.repository.get('test_data_1')
+        raw_obj = self.repository.get(obj.raw_data)
         for i in range(len(raw_obj.x_coord_names)):
             self.assertEqual(raw_obj.x_coord_names[i], obj.x_coord_names[i])
         for i in range(len(raw_obj.y_coord_names)):
@@ -261,18 +262,18 @@ class RepoTest(unittest.TestCase):
     def test_DataSet_get_full(self):
         '''Test if getting a DataSet does include all informations from the underlying RawData (including numpy data)
         '''
-        obj = self.repository._get('test_data_1', version = repo_store.RepoStore.LAST_VERSION, full_object = True)
-        raw_obj = self.repository._get(obj.raw_data, version = repo_store.RepoStore.LAST_VERSION, full_object = True)
+        obj = self.repository.get('test_data_1', version = repo_store.RepoStore.LAST_VERSION, full_object = True)
+        raw_obj = self.repository.get(obj.raw_data, version = repo_store.RepoStore.LAST_VERSION, full_object = True)
         for i in range(len(raw_obj.x_coord_names)):
             self.assertEqual(raw_obj.x_coord_names[i], obj.x_coord_names[i])
         for i in range(len(raw_obj.y_coord_names)):
             self.assertEqual(raw_obj.y_coord_names[i], obj.y_coord_names[i])
         self.assertEqual(raw_obj.x_data.shape[0], obj.x_data.shape[0])
 
-        obj = self.repository._get('test_data_2', version = repo_store.RepoStore.LAST_VERSION, full_object = True)
+        obj = self.repository.get('test_data_2', version = repo_store.RepoStore.LAST_VERSION, full_object = True)
         self.assertEqual(obj.x_data.shape[0], 2)
     
-        obj = self.repository._get('training_data_1', version = repo_store.RepoStore.LAST_VERSION, full_object = True)
+        obj = self.repository.get('training_data_1', version = repo_store.RepoStore.LAST_VERSION, full_object = True)
         self.assertEqual(obj.x_data.shape[0], 10)
     
     def test_repo_RawData(self):
@@ -281,13 +282,13 @@ class RepoTest(unittest.TestCase):
         handler = memory_handler.RepoObjectMemoryStorage()
         numpy_handler = memory_handler.NumpyMemoryStorage()
         # init repository with sample in memory handler
-        repository = repo.MLRepo('doeltz', handler, numpy_handler, handler, None)
+        repository = MLRepo('doeltz', handler, numpy_handler, handler, None)
         job_runner = SimpleJobRunner(repository)
         repository._job_runner = job_runner
         raw_data = repo_objects.RawData(np.zeros([10, 1]), ['test_coord'], repo_info={  # pylint: disable=E0602
             repo_objects.RepoInfoKey.NAME.value: 'RawData_Test'})
-        repository.add(raw_data, 'test commit', repo.MLObjectType.RAW_DATA)
-        raw_data_2 = repository._get('RawData_Test')
+        repository.add(raw_data, 'test commit', MLObjectType.RAW_DATA)
+        raw_data_2 = repository.get('RawData_Test')
         self.assertEqual(len(raw_data.x_coord_names),
                          len(raw_data_2.x_coord_names))
         self.assertEqual(
@@ -300,12 +301,12 @@ class RepoTest(unittest.TestCase):
     def test_add_model_defaults(self):
         """test add_model using defaults to check whether default logic applies correctly
         """
-        model_param = TestClass(3,4, repo_info={RepoInfoKey.NAME.value: 'model_param', RepoInfoKey.CATEGORY.value: repo.MLObjectType.MODEL_PARAM.value}) # pylint: disable=E1123
+        model_param = TestClass(3,4, repo_info={RepoInfoKey.NAME.value: 'model_param', RepoInfoKey.CATEGORY: MLObjectType.MODEL_PARAM.value}) # pylint: disable=E1123
         self.repository.add(model_param)
-        training_param = TestClass(3,4, repo_info={RepoInfoKey.NAME.value: 'training_param', RepoInfoKey.CATEGORY.value: repo.MLObjectType.TRAINING_PARAM.value}) # pylint: disable=E1123
+        training_param = TestClass(3,4, repo_info={RepoInfoKey.NAME.value: 'training_param', RepoInfoKey.CATEGORY: MLObjectType.TRAINING_PARAM.value}) # pylint: disable=E1123
         self.repository.add(training_param)
         self.repository.add_model('model1')
-        model = self.repository._get('model1')
+        model = self.repository.get('model1')
         self.assertEqual(model.eval_function, 'tests.repo_test.eval_func_test')
         self.assertEqual(model.training_function, 'tests.repo_test.train_func_test')
         self.assertEqual(model.training_param, 'training_param')
@@ -314,7 +315,7 @@ class RepoTest(unittest.TestCase):
     def test_get_history(self):
         training_data_history = self.repository.get_history('training_data_1')
         self.assertEqual(len(training_data_history), 1)
-        training_data = self.repository._get('training_data_1')
+        training_data = self.repository.get('training_data_1')
         self.repository.add(training_data)
         training_data_history = self.repository.get_history('training_data_1')
         self.assertEqual(len(training_data_history), 2)
@@ -341,23 +342,23 @@ class RepoTest(unittest.TestCase):
         handler = memory_handler.RepoObjectMemoryStorage()
         numpy_handler = memory_handler.NumpyMemoryStorage()
         # init repository with sample in memory handler
-        repository = repo.MLRepo('doeltz', handler, numpy_handler, handler, None)
+        repository = MLRepo('doeltz', handler, numpy_handler, handler, None)
         job_runner = SimpleJobRunner(repository)
         repository._job_runner = job_runner
-        training_data = repo_objects.RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'training_data'})
-        repository.add(training_data, category=repo.MLObjectType.TRAINING_DATA)
+        training_data = RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'training_data'})
+        repository.add(training_data, category=MLObjectType.TRAINING_DATA)
         
         training_data_2 = repository.get_training_data()
         self.assertEqual(training_data_2.repo_info[repo_objects.RepoInfoKey.NAME], training_data.repo_info[repo_objects.RepoInfoKey.NAME])
-        test_data = repo_objects.RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data'})
-        repository.add(test_data, category=repo.MLObjectType.TEST_DATA)
+        test_data = RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data'})
+        repository.add(test_data, category=MLObjectType.TEST_DATA)
         
-        test_data_2 = repository._get('test_data')
+        test_data_2 = repository.get('test_data')
         self.assertEqual(test_data_2.repo_info[repo_objects.RepoInfoKey.NAME], test_data.repo_info[repo_objects.RepoInfoKey.NAME])
-        test_data = repo_objects.RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_2'})
-        repository.add(test_data, category = repo.MLObjectType.TEST_DATA)
+        test_data = RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_2'})
+        repository.add(test_data, category = MLObjectType.TEST_DATA)
         
-        test_data_2 = repository._get('test_data_2')
+        test_data_2 = repository.get('test_data_2')
         self.assertEqual(test_data_2.repo_info[repo_objects.RepoInfoKey.NAME], test_data.repo_info[repo_objects.RepoInfoKey.NAME])
         commits = repository.get_commits()
         self.assertEqual(len(commits), 3)

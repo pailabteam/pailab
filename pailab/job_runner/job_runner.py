@@ -7,8 +7,8 @@ import abc
 
 import uuid
 from enum import Enum
-from repo.repo_objects import repo_object_init, RawData, RepoInfoKey  # pylint: disable=E0401
-from repo.repo import MLObjectType  # pylint: disable=E0401
+from pailab.repo_objects import repo_object_init, RawData, RepoInfoKey  # pylint: disable=E0401
+from pailab.repo import MLObjectType  # pylint: disable=E0401
 
 import logging
 logger = logging.getLogger(__name__)
@@ -69,7 +69,7 @@ class JobRunnerBase(abc.ABC):
         pass
 
 
-class SimpleJobRunner:
+class SimpleJobRunner(JobRunnerBase):
     def __init__(self, repo):
         self._repo = repo
         self._job_info = {}
@@ -87,18 +87,27 @@ class SimpleJobRunner:
         job_info.set_state(JobState.RUNNING)
         job_info.start_time = datetime.datetime.now()
         self._job_info[job_id] = job_info
-        job = self._repo._get(job_name, version=job_version)
+        job = self._repo.get(job_name, version=job_version)
         try:
             job.run(self._repo, job_id)
             job_info.end_time = datetime.datetime.now()
             job_info.set_state(JobState.SUCCESSFULLY_FINISHED)
         except Exception as e:
+            logger.error(str(e) + ': ' + str(traceback.format_exc()))
             job_info.end_time = datetime.datetime.now()
             job_info.set_state(JobState.FAILED)
             job_info.error_message = str(e)
             job_info.trace_back = traceback.format_exc()
 
         return job_id
+
+    def get_waiting_jobs(self):
+        """Return list of open jobs
+
+        Returns:
+            empty list because by construction, this JobRunner can only return something if the jobs have been finished
+        """
+        return []
 
 
 class SQLiteJobRunner(JobRunnerBase):
@@ -153,7 +162,7 @@ class SQLiteJobRunner(JobRunnerBase):
                 self._execute("update jobs SET unfinished_pred_jobs=unfinished_pred_jobs-1  where job_name='" +
                               c[0] + "' and job_version='" + c[1] + "'")
                 self._conn.commit()
-                self._execute("update jobs SET job_state=" + JobState.WAITING.value + " where job_name='" +
+                self._execute("update jobs SET job_state='" + JobState.WAITING.value + "' where job_name='" +
                               c[0] + "' and job_version='" + c[1] + "' and unfinished_pred_jobs <= 0")
                 self._conn.commit()
             self._execute("update jobs SET job_state='" + JobState.SUCCESSFULLY_FINISHED.value + "', end_time='" + str(datetime.datetime.now())
@@ -166,16 +175,17 @@ class SQLiteJobRunner(JobRunnerBase):
             self._conn.commit()
 
     def _run_job(self, job_name, job_version):
-        job = self._repo._get(job_name, version=job_version)
+        job = self._repo.get(job_name, version=job_version)
         try:
             job.run(self._repo, 0)
         except Exception as e:
+            logger.error(str(e) + ': ' + str(traceback.format_exc()))
             return str(e), traceback.format_exc()
         return '', ''
 
     # endregion
 
-    def __init__(self, sqlite_db_name, repo):
+    def __init__(self, sqlite_db_name, repo, sleep = 1, steps_to_heartbeat = 30):
         '''Contructor
 
         Args:
@@ -183,7 +193,8 @@ class SQLiteJobRunner(JobRunnerBase):
         '''
         self._sqlite_db_name = sqlite_db_name
         self._setup_new()
-        self._sleep = 1  # time to wait in sec before new request for open jobs to db
+        self._sleep = sleep  # time to wait in sec before new request for open jobs to db
+        self._steps_to_heartbeat = steps_to_heartbeat
         self._repo = repo
         self._id = str(uuid.uuid1())
 
@@ -191,10 +202,10 @@ class SQLiteJobRunner(JobRunnerBase):
         self._repo = repo
 
     def add(self, job_name, job_version, user):
-        job = self._repo._get(job_name, version=job_version)
+        job = self._repo.get(job_name, version=job_version)
         predecessors = job.get_predecessor_jobs()
         for predecessor in predecessors:
-            self._execute("insert into predecessors (job_name, job_version, predecessor_name, predecessor_version, user) VALUES ("
+            self._execute("insert into predecessors (job_name, job_version, predecessor_name, predecessor_version) VALUES ("
                           + SQLiteJobRunner.sqlite_name(job_name) +
                           ", "
                           + SQLiteJobRunner.sqlite_name(str(job_version)) +
@@ -202,8 +213,6 @@ class SQLiteJobRunner(JobRunnerBase):
                           + SQLiteJobRunner.sqlite_name(predecessor[0]) +
                           ","
                           + SQLiteJobRunner.sqlite_name(str(predecessor[1])) +
-                          ","
-                          + SQLiteJobRunner.sqlite_name(user) +
                           ")")
             self._conn.commit()
         job_state = JobState.WAITING.value
@@ -220,10 +229,15 @@ class SQLiteJobRunner(JobRunnerBase):
                       ", '" + user + "')")
         self._conn.commit()
 
-    def run(self):
+    def run(self, max_steps=None):
         wait = self._sleep
+        step = 0
         while True:
-            if wait > 30:
+            if max_steps is not None:
+                step += 1
+                if step > max_steps:
+                    return
+            if wait > self._steps_to_heartbeat:
                 logging.info('heartbeat')
                 wait = 0
             rows = self._execute("select job_name, job_version from jobs where job_state = '"
@@ -233,7 +247,8 @@ class SQLiteJobRunner(JobRunnerBase):
                 logging.info('Start running job ' +
                              row[0] + ', version ' + row[1])
                 self._execute("update jobs SET start_time = '" + str(
-                    datetime.datetime.now()) + "', job_state='" + JobState.RUNNING.value + "'")
+                    datetime.datetime.now()) + "', job_state='" + JobState.RUNNING.value + "' where job_name = '"
+                    + row[0] + "' and job_version='" + row[1] + "'")
                 self._conn.commit()
                 error, stack_trace = self._run_job(row[0], row[1])
                 self._set_finished(row[0], row[1], error, stack_trace)
@@ -261,3 +276,20 @@ class SQLiteJobRunner(JobRunnerBase):
                 result[column_names[i]] = row[i]
             return result
         return {'message': 'no info available for ' + job_name + ', version ' + str(job_version)}
+
+    def get_waiting_jobs(self):
+        """Return list of open jobs
+
+        Returns:
+            list of tuples: list containing tuples of job names and versions of the jobs currently waiting
+        """
+        open_jobs = []
+        for row in self._execute("select job_name, job_version from jobs where job_state in ('"
+                                 + JobState.WAITING.value + "','" + JobState.WAITING_PRED.value + "')"):
+            open_jobs.append((row[0], row[1]))
+        return open_jobs
+
+    def close_connection(self):
+        """Closes the database connection
+        """
+        self._conn.close()

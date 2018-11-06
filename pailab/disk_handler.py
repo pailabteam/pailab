@@ -6,9 +6,10 @@ import uuid
 import pickle
 from datetime import datetime, timedelta
 import json
-import repo.repo_objects as repo_objects
-import repo.repo as repo
-from repo.repo_store import RepoStore
+import pailab.repo_objects as repo_objects
+from pailab.repo_store import RepoInfoKey
+import pailab.repo as repo
+from pailab.repo_store import RepoStore
 import logging
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ def execute(cursor, cmd):
         [type]: [description]
     """
 
-    logging.info('Executing: ' + cmd)
+    logger.info('Executing: ' + cmd)
     return cursor.execute(cmd)
 
 
@@ -76,7 +77,7 @@ class RepoObjectDiskStorage(RepoStore):
         # mapping
         cursor = self._conn.cursor()
         try:
-            logging.info('Executing')
+            logger.info('Executing')
             execute(cursor,
                     '''CREATE TABLE mapping (name text PRIMARY KEY, category text)''')
             # versions
@@ -89,7 +90,7 @@ class RepoObjectDiskStorage(RepoStore):
                     '''CREATE TABLE modification_info (name TEXT NOT NULL, version TEXT NOT NULL, modifier TEXT NOT NULL, modifier_version TEXT NOT NULL, modifier_uuid_time TIMESTAMP, PRIMARY KEY(name, version, modifier) ) ''')
             self._conn.commit()
         except:
-            logging.error(
+            logger.error(
                 'An error occured during creation of new db, rolling back.')
             self._conn.rollback()
 
@@ -109,12 +110,14 @@ class RepoObjectDiskStorage(RepoStore):
         cursor = self._conn.cursor()
         for row in execute(cursor, "select version from versions where name = '" + name + "' order by uuid_time DESC LIMIT 1"):
             return row[0]
+        logger.error('No object with name ' + name + ' exists.')
         raise Exception('No object with name ' + name + ' exists.')
 
     def _get_first_version(self, name):
         cursor = self._conn.cursor()
         for row in execute(cursor, "select version from versions where name = '" + name + "' order by uuid_time ASC LIMIT 1"):
             return row[0]
+        logger.error('No object with name ' + name + ' exists.')
         raise Exception('No object with name ' + name + ' exists.')
 
     def _replace_version_placeholder(self, name, version):
@@ -200,13 +203,13 @@ class RepoObjectDiskStorage(RepoStore):
             # endregion
             self._conn.commit()
             # region write file
-            logging.debug(
+            logger.debug(
                 'Write object as json file with filename ' + filename)
 
             self._save_function(self._main_dir + '/' + filename, obj)
             # endregion
-        except:
-            logging.error('An error occured, rolling back changes.')
+        except Exception as e:
+            logger.error('Error: ' + str(e) + ', rolling back changes.')
             self._conn.rollback()
         return version
 
@@ -263,6 +266,7 @@ class RepoObjectDiskStorage(RepoStore):
         for row in execute(cursor, 'select category from mapping where name = ' + "'" + name + "'"):
             category = repo.MLObjectType(row[0])
         if category is None:
+            logger.error('no object ' + name + ' in storage.')
             raise Exception('no object ' + name + ' in storage.')
 
         version_condition = self.get_version_condition(
@@ -283,3 +287,32 @@ class RepoObjectDiskStorage(RepoStore):
             objects.append(self._load_function(
                 self._main_dir + '/' + filename))
         return objects
+
+    def object_exists(self, name, version=RepoStore.LAST_VERSION):
+        """Returns True if an object with the given name and version exists.
+
+        Arguments:
+            name {string} -- object name
+
+        Keyword Arguments:
+            version {version number} -- version number (default: {LAST_VERSION})
+        """
+        raise NotImplementedError()
+
+    def replace(self, obj):
+        """Overwrite existing object without incrementing version
+
+        Args:
+            obj (RepoObject): repo object to be overwritten
+        """
+        select_statement = "select file from versions where name = '" +\
+            obj["repo_info"][RepoInfoKey.NAME.value] + "' and version = '" +\
+            str(obj["repo_info"][RepoInfoKey.VERSION.value]) + "'"
+        cursor = self._conn.cursor()
+        for row in execute(cursor, select_statement):
+            self._save_function(self._main_dir + '/' + str(row[0]), obj)
+
+    def close_connection(self):
+        """Closes the database connection
+        """
+        self._conn.close()

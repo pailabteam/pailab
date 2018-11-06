@@ -12,7 +12,6 @@ Welcome to pailab's documentation!
    
    tutorial
    repo_module
-   
 
 Indices and tables
 ==================

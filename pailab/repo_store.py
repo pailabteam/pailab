@@ -1,5 +1,5 @@
 import abc
-from repo.repo_objects import RepoInfoKey  # pylint: disable=E0401
+from pailab.repo_objects import RepoInfoKey  # pylint: disable=E0401
 
 
 class RepoScriptStore(abc.ABC):
@@ -40,6 +40,15 @@ class RepoStore(abc.ABC):
 
         Raises:
             Exception if an object with same name already exists.
+        """
+        pass
+
+    @abc.abstractmethod
+    def replace(self, obj):
+        """Overwrite existing object without incrementing version
+
+        Args:
+            obj (RepoObject): repo object to be overwritten
         """
         pass
 
@@ -98,7 +107,7 @@ class RepoStore(abc.ABC):
         Returns:
             version number -- latest version number
         """
-        return self.get(name, versions=RepoStore.LAST_VERSION, repo_info_fields=[RepoInfoKey.VERSION.value])[0]['repo_info'][RepoInfoKey.VERSION.value]
+        return self.get(name, versions=RepoStore.LAST_VERSION, repo_info_fields=[RepoInfoKey.VERSION])[0]['repo_info'][RepoInfoKey.VERSION.value]
 
     def object_exists(self, name, version=LAST_VERSION):
         """Returns True if an object with the given name and version exists.
