@@ -84,6 +84,19 @@ class TutorialTest(unittest.TestCase):
         job_ids = ml_repo.run_measures()
         # end running measures
 
+        # get measures
+        max_measure = ml_repo.get(
+            'DecisionTreeRegressor/measure/training_data/max')
+        print(str(max_measure.value))
+        # end getting measures
+
+        # list objects
+        for k in MLObjectType:
+            names = ml_repo.get_names(k.value)
+            for n in names:
+                print(n + '\t  ' + k.value)
+        # end listing objects
+
         # cleanup after running
         # job_runner.close_connection()
         handler.close_connection()

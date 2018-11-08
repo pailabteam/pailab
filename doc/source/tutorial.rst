@@ -79,6 +79,7 @@ to add an arbitrary sklearn model as a model which can be handled by the reposit
 - An object defining the function to be called to train the model
 - An object defining the model
 - An object defining the model parameter
+
 In the following we just use a DecisionTree as our model.
 
 .. literalinclude:: ../../tests/tutorial_test.py
@@ -107,9 +108,31 @@ To measure errors and to provide plots the model must be evaluated on all test a
     :start-after: run evaluation
     :end-before: end running evaluation
 
-Based on the evaluations one can define specify different kinds of measures to measure the error between the target and model values. 
+Based on the evaluations one can specify different kinds of error measures. 
 
 .. literalinclude:: ../../tests/tutorial_test.py
     :language: python
     :start-after: run measures
     :end-before: end running measures
+
+Retrieving measures
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The measurement values are also stored as a repository object in the repository (see :py:class:`pailab.repo_objects.measure`). One can simply retrieve them by calling the repositories
+:py:meth:`pailab.repo.MLRepo.get` method which can be used to retrieve all objects stored in the repository.
+
+.. literalinclude:: ../../tests/tutorial_test.py
+    :language: python
+    :start-after: get measures
+    :end-before: end getting measures
+
+Creating list of all objects
+----------------------------------
+One can simply get an overview over all objects stored in the repository by calling :py:meth:`pailab.repo.MLRepo.get_names` to retrieve a list of names of 
+all objects of a specific category (see :py:class:`pailab.repo.MLObjectType`). The following line will loop over all categories and print the names of all objects within this category
+contained in the repository.
+
+.. literalinclude:: ../../tests/tutorial_test.py
+    :language: python
+    :start-after: list objects
+    :end-before: end listing objects
+
