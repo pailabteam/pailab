@@ -7,6 +7,9 @@ import pailab.repo_objects as repo_objects
 from pailab.repo_store import RepoStore
 import pailab.disk_handler as disk_handler
 import time
+import logging
+# since we also test for errors we switch off the logging in this level
+logging.basicConfig(level=logging.FATAL)
 
 
 class TestClass:
