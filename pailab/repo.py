@@ -12,7 +12,7 @@ from enum import Enum
 from copy import deepcopy
 import logging
 import pailab.repo_objects as repo_objects
-from pailab.repo_objects import RepoInfoKey
+from pailab.repo_objects import RepoInfoKey, DataSet
 from pailab.repo_objects import repo_object_init  # pylint: disable=E0401
 import pailab.repo_store as repo_store
 logger = logging.getLogger(__name__)
@@ -409,54 +409,6 @@ class MeasureJob(Job):
         from sklearn.metrics import r2_score
         return r2_score(target_data, eval_data)        
 # endregion
-class DataSet:
-    """Class used to access training or test data.
-
-    This class refers to some RawData object and a start- and endindex 
-
-    """
-    @repo_object_init()
-    def __init__(self, raw_data, start_index=0, 
-        end_index=None, raw_data_version=repo_store.RepoStore.LAST_VERSION):
-        """Constructor
-
-        Arguments:
-            :argument raw_data: {string} -- id of raw_data the dataset refers to
-            :argument start_index: {integer} -- index of first entry of the raw data used in the dataset
-            :argument end_index: {integer} -- end_index of last entry of the raw data used in the dataset (if None, all including last element are used)
-            :argument raw_data_version: {integer} -- version of RawData object the DataSet refers to (default is latest)
-        """
-        self.raw_data = raw_data
-        self.start_index = start_index
-        self.end_index = end_index
-        self.raw_data_version = raw_data_version
-        
-        if self.end_index is not None:
-            if self.start_index > 0 and self.end_index > 0 and self.start_index >= self.end_index:
-                raise Exception('Startindex must be less then endindex.')
-
-    def set_data(self, raw_data):
-        """Set the data from the given raw_data.
-        
-        Arguments:
-            raw_data {RawData} -- the raw data used to set the data from
-        
-        Raises:
-            Exception -- if end_index id less than start_index
-        
-        """
-
-        if raw_data.x_data is not None:
-            setattr(self, 'x_data',raw_data.x_data) # todo more efficient implementation over numpy_repo to avoid loading all and then cutting off
-        if raw_data.y_data is not None:
-            setattr(self, 'y_data', raw_data.y_data)
-        setattr(self, 'x_coord_names', raw_data.x_coord_names)
-        setattr(self, 'y_coord_names', raw_data.y_coord_names)
-        setattr(self, 'n_data', raw_data.n_data)
-    
-    def __str__(self):
-        return str(self.to_dict())
-
 class Name:
     def __init__(self, name_order, tag):
         self.name_order = name_order.split('/')
