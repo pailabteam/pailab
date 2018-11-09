@@ -961,14 +961,32 @@ class MLRepo:
             
         return train_job.repo_info[RepoInfoKey.NAME], str(train_job.repo_info[RepoInfoKey.VERSION])
 
+    def _get_default_object_name(self, obj_name, obj_category):
+        """Returns unique object name of given category if given object_name is None
+        
+        Args:
+            obj_name (str or None): if not None, the given string will simply be returned
+            obj_category (MLObjectType): category of object
+        
+        Raises:
+            Exception: If not exactly one object of desired type exists in repo
+        
+        Returns:
+            [str]: Resulting object name
+        """
+
+        if obj_name is not None:
+            return obj_name
+        names = self.get_names(obj_category)
+        if len(names) == 0:
+            raise Exception('No object of type ' + obj_category.value + ' exists.')
+        if len(names) > 1:
+            raise Exception('More than one object of type ' + obj_category.value + ' exist, please specify a specific object name.')
+        return names[0]
+            
+        
     def _create_evaluation_jobs(self, model=None,model_version=repo_store.RepoStore.LAST_VERSION, datasets={}, predecessors = []):
-        if model is None:
-            m_names = self.get_names(MLObjectType.CALIBRATED_MODEL)
-            if len(m_names) == 0:
-                raise Exception('No model exists, please train a model first.')
-            if len(m_names) > 1:
-                raise Exception('More than one model in repository, please specify a model to evaluate.')
-            model = m_names[0]
+        model = self._get_default_object_name(model, MLObjectType.CALIBRATED_MODEL)
         datasets_ = deepcopy(datasets)
         if len(datasets_) == 0: #if nothing is specified, add evaluation jobs on all training and test datasets
             names = self.get_names(MLObjectType.TEST_DATA.value)
@@ -1013,13 +1031,7 @@ class MLRepo:
         return job_ids
 
     def run_measures(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, datasets={}, measures = {}, predecessors = []):
-        if model is None:
-            m_names = self.get_names(MLObjectType.CALIBRATED_MODEL)
-            if len(m_names) == 0:
-                raise Exception('No model exists, please train a model first.')
-            if len(m_names) > 1:
-                raise Exception('More than one model in repository, please specify a model to evaluate.')
-            model = m_names[0]
+        model = self._get_default_object_name(model, MLObjectType.CALIBRATED_MODEL)
         datasets_ = deepcopy(datasets)
         if len(datasets_) == 0:
             names = self.get_names(MLObjectType.TEST_DATA)
@@ -1062,7 +1074,7 @@ class MLRepo:
         """
         pass
 
-    def set_label(self, label_name, model_name = None, model_version = repo_store.RepoStore.LAST_VERSION, message=''):
+    def set_label(self, label_name, model = None, model_version = repo_store.RepoStore.LAST_VERSION, message=''):
         """ Label a certain model version.
 
             It checks if a model with this version really exists and throws an exception if such a model does not exist.
@@ -1072,11 +1084,12 @@ class MLRepo:
             :param model_name: name of model
             :param model_version: model version for which the label is set.
         """
+        model = self._get_default_object_name(model, MLObjectType.CALIBRATED_MODEL)
         # check if a model with this version exists
-        if not self._ml_repo.object_exists(model_name, model_version):
+        if not self._ml_repo.object_exists(model, model_version):
             raise Exception('Cannot set label, model ' + model_name + ' with version ' + str(model_version) + ' does not exist.')
-        label = repo_objects.Label(model_name, model_version, repo_info={RepoInfoKey.NAME: label_name, 
+        label = repo_objects.Label(model, model_version, repo_info={RepoInfoKey.NAME: label_name, 
             RepoInfoKey.CATEGORY: MLObjectType.LABEL.value})
-        self._ml_repo.add(label)        
+        self.add(label)        
         
 
