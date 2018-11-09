@@ -353,8 +353,9 @@ class CommitInfo:
         """
         result =  'time: ' + str(self.time) + ', author: ' + self.author + ', message: '+ self.message + ', objects: ' + str(self.objects)
         return result
+
 class Label:
-    """RepoObject to label a certain model
+    """RepoObject to label a certain model version
     """
     @repo_object_init()
     def __init__(self, model_name, model_version):
