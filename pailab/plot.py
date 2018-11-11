@@ -16,8 +16,15 @@ def measure_by_model_parameter(ml_repo, measure_name, param_name, data_versions=
     data_name = str(NamingConventions.Data(
         NamingConventions.EvalData(NamingConventions.Measure(measure_name))))
     data_versions = set()
+    model_label_annotations = []
     for measure in measures:
         data_versions.add(measure['data_version'])
+        if 'model_label' in measure:
+            model_label_annotations.append(dict(x=measure[param_name], y=measure['value'], xref='x', yref='y', text=measure['model_label'],
+                                                showarrow=True,
+                                                arrowhead=7,
+                                                ax=0,
+                                                ay=-20))
     measures = pd.DataFrame(measures)
     data = []
 
@@ -41,6 +48,7 @@ def measure_by_model_parameter(ml_repo, measure_name, param_name, data_versions=
 
     layout = go.Layout(
         title='measure by parameter',
+        annotations=model_label_annotations,
         xaxis=dict(title=param_name),
         yaxis=dict(title=NamingConventions.Measure(
             measure_name).values['measure_type'])

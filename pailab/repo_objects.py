@@ -359,8 +359,8 @@ class Label:
     """
     @repo_object_init()
     def __init__(self, model_name, model_version):
-        self.model_name = model_name
-        self.model_version = model_version
+        self.name = model_name
+        self.version = model_version
     
     
 class MeasureConfiguration:

@@ -1086,8 +1086,9 @@ class MLRepo:
         """
         model = self._get_default_object_name(model, MLObjectType.CALIBRATED_MODEL)
         # check if a model with this version exists
-        if not self._ml_repo.object_exists(model, model_version):
-            raise Exception('Cannot set label, model ' + model_name + ' with version ' + str(model_version) + ' does not exist.')
+        m = self.get(model)
+        if model_version == repo_store.RepoStore.LAST_VERSION:
+            model_version = m.repo_info[RepoInfoKey.VERSION]
         label = repo_objects.Label(model, model_version, repo_info={RepoInfoKey.NAME: label_name, 
             RepoInfoKey.CATEGORY: MLObjectType.LABEL.value})
         self.add(label)        
