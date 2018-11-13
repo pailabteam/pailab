@@ -12,7 +12,7 @@ from enum import Enum
 from copy import deepcopy
 import logging
 import pailab.repo_objects as repo_objects
-from pailab.repo_objects import RepoInfoKey
+from pailab.repo_objects import RepoInfoKey, DataSet
 from pailab.repo_objects import repo_object_init  # pylint: disable=E0401
 import pailab.repo_store as repo_store
 logger = logging.getLogger(__name__)
@@ -409,54 +409,6 @@ class MeasureJob(Job):
         from sklearn.metrics import r2_score
         return r2_score(target_data, eval_data)        
 # endregion
-class DataSet:
-    """Class used to access training or test data.
-
-    This class refers to some RawData object and a start- and endindex 
-
-    """
-    @repo_object_init()
-    def __init__(self, raw_data, start_index=0, 
-        end_index=None, raw_data_version=repo_store.RepoStore.LAST_VERSION):
-        """Constructor
-
-        Arguments:
-            :argument raw_data: {string} -- id of raw_data the dataset refers to
-            :argument start_index: {integer} -- index of first entry of the raw data used in the dataset
-            :argument end_index: {integer} -- end_index of last entry of the raw data used in the dataset (if None, all including last element are used)
-            :argument raw_data_version: {integer} -- version of RawData object the DataSet refers to (default is latest)
-        """
-        self.raw_data = raw_data
-        self.start_index = start_index
-        self.end_index = end_index
-        self.raw_data_version = raw_data_version
-        
-        if self.end_index is not None:
-            if self.start_index > 0 and self.end_index > 0 and self.start_index >= self.end_index:
-                raise Exception('Startindex must be less then endindex.')
-
-    def set_data(self, raw_data):
-        """Set the data from the given raw_data.
-        
-        Arguments:
-            raw_data {RawData} -- the raw data used to set the data from
-        
-        Raises:
-            Exception -- if end_index id less than start_index
-        
-        """
-
-        if raw_data.x_data is not None:
-            setattr(self, 'x_data',raw_data.x_data) # todo more efficient implementation over numpy_repo to avoid loading all and then cutting off
-        if raw_data.y_data is not None:
-            setattr(self, 'y_data', raw_data.y_data)
-        setattr(self, 'x_coord_names', raw_data.x_coord_names)
-        setattr(self, 'y_coord_names', raw_data.y_coord_names)
-        setattr(self, 'n_data', raw_data.n_data)
-    
-    def __str__(self):
-        return str(self.to_dict())
-
 class Name:
     def __init__(self, name_order, tag):
         self.name_order = name_order.split('/')
@@ -1009,14 +961,32 @@ class MLRepo:
             
         return train_job.repo_info[RepoInfoKey.NAME], str(train_job.repo_info[RepoInfoKey.VERSION])
 
+    def _get_default_object_name(self, obj_name, obj_category):
+        """Returns unique object name of given category if given object_name is None
+        
+        Args:
+            obj_name (str or None): if not None, the given string will simply be returned
+            obj_category (MLObjectType): category of object
+        
+        Raises:
+            Exception: If not exactly one object of desired type exists in repo
+        
+        Returns:
+            [str]: Resulting object name
+        """
+
+        if obj_name is not None:
+            return obj_name
+        names = self.get_names(obj_category)
+        if len(names) == 0:
+            raise Exception('No object of type ' + obj_category.value + ' exists.')
+        if len(names) > 1:
+            raise Exception('More than one object of type ' + obj_category.value + ' exist, please specify a specific object name.')
+        return names[0]
+            
+        
     def _create_evaluation_jobs(self, model=None,model_version=repo_store.RepoStore.LAST_VERSION, datasets={}, predecessors = []):
-        if model is None:
-            m_names = self.get_names(MLObjectType.CALIBRATED_MODEL)
-            if len(m_names) == 0:
-                raise Exception('No model exists, please train a model first.')
-            if len(m_names) > 1:
-                raise Exception('More than one model in repository, please specify a model to evaluate.')
-            model = m_names[0]
+        model = self._get_default_object_name(model, MLObjectType.CALIBRATED_MODEL)
         datasets_ = deepcopy(datasets)
         if len(datasets_) == 0: #if nothing is specified, add evaluation jobs on all training and test datasets
             names = self.get_names(MLObjectType.TEST_DATA.value)
@@ -1061,13 +1031,7 @@ class MLRepo:
         return job_ids
 
     def run_measures(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, datasets={}, measures = {}, predecessors = []):
-        if model is None:
-            m_names = self.get_names(MLObjectType.CALIBRATED_MODEL)
-            if len(m_names) == 0:
-                raise Exception('No model exists, please train a model first.')
-            if len(m_names) > 1:
-                raise Exception('More than one model in repository, please specify a model to evaluate.')
-            model = m_names[0]
+        model = self._get_default_object_name(model, MLObjectType.CALIBRATED_MODEL)
         datasets_ = deepcopy(datasets)
         if len(datasets_) == 0:
             names = self.get_names(MLObjectType.TEST_DATA)
@@ -1110,7 +1074,7 @@ class MLRepo:
         """
         pass
 
-    def set_label(self, label_name, model_name = None, model_version = repo_store.RepoStore.LAST_VERSION, message=''):
+    def set_label(self, label_name, model = None, model_version = repo_store.RepoStore.LAST_VERSION, message=''):
         """ Label a certain model version.
 
             It checks if a model with this version really exists and throws an exception if such a model does not exist.
@@ -1120,11 +1084,13 @@ class MLRepo:
             :param model_name: name of model
             :param model_version: model version for which the label is set.
         """
+        model = self._get_default_object_name(model, MLObjectType.CALIBRATED_MODEL)
         # check if a model with this version exists
-        if not self._ml_repo.object_exists(model_name, model_version):
-            raise Exception('Cannot set label, model ' + model_name + ' with version ' + str(model_version) + ' does not exist.')
-        label = repo_objects.Label(model_name, model_version, repo_info={RepoInfoKey.NAME: label_name, 
+        m = self.get(model)
+        if model_version == repo_store.RepoStore.LAST_VERSION:
+            model_version = m.repo_info[RepoInfoKey.VERSION]
+        label = repo_objects.Label(model, model_version, repo_info={RepoInfoKey.NAME: label_name, 
             RepoInfoKey.CATEGORY: MLObjectType.LABEL.value})
-        self._ml_repo.add(label)        
+        self.add(label)        
         
 

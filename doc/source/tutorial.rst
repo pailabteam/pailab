@@ -125,7 +125,7 @@ The measurement values are also stored as a repository object in the repository 
     :start-after: get measures
     :end-before: end getting measures
 
-Creating list of all objects
+Creating a list of all objects
 ----------------------------------
 One can simply get an overview over all objects stored in the repository by calling :py:meth:`pailab.repo.MLRepo.get_names` to retrieve a list of names of 
 all objects of a specific category (see :py:class:`pailab.repo.MLObjectType`). The following line will loop over all categories and print the names of all objects within this category
