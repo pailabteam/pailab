@@ -22,10 +22,14 @@ class RepoScriptStore(abc.ABC):
         pass
 
 
+FIRST_VERSION = 'first'
+LAST_VERSION = 'last'
+
+
 class RepoStore(abc.ABC):
 
-    FIRST_VERSION = 'first'
-    LAST_VERSION = 'last'
+    FIRST_VERSION = FIRST_VERSION
+    LAST_VERSION = LAST_VERSION
 
     """Abstract base class for all storages which can be used in the ML repository
 

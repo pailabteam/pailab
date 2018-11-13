@@ -37,9 +37,6 @@ def get_measure_by_model_parameter(ml_repo, measure_names, param_name, data_vers
         param_name (str): name of parameter
         data_versions (version number, optional): Defaults to None. If not None, only values on measures on dta with this version number are used
 
-    Raises:
-        NotImplementedError: raises exception if data_versiosn is not None
-
     Returns:
         [dict]: dictionary of measure name to list of dictionaries containing the result, i.e. 
         model_version: version of model parameter
@@ -55,17 +52,16 @@ def get_measure_by_model_parameter(ml_repo, measure_names, param_name, data_vers
     if isinstance(measure_names, str):
         measure_names = [measure_names]
 
-    if data_versions is not None:
-        raise NotImplementedError()
     result_all = {}
     for measure_name in measure_names:
+        data = str(NamingConventions.Data(NamingConventions.EvalData(
+            NamingConventions.Measure(measure_name))))
         measures = ml_repo.get(measure_name, version=(
-            RepoStore.FIRST_VERSION, RepoStore.LAST_VERSION))
+            RepoStore.FIRST_VERSION, RepoStore.LAST_VERSION), modifier_versions={data: data_versions})
         model_name = NamingConventions.CalibratedModel(
             NamingConventions.Measure(measure_name)
         )
-        data = str(NamingConventions.Data(NamingConventions.EvalData(
-            NamingConventions.Measure(measure_name))))
+
         model_param_name = str(NamingConventions.ModelParam(model_name))
         train_data = ml_repo.get_names(MLObjectType.TRAINING_DATA)[0]
         model_name = str(model_name)

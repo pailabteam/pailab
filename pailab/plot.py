@@ -13,6 +13,7 @@ init_notebook_mode(connected=True)
 def measure_by_model_parameter(ml_repo, measure_name, param_name, data_versions=None):
     x = plot_helper.get_measure_by_model_parameter(
         ml_repo, measure_name, param_name, data_versions)
+    data = []
     for k, measures in x.items():
         data_name = str(NamingConventions.Data(
             NamingConventions.EvalData(NamingConventions.Measure(measure_name))))
@@ -28,8 +29,6 @@ def measure_by_model_parameter(ml_repo, measure_name, param_name, data_versions=
                                                     ax=0,
                                                     ay=-20))
         measures = pd.DataFrame(measures)
-        data = []
-
         for d_version in data_versions:
             # if True:
             df = measures.loc[measures['data_version'] == d_version]
@@ -38,10 +37,10 @@ def measure_by_model_parameter(ml_repo, measure_name, param_name, data_versions=
                     + 'train_data: ' + str(x['train_data_version'])
                     for index, x in df.iterrows()]
 
-            if len(x) > 1:
+            if True:  # len(x) > 1:
                 plot_name = k + ': ' + str(d_version)
-            else:
-                plot_name = data_name + ': ' + str(d_version)
+            # else:
+            #    plot_name = data_name + ': ' + str(d_version)
             data.append(
                 go.Scatter(
                     x=df[param_name],
