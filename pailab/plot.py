@@ -1,8 +1,9 @@
 import logging
 import pandas as pd
 import pailab.plot_helper as plot_helper  # pylint: disable=E0611
-from pailab.repo_store import RepoStore
+from pailab.repo_store import RepoStore, LAST_VERSION
 from pailab.repo import NamingConventions, MLObjectType  # pylint: disable=E0611,E0401
+from pailab import RepoInfoKey
 from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
 import plotly.graph_objs as go
 logger = logging.getLogger(__name__)
@@ -66,7 +67,38 @@ def measure_by_model_parameter(ml_repo, measure_name, param_name, data_versions=
     iplot(fig)  # , filename='pandas/basic-line-plot')
 
 
+def histogram_model_error(ml_repo, models, data_name, y_coordinate=None, data_version=LAST_VERSION):
+    plot_dict = plot_helper.get_pointwise_model_errors(
+        ml_repo, models, data_name, y_coordinate)
+
+    layout = go.Layout(
+        title=plot_dict['title'],
+        xaxis=dict(title=plot_dict['x0_name']),
+        barmode='overlay'
+    )
+    plot_data = []
+    opacity = 1.0
+    if len(plot_dict['data'].keys()) > 1:
+        opacity = 0.75
+    for k, x in plot_dict['data'].items():
+        text = ''
+        for l, w in x['info'].items():
+            text += l + ':' + str(w) + '<br>'
+        if 'label' in x.keys():
+            k = k + ', ' + x['label']
+        plot_data.append(go.Histogram(x=x['x0'],
+                                      text=text,
+                                      name=k,
+                                      opacity=opacity))
+    fig = go.Figure(data=plot_data, layout=layout)
+
+    iplot(fig)  # , filename='pandas/basic-line-plot')
+
+
 def histogram(ml_repo, data, x_coordinate=None, y_coordinate=None):
+    if x_coordinate is None and y_coordinate is None:
+        raise Exception(
+            "Please specify either an x- or a y-coordinate to plot.")
     data_names = data
     if isinstance(data, str):
         data_names = [data]
