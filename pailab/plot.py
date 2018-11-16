@@ -1,3 +1,7 @@
+"""This module provides out-of-the box plots to analyse models whee titles, axes labels, additional information is automatically 
+added to the resuling figures from the information stored in the repository. 
+"""
+
 import logging
 import pandas as pd
 import pailab.plot_helper as plot_helper  # pylint: disable=E0611
@@ -12,6 +16,15 @@ init_notebook_mode(connected=True)
 
 
 def measure_by_model_parameter(ml_repo, measure_name, param_name, data_versions=None):
+    '''[summary]
+
+    Args:
+        :param ml_repo ([type]): [description]
+        :param measure_name ([type]): [description]
+        :param param_name ([type]): [description]
+        :param data_versions ([type], optional): Defaults to None. [description]
+    '''
+
     x = plot_helper.get_measure_by_model_parameter(
         ml_repo, measure_name, param_name, data_versions)
     data = []
@@ -76,7 +89,7 @@ def _histogram(plot_dict):
     plot_data = []
     opacity = 1.0
     if len(plot_dict['data'].keys()) > 1:
-        opacity = 0.75
+        opacity = 0.5
     for k, x in plot_dict['data'].items():
         text = ''
         for l, w in x['info'].items():
@@ -93,12 +106,52 @@ def _histogram(plot_dict):
 
 
 def histogram_model_error(ml_repo, models, data_name, y_coordinate=None, data_version=LAST_VERSION):
+    """Plot histogram of differences between predicted and real values.
+
+    The method plots histograms between predicted and real values of a certain target variable for reference data and models. 
+    The reference data is described by the data name and the version of the data (as well as the targt variables name). The models can be described
+    by 
+        - a dictionary of model names to versions (a single verion numbr, a range of versions or a list of versions)
+        - just a model name (in this case the latest version is used)
+
+    Args:
+        :param ml_repo ([type]): [description]
+        :param models ([type]): [description]
+        :param data_name ([type]): [description]
+        :param y_coordinate ([type], optional): Defaults to None. [description]
+        :param data_version ([type], optional): Defaults to LAST_VERSION. [description]
+
+    Examples:
+        Plot histograms for errors in the variable mickey_mouse on the dataset my_test_data for the latest version of model_1 and all versions of model_2. 
+
+        >>> histogram_model_error(repo, models = {'model_1': ['latest'], 'model_2': ('first','latest')}, 
+            data_name = 'my_test_data', y_coordinate='mickey_mouse')
+
+        Plot histogram for error of latest version of model_2 on the latest version of my_test_data. Note that the plot would be empty if the latest version of model_2
+        has not yet been evaluated on the latest version of my_test_data.
+
+        >>> histogram_model_error(repo, models = 'model_2', data_name = 'my_test_data', y_coordinate='mickey_mouse')
+
+
+    """
+
     plot_dict = plot_helper.get_pointwise_model_errors(
         ml_repo, models, data_name, y_coordinate)
     _histogram(plot_dict)
 
 
 def scatter_model_error(ml_repo, models, data_name, x_coordinate, y_coordinate=None, data_version=LAST_VERSION):
+    '''[summary]
+
+    Args:
+        :param ml_repo ([type]): [description]
+        :param models ([type]): [description]
+        :param data_name ([type]): [description]
+        :param x_coordinate ([type]): [description]
+        :param y_coordinate ([type], optional): Defaults to None. [description]
+        :param data_version ([type], optional): Defaults to LAST_VERSION. [description]
+    '''
+
     plot_dict = plot_helper.get_pointwise_model_errors(
         ml_repo, models, data_name, y_coordinate, x_coord_name=x_coordinate)
 
@@ -127,37 +180,17 @@ def scatter_model_error(ml_repo, models, data_name, x_coordinate, y_coordinate=N
     iplot(fig)  # , filename='pandas/basic-line-plot')
 
 
-def histogram(ml_repo, data, x_coordinate=None, y_coordinate=None):
-    if x_coordinate is None and y_coordinate is None:
-        raise Exception(
-            "Please specify either an x- or a y-coordinate to plot.")
-    data_names = data
-    if isinstance(data, str):
-        data_names = [data]
-    plot_data = []
-    for d in data_names:
-        # if just string, get lates version, otherwise assume it is list or tuple with version info
-        name = d
-        version = RepoStore.LAST_VERSION
-        if not isinstance(d, str):
-            name = d[0]
-            version = d[1]
-        tmp = ml_repo.get(name, version=version, full_object=True)
-        if x_coordinate is not None:
-            i = tmp.x_coord_names.index(x_coordinate)
-            data = tmp.x_data
-            coord_name = x_coordinate
-        else:
-            i = tmp.y_coord_names.index(y_coordinate)
-            coord_name = y_coordinate
-            data = tmp.y_data
+def histogram_data(ml_repo, data, x_coordinate, y_coordinate=None):
+    '''[summary]
 
-        plot_data.append(go.Histogram(x=data[:, i]))
+    Args:
+        ml_repo ([type]): [description]
+        data ([type]): [description]
+        x_coordinate ([type]): Defaults to None. [description]
+        y_coordinate ([type], optional): Defaults to None. [description]
 
-    layout = go.Layout(
-        title='histogram ' + coord_name,
-        xaxis=dict(title=coord_name),
-    )
-    fig = go.Figure(data=plot_data, layout=layout)
-
-    iplot(fig)  # , filename='pandas/basic-line-plot')
+    Raises:
+        Exception: [description]
+    '''
+    plot_dict = plot_helper.get_data(ml_repo, data, x_coordinate)
+    _histogram(plot_dict)

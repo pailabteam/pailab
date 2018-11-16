@@ -1,3 +1,7 @@
+"""This module creaes the data for plotting used by plot.py. The different methods return the respective data and information for plotting 
+such as axes labels, titles, additional info which may be shown on hover in the plot encapsulated in a dictionary.
+"""
+
 import logging
 from pailab.repo import MLObjectType, MLRepo, NamingConventions  # pylint: disable=E0401,E0611
 from pailab.repo_objects import RepoInfoKey  # pylint: disable=E0401
@@ -168,4 +172,37 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
                 tmp['label'] = model_label
             result['data'][eval_data_name + ': ' +
                            str(eval_d.repo_info[RepoInfoKey.VERSION])] = tmp
+    return result
+
+
+def get_data(ml_repo, data, x0_coord_name, x1_coord_name=None):
+
+    data_dict = data
+    result = {'title': 'data distribution', 'data': {}}
+    result['x0_name'] = x0_coord_name
+    result['data'] = {}
+    if x1_coord_name is not None:
+        result['x1_name'] = x1_coord_name
+
+    if isinstance(data, str):
+        data_dict[data] = LAST_VERSION
+
+    x_coord = None
+    y_coord = None
+    for k, v in data_dict.items():
+        ref_data = ml_repo.get(k, version=v, full_object=True)
+
+        if not isinstance(ref_data, list):
+            ref_data = [ref_data]
+        for d in ref_data:
+            if x_coord is None:
+                x_coord = d.x_coord_names.index(x0_coord_name)
+            if x1_coord_name is not None:
+                y_coord = d.x_coord_names.index(x1_coord_name)
+            tmp = {'info': {}}
+            tmp['x0'] = d.x_data[:, x_coord]
+            if y_coord is not None:
+                tmp['x1'] = d.x_data[:, y_coord]
+            result['data'][d.repo_info[RepoInfoKey.NAME] + ': ' +
+                           str(d.repo_info[RepoInfoKey.VERSION])] = tmp
     return result
