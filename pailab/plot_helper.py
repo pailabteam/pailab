@@ -87,7 +87,7 @@ def get_measure_by_model_parameter(ml_repo, measure_names, param_name, data_vers
     return result_all
 
 
-def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_version=LAST_VERSION):
+def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_version=LAST_VERSION, x_coord_name=None):
     label_checker = _LabelChecker(ml_repo)
 
     def get_model_dict(ml_repo, models, label_checker):
@@ -129,9 +129,16 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
     coord = 0
     if coord_name is None:
         coord_name = ref_data.y_coord_names[0]
+
     coord = ref_data.y_coord_names.index(coord_name)
-    result = {'title': 'pointwise error (' + coord_name + ')', 'data': {},
-              'x0_name': 'model-target  [' + coord_name + ']'}
+    result = {'title': 'pointwise error (' + coord_name + ')', 'data': {}}
+    if x_coord_name is None:
+        result['x0_name'] = 'model-target  [' + coord_name + ']'
+    else:
+        result['x0_name'] = x_coord_name
+        result['x1_name'] = 'model-target  [' + coord_name + ']'
+        x_points = ref_data.x_data[:,
+                                   ref_data.x_coord_names.index(x_coord_name)]
 
     for m_name, m_versions in _models.items():
         tmp = m_name.split('/')[0]
@@ -145,8 +152,14 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
             eval_data = [eval_data]
         for eval_d in eval_data:
             error = ref_data.y_data[:, coord] - eval_d.x_data[:, coord]
-            tmp = {'x0': error}
-            tmp['info'] = {data: str(eval_d.repo_info[RepoInfoKey.MODIFICATION_INFO]),
+            tmp = {}
+            if x_coord_name is None:
+                tmp['x0'] = error
+            else:
+                tmp['x1'] = error
+                tmp['x0_name'] = x_coord_name
+                tmp['x0'] = x_points
+            tmp['info'] = {data: str(data_version),
                            m_name: str(eval_d.repo_info[RepoInfoKey.MODIFICATION_INFO][m_name])}
 
             model_label = label_checker.get_label(

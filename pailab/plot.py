@@ -67,10 +67,7 @@ def measure_by_model_parameter(ml_repo, measure_name, param_name, data_versions=
     iplot(fig)  # , filename='pandas/basic-line-plot')
 
 
-def histogram_model_error(ml_repo, models, data_name, y_coordinate=None, data_version=LAST_VERSION):
-    plot_dict = plot_helper.get_pointwise_model_errors(
-        ml_repo, models, data_name, y_coordinate)
-
+def _histogram(plot_dict):
     layout = go.Layout(
         title=plot_dict['title'],
         xaxis=dict(title=plot_dict['x0_name']),
@@ -90,6 +87,41 @@ def histogram_model_error(ml_repo, models, data_name, y_coordinate=None, data_ve
                                       text=text,
                                       name=k,
                                       opacity=opacity))
+    fig = go.Figure(data=plot_data, layout=layout)
+
+    iplot(fig)  # , filename='pandas/basic-line-plot')
+
+
+def histogram_model_error(ml_repo, models, data_name, y_coordinate=None, data_version=LAST_VERSION):
+    plot_dict = plot_helper.get_pointwise_model_errors(
+        ml_repo, models, data_name, y_coordinate)
+    _histogram(plot_dict)
+
+
+def scatter_model_error(ml_repo, models, data_name, x_coordinate, y_coordinate=None, data_version=LAST_VERSION):
+    plot_dict = plot_helper.get_pointwise_model_errors(
+        ml_repo, models, data_name, y_coordinate, x_coord_name=x_coordinate)
+
+    layout = go.Layout(
+        title=plot_dict['title'],
+        xaxis=dict(title=plot_dict['x0_name']),
+        yaxis=dict(title=plot_dict['x1_name'])
+    )
+    plot_data = []
+    for k, x in plot_dict['data'].items():
+        text = ''
+        for l, w in x['info'].items():
+            text += l + ':' + str(w) + '<br>'
+        if 'label' in x.keys():
+            k = k + ', ' + x['label']
+        plot_data.append(go.Scatter(x=x['x0'],
+                                    y=x['x1'],
+                                    text=text,
+                                    name=k,
+                                    mode='markers'))
+
+    # IPython notebook
+    # py.iplot(data, filename='pandas/basic-line-plot')
     fig = go.Figure(data=plot_data, layout=layout)
 
     iplot(fig)  # , filename='pandas/basic-line-plot')
