@@ -33,6 +33,12 @@ job runner
     :members:
     :show-inheritance:
 
+plotting
+--------------------------
+.. automodule:: pailab.plot
+    :members:
+    :show-inheritance:
+
 externals
 ========================
 externals.sklearn_interface
