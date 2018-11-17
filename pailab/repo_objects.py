@@ -22,6 +22,31 @@ def _get_attribute_dict(clazz, excluded=set()):
             and not name in excluded
             }
 
+class Version:
+    def __init__(self, version_string = None):
+        if version_string is None:
+            self._uid = uuid.uuid1()
+        else:
+            self._uid = uuid.UUID(version_string)
+
+    def _get_time(self):
+        return datetime(1582, 10, 15) + timedelta(microseconds=self._uid.time//10)
+
+    def __lt__(self, other):
+        return self._get_time() < other._get_time()
+
+    def __lte__(self, other):
+        return self._get_time() <= other._get_time()
+
+    def __gt__(self, other):
+        return self._get_time() > other._get_time()
+
+    def __gte__(self, other):
+        return self._get_time() >= other._get_time()
+
+    def __str__(self):
+        return str(self._uid)
+
 
 class RepoInfoKey(Enum):
     """ Enums to describe all possible repository informations.
@@ -35,6 +60,7 @@ class RepoInfoKey(Enum):
     BIG_OBJECTS = 'big_objects'
     COMMIT_MESSAGE = 'commit_message'
     AUTHOR = 'author'
+    COMMIT_DATE = 'commit_date'
 
 class RepoInfo:
     """Contains all repo relevent information
@@ -48,7 +74,7 @@ class RepoInfo:
             setattr(self, key.value, None)
         self.set_fields(kwargs)
         if self[RepoInfoKey.VERSION] is None:
-            self[RepoInfoKey.VERSION] = 0
+            self[RepoInfoKey.VERSION] = Version()
         if self[RepoInfoKey.BIG_OBJECTS] is None:
             self[RepoInfoKey.BIG_OBJECTS] = set()
         if self[RepoInfoKey.MODIFICATION_INFO] is None:
@@ -249,7 +275,6 @@ def create_repo_obj(obj):
     repo_info = obj['repo_info']
     result = get_object_from_classname(repo_info['classname'], obj)
     return result
-
 
 class RawData:
     """Class to store numpy data.
