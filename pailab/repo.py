@@ -10,6 +10,7 @@ from numpy import linalg
 from numpy import inf
 from enum import Enum
 from copy import deepcopy
+from deepdiff import DeepDiff
 import logging
 import pailab.repo_objects as repo_objects
 from pailab.repo_objects import RepoInfoKey, DataSet
@@ -488,38 +489,73 @@ class NamingConventions:
     Model = Name('model', '')
     ModelParam = Name('model/*', 'model_param')
 
-class RawDataManager:
-    def __init__(self, repo):
-        self.__repo = repo
+class RepoObjectItem:
 
-    def add(self, name, data, input_variables, target_variables):
-        """Add raw data to the repository
+    def __init__(self, name, ml_repo, repo_obj = None):
+        self._name = name
+        self._repo = ml_repo
+        if repo_obj is not None:
+            self.obj = repo_obj
 
-        Arguments:
-            data_name {name of data} -- the name of the data added
-            data {pandas datatable} -- the data as pndas datatable
-        
-        Keyword Arguments:
-            input_variables {list of strings} -- list of column names defining the input variables for the machine learning (default: {None}). If None, all variables are used as input
-            target_variables {list of strings} -- list of column names defining the target variables for the machine learning (default: {None}). If None, no target data is added from the table.
-        """
-        tmp = name.split('/')
-        if len(tmp) == 1:
-            name = 'raw_data/' + name
-        elif tmp[0] != 'raw_data/':
-            name = 'raw_data/' + name
+    def load(self, version=repo_store.LAST_VERSION, full_object=False,
+             modifier_versions=None, containing_str=None):
+            if containing_str is None or containing_str in self._name:
+                self.obj = self._repo.get(self._name, version, full_object, modifier_versions)
+            for k, v in self.__dict__.items():
+                if hasattr(v,'load'):
+                    v.load(version, full_object, modifier_versions, containing_str)
 
-        if target_variables is not None:
-            raw_data = repo_objects.RawData(data.as_matrix(columns=input_variables), input_variables, data.as_matrix(columns=target_variables), 
-                target_variables, repo_info = {RepoInfoKey.NAME: name})
+    def modifications(self, commit=False, commit_message=''):
+        if self._name is not None:
+            try:
+                obj_orig = self._repo.get(
+                    self.obj.repo_info[RepoInfoKey.NAME], version=self.obj.repo_info[RepoInfoKey.VERSION])
+                diff = DeepDiff(obj_orig, self.obj,
+                                ignore_order=True)
+            except AttributeError:
+                return None
+            if len(diff) == 0:
+                return None
+            else:
+                if commit:
+                    version = self._repo.add(
+                        self.obj, message=commit_message)
+                    self.obj = self._repo.get(self._name, version=version)
+                return {self._name: diff}
         else:
-            raw_data = repo_objects.RawData(data.as_matrix(), list(data), repo_info = {RepoInfoKey.NAME: data_name})
-        self.__repo.add(raw_data, 'data ' + name + ' added to repository' , category = MLObjectType.RAW_DATA)
+            result = {}
+            for k, v in self.__dict__.items():
+                if hasattr(v, 'modifications'):
+                    tmp = v.modifications(commit, commit_message)
+                    if tmp is not None:
+                        result.update(tmp)
+            return result
 
-    def append(self, name, x_data, y_data = None):
+    def __call__(self, containing_str=None):
+        # if len(self.__dict__) == 1:
+        if self._name is not None:
+            return self._name
+        else:
+            result = []
+            for k, v in self.__dict__.items():
+                if isinstance(v, _ObjNames):
+                    d = v()
+                    if isinstance(d, str):
+                        result.append(d)
+                    else:
+                        result.extend(d)
+        if containing_str is not None:
+            return [x for x in result if containing_str in x]
+        return result
+
+class RawDataItem(RepoObjectItem):
+    def __init__(self, name, ml_repo, repo_obj = None):
+        super(RawDataItem,self).__init__(name, ml_repo, repo_obj)
+
+    def append(self, x_data, y_data = None):
         """Append data to a RawData object
 
-           It appends data to the given RawData object and updates all training and test DataSets which implicitely changed by this update.
+        It appends data to the given RawData object and updates all training and test DataSets which implicitely changed by this update.
 
         Args:
             name (string): name of RawData object
@@ -529,8 +565,8 @@ class RawDataManager:
         Raises:
             Exception: If the data is not consistent to the RawData (e.g. different number of x-coordinates) it throws an exception.
         """
-        logger.info('Start appending ' + str(x_data.shape[0]) + ' datapoints to RawData' + name)
-        raw_data = self.__repo.get(name)
+        logger.info('Start appending ' + str(x_data.shape[0]) + ' datapoints to RawData' + self._name)
+        raw_data = self._repo.get(self._name)
         if len(raw_data.x_coord_names) != x_data.shape[1]:
             raise Exception('Number of columns of x_data of RawData object is not equal to number of columns of additional x_data.')
         if raw_data.y_coord_names is None and y_data is not None:
@@ -545,28 +581,131 @@ class RawDataManager:
             numpy_dict['y_data'] =  y_data
         raw_data.n_data += x_data.shape[0]
         old_version = raw_data.repo_info[RepoInfoKey.VERSION]
-        new_version = self.__repo.add(raw_data)
-        self.__repo._numpy_repo.append(name, old_version, new_version, numpy_dict)
+        new_version = self._repo.add(raw_data)
+        self._repo._numpy_repo.append(self._name, old_version, new_version, numpy_dict)
         # now find all datasets which are affected by the updated data
         changed_data_sets = []
-        training_data = self.__repo.get_training_data(full_object = False)
+        training_data = self._repo.get_training_data(full_object = False)
         if isinstance(training_data, DataSet):
-            if training_data.raw_data == name and training_data.raw_data_version == repo_store.RepoStore.LAST_VERSION:
+            if training_data.raw_data == self._name and training_data.raw_data_version == repo_store.RepoStore.LAST_VERSION:
                 if training_data.end_index is None or training_data.end_index < 0:
                     training_data.raw_data_version = new_version
                     changed_data_sets.append(training_data)
-        test_data = self.__repo.get_names(MLObjectType.TEST_DATA)
+        test_data = self._repo.get_names(MLObjectType.TEST_DATA)
         for d in test_data:
-            data = self.__repo.get(d)
+            data = self._repo.get(d)
             if isinstance(data, DataSet):
-                if data.raw_data == name and data.raw_data_version == repo_store.RepoStore.LAST_VERSION:
+                if data.raw_data == self._name and data.raw_data_version == repo_store.RepoStore.LAST_VERSION:
                     if data.end_index is None or data.end_index < 0:
                         data.raw_data_version = new_version
                         changed_data_sets.append(data)
-        self.__repo.add(changed_data_sets, 'RawData ' + name + ' updated, add DataSets depending om the updated RawData.')
-        logger.info('Finished appending data to RawData' + name)
-                
+        self._repo.add(changed_data_sets, 'RawData ' + self._name + ' updated, add DataSets depending om the updated RawData.')
+        if hasattr(self, 'obj'):#update current object
+            self.obj = self._repo.get(self._name, version=new_version)
+        logger.info('Finished appending data to RawData' + self._name)
+
+class RawDataManager(RepoObjectItem):
+    @staticmethod
+    def __get_name_from_path(path):
+        return path.split('/')[-1]
+
+    def __init__(self, repo):
+        super(RawDataManager, self).__init__('raw_data', repo)
+        names = repo.get_names(MLObjectType.RAW_DATA)
+        for n in names:
+            setattr(self, RawDataManager.__get_name_from_path(n), RawDataItem(n, repo))
+        self._repo = repo
+
+    def add(self, name, data, input_variables, target_variables):
+        """Add raw data to the repository
+
+        Arguments:
+            data_name {name of data} -- the name of the data added
+            data {pandas datatable} -- the data as pndas datatable
+        
+        Keyword Arguments:
+            input_variables {list of strings} -- list of column names defining the input variables for the machine learning (default: {None}). If None, all variables are used as input
+            target_variables {list of strings} -- list of column names defining the target variables for the machine learning (default: {None}). If None, no target data is added from the table.
+        """
+        path = 'raw_data/' + name
+      
+        if target_variables is not None:
+            raw_data = repo_objects.RawData(data.as_matrix(columns=input_variables), input_variables, data.as_matrix(columns=target_variables), 
+                target_variables, repo_info = {RepoInfoKey.NAME: path})
+        else:
+            raw_data = repo_objects.RawData(data.as_matrix(), list(data), repo_info = {RepoInfoKey.NAME: path})
+        v = self._repo.add(raw_data, 'data ' + path + ' added to repository' , category = MLObjectType.RAW_DATA)
+        obj = self._repo.get(path, version=v, full_object = False)
+        setattr(self, name, RawDataItem(path, self._repo, obj))
+
+class TrainingDataManager(RepoObjectItem):
+    def __get_name_from_path(path):
+        return path.split('/')[-1]
     
+    def __init__(self, repo):
+        super(TrainingDataManager, self).__init__('training_data', repo)
+        
+        names = repo.get_names(MLObjectType.TRAINING_DATA)
+        for n in names:
+            setattr(self, TrainingDataManager.__get_name_from_path(n), RepoObjectItem(n, repo))
+        self._repo = repo
+
+    def add(self, name, raw_data, start_index=0, 
+        end_index=None, raw_data_version='last'):
+        path = 'training_data/' + name
+        data_set = repo_objects.DataSet(raw_data, start_index, end_index, 
+                raw_data_version, repo_info = {RepoInfoKey.NAME: path, RepoInfoKey.CATEGORY: MLObjectType.TRAINING_DATA})
+        v = self._repo.add(data_set)
+        tmp = self._repo.get(path, version=v)
+        item = RepoObjectItem(path, self._repo, tmp)
+        setattr(self, name, item)
+
+class TestDataManager(RepoObjectItem):
+    def __get_name_from_path(path):
+        return path.split('/')[-1]
+    
+    def __init__(self, repo):
+        super(TestDataManager, self).__init__('test_data', repo)
+        names = repo.get_names(MLObjectType.TEST_DATA)
+        for n in names:
+            setattr(self, TestDataManager.__get_name_from_path(n), RepoObjectItem(n,repo))
+        self._repo = repo
+
+    def add(self, name, raw_data, start_index=0, 
+        end_index=None, raw_data_version='last'):
+        path = 'test_data/' + name
+        data_set = repo_objects.DataSet(raw_data, start_index, end_index, 
+                raw_data_version, repo_info = {RepoInfoKey.NAME: path, RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA})
+        v = self._repo.add(data_set)
+        tmp = self._repo.get(path, version=v)
+        item = RepoObjectItem(path, self._repo, tmp)
+        setattr(self, name, item)
+
+class ModelItem(RepoObjectItem):
+    def __init__(self, name, ml_repo, repo_obj = None):
+        super(ModelItem,self).__init__(name, ml_repo, repo_obj)
+        self.model = RepoObjectItem(name + '/model', ml_repo)
+        self.eval = RepoObjectItem(name + '/eval', ml_repo)
+        self.model_param = RepoObjectItem(name + '/model_param', ml_repo)
+        self.training_param = RepoObjectItem(name + '/training_param', ml_repo)
+        #self.param = RepoObjectItem(name)
+        
+
+class ModelManager:
+    @staticmethod
+    def __get_name_from_path(name):
+        return name
+
+    def __init__(self, repo):
+        names = repo.get_names(MLObjectType.MODEL)
+        for n in names:
+            setattr(self, ModelManager.__get_name_from_path(n), ModelItem(n,repo))
+        self._repo = repo
+
+    def add(self, name):
+        setattr(self, name, ModelItem(name,self._repo))
+
+
 class MLRepo:   
     """ Repository for doing machine learning
 
@@ -578,7 +717,12 @@ class MLRepo:
         The repository needs three different handlers/repositories 
 
     """
-        
+    def reload(self):
+        self.raw_data = RawDataManager(self)
+        self.training_data = TrainingDataManager(self)
+        self.test_data = TestDataManager(self)
+        self.models = ModelManager(self)
+
     def __init__(self, user, script_repo, numpy_repo, ml_repo, job_runner):
         """ Constructor of MLRepo
 
@@ -587,7 +731,6 @@ class MLRepo:
             :param ml_repo: repository where the repo_objects are stored
             :param job_runner: the jobrunner to execute calibration, evaluations etc.
         """
-        self.raw_data = RawDataManager(self)
         self._script_repo = script_repo
         self._numpy_repo = numpy_repo
         self._ml_repo = ml_repo
@@ -608,7 +751,8 @@ class MLRepo:
             self._mapping = Mapping(  # pylint: disable=E1123
                 repo_info={RepoInfoKey.NAME: 'repo_mapping', 
                 RepoInfoKey.CATEGORY: MLObjectType.MAPPING.value})
-           
+        self.reload()
+        
     def _add(self, repo_object, message='', category = None):
             """ Add a repo_object to the repository.
 
