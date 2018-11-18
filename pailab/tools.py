@@ -1,57 +1,98 @@
 import logging
+
+from deepdiff import DeepDiff
+from copy import deepcopy
+
 from pailab.repo import MLObjectType, MLRepo  # pylint: disable=E0611, E0401
 from pailab.repo_objects import RepoInfoKey  # pylint: disable=E0401
 from pailab.repo_store import RepoStore  # pylint: disable=E0401
 logger = logging.getLogger(__name__)
 
+"""Observer descriptor class allows to trigger out any arbitrary action, when the content of observed
+data changes.
+"""
+
 
 class _ObjNames:
-    def __init__(self, names=None, sep='/'):
+    def __init__(self, names=None, sep='/', ml_repo=None):
+        self.__name = None
         if isinstance(names, list):
             for x in names:
-                self.__add(x)
+                self.__add(x, ml_repo=ml_repo)
         else:
             if isinstance(names, dict):
                 for k, v in names.items():
-                    self.__add(v, k.split(sep))
+                    self.__add(v,  k.split(sep), ml_repo=ml_repo)
 
-    def __add(self, name, name_separated=None, sep='/'):
+    def __add(self, name,  name_separated=None, sep='/', ml_repo=None):
         if name_separated is None:
             name_separated = name.split(sep)
         if len(name_separated) == 1:
             leaf = _ObjNames()
-            setattr(leaf, '__name', name)
+            leaf.__name = name
+            leaf.__ml_repo = ml_repo
             setattr(self, name_separated[0], leaf)
         else:
             if hasattr(self, name_separated[0]):
                 d = getattr(self, name_separated[0])
-                d.__add(name, name_separated[1:])
+                d.__add(name, name_separated[1:], ml_repo=ml_repo)
             else:
                 sub_obj = _ObjNames()
-                sub_obj.__add(name, name_separated[1:])
+                sub_obj.__add(name, name_separated[1:], ml_repo=ml_repo)
                 setattr(self, name_separated[0], sub_obj)
 
-    def __call__(self, containing_str=None):
-        if len(self.__dict__) == 1:
+    def load(self, version=RepoStore.LAST_VERSION, full_object=False,
+             modifier_versions=None, containing_str=None):
+        if self.__name is not None:
+            if (containing_str is None) or (containing_str in self.__name):
+                self.obj = self.__ml_repo.get(
+                    self.__name, version=version, full_object=full_object, modifier_versions=modifier_versions)
+        else:
             for k, v in self.__dict__.items():
-                if isinstance(v, str):
-                    return v
+                if isinstance(v, _ObjNames):
+                    v.load(version, full_object, modifier_versions, containing_str)
+
+    def modifications(self):
+        if self.__name is not None:
+            try:
+                if hasattr(self, 'obj'):
+                    obj_orig = self.__ml_repo.get(self.obj.repo_info[RepoInfoKey.NAME], version = self.obj.repo_info[RepoInfoKey.VERSION])
+                    diff = DeepDiff(obj_orig, self.obj,
+                                    ignore_order=True)
                 else:
-                    return v()
+                    return None
+            except AttributeError:
+                raise Exception(
+                    'Modifications are not tracked, please switch on modification tracking.')
+            if len(diff) == 0:
+                return None
+            else:
+                return {self.__name: diff}
+        else:
+            result = {}
+            for k, v in self.__dict__.items():
+                if isinstance(v, _ObjNames):
+                    tmp = v.modifications()
+                    if tmp is not None:
+                        result.update(tmp)
+            return result
+
+    def __call__(self, containing_str=None):
+        # if len(self.__dict__) == 1:
+        if self.__name is not None:
+            return self.__name
         else:
             result = []
             for k, v in self.__dict__.items():
-                if isinstance(v, str):
-                    result.append(v)
-                else:
+                if isinstance(v, _ObjNames):
                     d = v()
                     if isinstance(d, str):
                         result.append(d)
                     else:
                         result.extend(d)
-            if containing_str is not None:
-                return [x for x in result if containing_str in x]
-            return result
+        if containing_str is not None:
+            return [x for x in result if containing_str in x]
+        return result
 
 
 def path_to_names(repo, include_object_types=[MLObjectType.MEASURE, MLObjectType.CALIBRATED_MODEL,
@@ -67,7 +108,7 @@ def path_to_names(repo, include_object_types=[MLObjectType.MEASURE, MLObjectType
     for k in include_object_types:
         names = repo.get_names(k.value)
         obj_names.extend(names)
-    repo_obj = _ObjNames(obj_names)
+    repo_obj = _ObjNames(obj_names, ml_repo=repo)
     return repo_obj
 
 
