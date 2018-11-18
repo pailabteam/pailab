@@ -464,21 +464,6 @@ class NamingConventions:
             return eval_data.repo_info[RepoInfoKey.NAME]
         return name
 
-    def get_measure_result_name(data_name, measure_type, model = None):
-        d_name = RepoNamingConventions._get_object_name(data_name)
-        model_name = RepoNamingConventions._get_object_name(model)
-        tmp = d_name.split('/')
-        #region validate
-        if len(tmp) < 3 and model_name is None:
-            raise Exception('Please specify a model name.')
-        if len(tmp) == 3 and not model_name is None:
-            if tmp[0] != model_name:
-                raise Exception('Model name does not equal model which was used to compute the veal results')
-        #endregion
-        if model_name is None:
-            model_name = tmp[0]
-        return model_name + '/' + RepoNamingConventions.measure_tag + '/' + tmp[-1] + '/' + measure_type
-
     def get_model_from_name(name):
         return name.split('/')[0]
 
@@ -502,6 +487,85 @@ class NamingConventions:
     CalibratedModel = Name('model/*', 'model')
     Model = Name('model', '')
     ModelParam = Name('model/*', 'model_param')
+
+class RawDataManager:
+    def __init__(self, repo):
+        self.__repo = repo
+
+    def add(self, name, data, input_variables, target_variables):
+        """Add raw data to the repository
+
+        Arguments:
+            data_name {name of data} -- the name of the data added
+            data {pandas datatable} -- the data as pndas datatable
+        
+        Keyword Arguments:
+            input_variables {list of strings} -- list of column names defining the input variables for the machine learning (default: {None}). If None, all variables are used as input
+            target_variables {list of strings} -- list of column names defining the target variables for the machine learning (default: {None}). If None, no target data is added from the table.
+        """
+        tmp = name.split('/')
+        if len(tmp) == 1:
+            name = 'raw_data/' + name
+        elif tmp[0] != 'raw_data/':
+            name = 'raw_data/' + name
+
+        if target_variables is not None:
+            raw_data = repo_objects.RawData(data.as_matrix(columns=input_variables), input_variables, data.as_matrix(columns=target_variables), 
+                target_variables, repo_info = {RepoInfoKey.NAME: name})
+        else:
+            raw_data = repo_objects.RawData(data.as_matrix(), list(data), repo_info = {RepoInfoKey.NAME: data_name})
+        self.__repo.add(raw_data, 'data ' + name + ' added to repository' , category = MLObjectType.RAW_DATA)
+
+    def append(self, name, x_data, y_data = None):
+        """Append data to a RawData object
+
+           It appends data to the given RawData object and updates all training and test DataSets which implicitely changed by this update.
+
+        Args:
+            name (string): name of RawData object
+            x_data (numpy matrix): the x_data to append
+            y_data (numpy matrix, optional): Defaults to None. The y_data to append
+        
+        Raises:
+            Exception: If the data is not consistent to the RawData (e.g. different number of x-coordinates) it throws an exception.
+        """
+        logger.info('Start appending ' + str(x_data.shape[0]) + ' datapoints to RawData' + name)
+        raw_data = self.__repo.get(name)
+        if len(raw_data.x_coord_names) != x_data.shape[1]:
+            raise Exception('Number of columns of x_data of RawData object is not equal to number of columns of additional x_data.')
+        if raw_data.y_coord_names is None and y_data is not None:
+            raise Exception('RawData object does not contain y_data but y_data is given')
+        if raw_data.y_coord_names is not None:
+            if y_data is None:
+                raise Exception('RawData object has y_data but no y_data is given')
+            if y_data.shape[1] != len(raw_data.y_coord_names ):
+                raise Exception('Number of columns of y_data of RawData object is not equal to number of columns of additional y_data.')
+        numpy_dict = {'x_data' : x_data}
+        if raw_data.y_coord_names is not None:
+            numpy_dict['y_data'] =  y_data
+        raw_data.n_data += x_data.shape[0]
+        old_version = raw_data.repo_info[RepoInfoKey.VERSION]
+        new_version = self.__repo.add(raw_data)
+        self.__repo._numpy_repo.append(name, old_version, new_version, numpy_dict)
+        # now find all datasets which are affected by the updated data
+        changed_data_sets = []
+        training_data = self.__repo.get_training_data(full_object = False)
+        if isinstance(training_data, DataSet):
+            if training_data.raw_data == name and training_data.raw_data_version == repo_store.RepoStore.LAST_VERSION:
+                if training_data.end_index is None or training_data.end_index < 0:
+                    training_data.raw_data_version = new_version
+                    changed_data_sets.append(training_data)
+        test_data = self.__repo.get_names(MLObjectType.TEST_DATA)
+        for d in test_data:
+            data = self.__repo.get(d)
+            if isinstance(data, DataSet):
+                if data.raw_data == name and data.raw_data_version == repo_store.RepoStore.LAST_VERSION:
+                    if data.end_index is None or data.end_index < 0:
+                        data.raw_data_version = new_version
+                        changed_data_sets.append(data)
+        self.__repo.add(changed_data_sets, 'RawData ' + name + ' updated, add DataSets depending om the updated RawData.')
+        logger.info('Finished appending data to RawData' + name)
+                
     
 class MLRepo:   
     """ Repository for doing machine learning
@@ -514,10 +578,8 @@ class MLRepo:
         The repository needs three different handlers/repositories 
 
     """
-    def __init__(self, user, script_repo, numpy_repo, ml_repo, job_runner):
         
-
-
+    def __init__(self, user, script_repo, numpy_repo, ml_repo, job_runner):
         """ Constructor of MLRepo
 
             :param script_repo: repository for the user's modules providing the customized model evaluation, raining, calibration and preprocessing methods
@@ -525,6 +587,7 @@ class MLRepo:
             :param ml_repo: repository where the repo_objects are stored
             :param job_runner: the jobrunner to execute calibration, evaluations etc.
         """
+        self.raw_data = RawDataManager(self)
         self._script_repo = script_repo
         self._numpy_repo = numpy_repo
         self._ml_repo = ml_repo
@@ -670,24 +733,6 @@ class MLRepo:
                                      RepoInfoKey.CATEGORY: MLObjectType.TRAINING_FUNCTION.value})
         self.add(func, 'add model training function ' + name)
 
-    def add_data(self, data_name, data, input_variables = None, target_variables = None):
-        """Add raw data to the repository
-
-        Arguments:
-            data_name {name of data} -- the name of the data added
-            data {pandas datatable} -- the data as pndas datatable
-        
-        Keyword Arguments:
-            input_variables {list of strings} -- list of column names defining the input variables for the machine learning (default: {None}). If None, all variables are used as input
-            target_variables {list of strings} -- list of column names defining the target variables for the machine learning (default: {None}). If None, no target data is added from the table.
-        """
-        if target_variables is not None:
-            raw_data = repo_objects.RawData(data.as_matrix(columns=input_variables), input_variables, data.as_matrix(columns=target_variables), 
-                target_variables, repo_info = {RepoInfoKey.NAME: data_name})
-        else:
-            raw_data = repo_objects.RawData(data.as_matrix(), list(data), repo_info = {RepoInfoKey.NAME: data_name})
-        self.add(raw_data, 'data ' + data_name + ' added to repository' , category = MLObjectType.RAW_DATA)
-
     def add_model(self, model_name, model_eval = None, model_training = None, model_param = None, training_param = None):
         """Add a new model to the repo
         
@@ -812,19 +857,6 @@ class MLRepo:
             return tmp[0]
         return tmp
 
-    def get_measure_result_name(eval_data, measure_type, model_name = None):    
-        data_name = eval_data
-        if not isinstance(eval_data, str):
-            data_name = eval_data.repo_info[RepoInfoKey.NAME]
-        tmp = data_name.split('/')
-        if len(tmp) == 1:
-            if model_name is None:
-                raise Exception('Please specify a model name.')
-            return model_name + '/measure/' + tmp[0] + '/' + measure_type
-        if len(tmp) == 3:
-            return tmp[0] + '/measure/' + tmp[-1] + '/' + measure_type
-        raise Exception('Given data name is not valid.')
-
     def get_calibrated_model_name(model_name):
         tmp = model_name.split('/')
         return tmp[0] + '/model'
@@ -910,7 +942,6 @@ class MLRepo:
         logger.info('Finished appending data to RawData' + name)
                 
                     
-
     def get_history(self, name, repo_info_fields=None, obj_member_fields=None, version_start=repo_store.RepoStore.FIRST_VERSION, 
                     version_end=repo_store.RepoStore.LAST_VERSION):
         """ Return a list of histories of object member variables without bigobjects
