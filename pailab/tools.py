@@ -50,29 +50,31 @@ class _ObjNames:
         else:
             for k, v in self.__dict__.items():
                 if isinstance(v, _ObjNames):
-                    v.load(version, full_object, modifier_versions, containing_str)
+                    v.load(version, full_object,
+                           modifier_versions, containing_str)
 
-    def modifications(self):
+    def modifications(self, commit=False, commit_message=''):
         if self.__name is not None:
             try:
-                if hasattr(self, 'obj'):
-                    obj_orig = self.__ml_repo.get(self.obj.repo_info[RepoInfoKey.NAME], version = self.obj.repo_info[RepoInfoKey.VERSION])
-                    diff = DeepDiff(obj_orig, self.obj,
-                                    ignore_order=True)
-                else:
-                    return None
+                obj_orig = self.__ml_repo.get(
+                    self.obj.repo_info[RepoInfoKey.NAME], version=self.obj.repo_info[RepoInfoKey.VERSION])
+                diff = DeepDiff(obj_orig, self.obj,
+                                ignore_order=True)
             except AttributeError:
-                raise Exception(
-                    'Modifications are not tracked, please switch on modification tracking.')
+                return None
             if len(diff) == 0:
                 return None
             else:
+                if commit:
+                    version = self.__ml_repo.add(
+                        self.obj, message=commit_message)
+                    self.obj = self.__ml_repo.get(self.__name, version=version)
                 return {self.__name: diff}
         else:
             result = {}
             for k, v in self.__dict__.items():
                 if isinstance(v, _ObjNames):
-                    tmp = v.modifications()
+                    tmp = v.modifications(commit, commit_message)
                     if tmp is not None:
                         result.update(tmp)
             return result
