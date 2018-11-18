@@ -57,9 +57,9 @@ class TutorialTest(unittest.TestCase):
 
         # add DataSet
         # create DataSet objects for training and test data
-        training_data = DataSet('boston_housing', 0, 300,
+        training_data = DataSet('raw_data/boston_housing', 0, 300,
                                 repo_info={RepoInfoKey.NAME: 'training_data', RepoInfoKey.CATEGORY: MLObjectType.TRAINING_DATA})
-        test_data = DataSet('boston_housing', 301, None,
+        test_data = DataSet('raw_data/boston_housing', 301, None,
                             repo_info={RepoInfoKey.NAME: 'test_data',  RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA})
         # add the objects to the repository. The method returns a dictionary of object names to version numbers of the added objects.
         version_list = ml_repo.add(
