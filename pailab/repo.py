@@ -457,9 +457,6 @@ class Name:
     
 class NamingConventions:
     
-    evaluation_tag = 'eval'
-    measure_tag = 'measure'
-
     def _get_object_name(name):
         if not isinstance(name, str):
             return eval_data.repo_info[RepoInfoKey.NAME]
@@ -489,6 +486,7 @@ class NamingConventions:
     Model = Name('model', '')
     ModelParam = Name('model/*', 'model_param')
 
+#region collections and items
 class RepoObjectItem:
 
     def __init__(self, name, ml_repo, repo_obj = None):
@@ -496,11 +494,25 @@ class RepoObjectItem:
         self._repo = ml_repo
         if repo_obj is not None:
             self.obj = repo_obj
+        
+    def _set(self, path, items):
+        if len(path) > 0:
+            if len(path) == 1:
+                setattr(self, path[0], items[0])
+                return
+            if hasattr(self, path[0]):
+                getattr(self, path[0])._set(path[1:], items[1:])
+            else:
+                setattr(self, path[0], items[0])
+                items[0]._set(path[1:], items[1:])
 
     def load(self, version=repo_store.LAST_VERSION, full_object=False,
-             modifier_versions=None, containing_str=None):
+            modifier_versions=None, containing_str=None):
             if containing_str is None or containing_str in self._name:
-                self.obj = self._repo.get(self._name, version, full_object, modifier_versions)
+                try:
+                    self.obj = self._repo.get(self._name, version, full_object, modifier_versions)
+                except:
+                    pass
             for k, v in self.__dict__.items():
                 if hasattr(v,'load'):
                     v.load(version, full_object, modifier_versions, containing_str)
@@ -533,19 +545,20 @@ class RepoObjectItem:
 
     def __call__(self, containing_str=None):
         # if len(self.__dict__) == 1:
-        if self._name is not None:
-            return self._name
-        else:
+        if containing_str is not None:
             result = []
+            if containing_str in self._name:
+                result.append(self._name)
             for k, v in self.__dict__.items():
-                if isinstance(v, _ObjNames):
-                    d = v()
+                if isinstance(v, RepoObjectItem):
+                    d = v(containing_str)
                     if isinstance(d, str):
                         result.append(d)
                     else:
                         result.extend(d)
-        if containing_str is not None:
             return [x for x in result if containing_str in x]
+        else:
+            return self._name
         return result
 
 class RawDataItem(RepoObjectItem):
@@ -604,16 +617,16 @@ class RawDataItem(RepoObjectItem):
             self.obj = self._repo.get(self._name, version=new_version)
         logger.info('Finished appending data to RawData' + self._name)
 
-class RawDataManager(RepoObjectItem):
+class RawDataCollection(RepoObjectItem):
     @staticmethod
     def __get_name_from_path(path):
         return path.split('/')[-1]
 
     def __init__(self, repo):
-        super(RawDataManager, self).__init__('raw_data', repo)
+        super(RawDataCollection, self).__init__('raw_data', repo)
         names = repo.get_names(MLObjectType.RAW_DATA)
         for n in names:
-            setattr(self, RawDataManager.__get_name_from_path(n), RawDataItem(n, repo))
+            setattr(self, RawDataCollection.__get_name_from_path(n), RawDataItem(n, repo))
         self._repo = repo
 
     def add(self, name, data, input_variables, target_variables):
@@ -638,48 +651,82 @@ class RawDataManager(RepoObjectItem):
         obj = self._repo.get(path, version=v, full_object = False)
         setattr(self, name, RawDataItem(path, self._repo, obj))
 
-class TrainingDataManager(RepoObjectItem):
+class TrainingDataCollection(RepoObjectItem):
     def __get_name_from_path(path):
         return path.split('/')[-1]
     
     def __init__(self, repo):
-        super(TrainingDataManager, self).__init__('training_data', repo)
+        super(TrainingDataCollection, self).__init__('training_data', repo)
         
         names = repo.get_names(MLObjectType.TRAINING_DATA)
         for n in names:
-            setattr(self, TrainingDataManager.__get_name_from_path(n), RepoObjectItem(n, repo))
+            setattr(self, TrainingDataCollection.__get_name_from_path(n), RepoObjectItem(n, repo))
         self._repo = repo
 
     def add(self, name, raw_data, start_index=0, 
         end_index=None, raw_data_version='last'):
-        path = 'training_data/' + name
+        #path = 'training_data/' + name
         data_set = repo_objects.DataSet(raw_data, start_index, end_index, 
-                raw_data_version, repo_info = {RepoInfoKey.NAME: path, RepoInfoKey.CATEGORY: MLObjectType.TRAINING_DATA})
+                raw_data_version, repo_info = {RepoInfoKey.NAME: name, RepoInfoKey.CATEGORY: MLObjectType.TRAINING_DATA})
         v = self._repo.add(data_set)
-        tmp = self._repo.get(path, version=v)
-        item = RepoObjectItem(path, self._repo, tmp)
+        tmp = self._repo.get(name, version=v)
+        item = RepoObjectItem(name, self._repo, tmp)
         setattr(self, name, item)
 
-class TestDataManager(RepoObjectItem):
+class TestDataCollection(RepoObjectItem):
     def __get_name_from_path(path):
         return path.split('/')[-1]
     
     def __init__(self, repo):
-        super(TestDataManager, self).__init__('test_data', repo)
+        super(TestDataCollection, self).__init__('test_data', repo)
         names = repo.get_names(MLObjectType.TEST_DATA)
         for n in names:
-            setattr(self, TestDataManager.__get_name_from_path(n), RepoObjectItem(n,repo))
+            setattr(self, TestDataCollection.__get_name_from_path(n), RepoObjectItem(n,repo))
         self._repo = repo
 
     def add(self, name, raw_data, start_index=0, 
         end_index=None, raw_data_version='last'):
-        path = 'test_data/' + name
         data_set = repo_objects.DataSet(raw_data, start_index, end_index, 
-                raw_data_version, repo_info = {RepoInfoKey.NAME: path, RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA})
+                raw_data_version, repo_info = {RepoInfoKey.NAME: name, RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA})
         v = self._repo.add(data_set)
-        tmp = self._repo.get(path, version=v)
-        item = RepoObjectItem(path, self._repo, tmp)
+        tmp = self._repo.get(name, version=v)
+        item = RepoObjectItem(name, self._repo, tmp)
         setattr(self, name, item)
+
+class MeasureItem(RepoObjectItem):
+    def __init__(self, name, ml_repo, repo_obj = None):
+        super(MeasureItem, self).__init__(name, ml_repo, repo_obj) 
+
+class JobItem(RepoObjectItem):
+    def __init__(self, name, ml_repo, repo_obj = None):
+        super(JobItem, self).__init__(name, ml_repo, repo_obj) 
+
+class MeasureCollection(RepoObjectItem):
+    def __init__(self, name, ml_repo, model_name):
+        super(MeasureCollection, self).__init__('measures', ml_repo)
+        names = ml_repo.get_names(MLObjectType.MEASURE)
+        for n in names:
+            path = n.split('/')[2:]
+            items = [None] * len(path)
+            for i in range(len(items)-1):
+                items[i] = RepoObjectItem(path[i], None)
+            items[-1] = MeasureItem(n, ml_repo)
+            self._set(path, items)
+            #items[-2] = MeasuresOnDataItem
+            
+class JobCollection(RepoObjectItem):
+    def __init__(self, name, ml_repo, model_name):
+        super(JobCollection, self).__init__('jobs', ml_repo)
+        names = ml_repo.get_names(MLObjectType.JOB)
+        for n in names:
+            if model_name in n:
+                path = n.split('/')
+                path = path[path.index('jobs')+1:]
+                items = [None] * len(path)
+                for i in range(len(items)-1):
+                    items[i] = RepoObjectItem(path[i], None)
+                items[-1] = JobItem(n, ml_repo)
+                self._set(path, items)
 
 class ModelItem(RepoObjectItem):
     def __init__(self, name, ml_repo, repo_obj = None):
@@ -688,10 +735,14 @@ class ModelItem(RepoObjectItem):
         self.eval = RepoObjectItem(name + '/eval', ml_repo)
         self.model_param = RepoObjectItem(name + '/model_param', ml_repo)
         self.training_param = RepoObjectItem(name + '/training_param', ml_repo)
+        self.measures = MeasureCollection(name+ '/measure', ml_repo, name)
+        self.jobs = JobCollection(name+'/jobs', ml_repo, name)
         #self.param = RepoObjectItem(name)
-        
 
-class ModelManager:
+    def set_label(self, label_name, version = repo_store.RepoStore.LAST_VERSION, message=''):
+        self._repo.set_label(label_name, self._name+ '/model', version, message)
+
+class ModelCollection:
     @staticmethod
     def __get_name_from_path(name):
         return name
@@ -699,12 +750,12 @@ class ModelManager:
     def __init__(self, repo):
         names = repo.get_names(MLObjectType.MODEL)
         for n in names:
-            setattr(self, ModelManager.__get_name_from_path(n), ModelItem(n,repo))
+            setattr(self, ModelCollection.__get_name_from_path(n), ModelItem(n,repo))
         self._repo = repo
 
     def add(self, name):
         setattr(self, name, ModelItem(name,self._repo))
-
+#endregion
 
 class MLRepo:   
     """ Repository for doing machine learning
@@ -718,10 +769,10 @@ class MLRepo:
 
     """
     def reload(self):
-        self.raw_data = RawDataManager(self)
-        self.training_data = TrainingDataManager(self)
-        self.test_data = TestDataManager(self)
-        self.models = ModelManager(self)
+        self.raw_data = RawDataCollection(self)
+        self.training_data = TrainingDataCollection(self)
+        self.test_data = TestDataCollection(self)
+        self.models = ModelCollection(self)
 
     def __init__(self, user, script_repo, numpy_repo, ml_repo, job_runner):
         """ Constructor of MLRepo
@@ -783,6 +834,7 @@ class MLRepo:
                 self._numpy_repo.add(repo_object.repo_info[RepoInfoKey.NAME],
                                     repo_object.repo_info[RepoInfoKey.VERSION],
                                     np_dict)
+            self.reload() # todo make this more efficient by just updating collections and items which ar affcted by this
             return version, mapping_changed
 
     def _update_job(self, job_object):
