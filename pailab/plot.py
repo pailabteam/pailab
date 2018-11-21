@@ -28,12 +28,12 @@ def measure_by_model_parameter(ml_repo, measure_name, param_name, data_versions=
     x = plot_helper.get_measure_by_model_parameter(
         ml_repo, measure_name, param_name, data_versions)
     data = []
+    model_label_annotations = []
     for k, measures in x.items():
         data_name = str(NamingConventions.Data(
             NamingConventions.EvalData(NamingConventions.Measure(measure_name))))
         data_versions = set()
 
-        model_label_annotations = []
         for measure in measures:
             data_versions.add(measure['data_version'])
             if 'model_label' in measure:

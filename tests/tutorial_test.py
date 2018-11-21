@@ -17,7 +17,7 @@ import pandas as pd
 import logging as logging
 
 # Here start the repository specific imports
-#import pailab.repo as repo
+# import pailab.repo as repo
 import pailab.memory_handler as memory_handler
 from pailab import RepoInfoKey, MeasureConfiguration, MLRepo, DataSet, MLObjectType
 from pailab.job_runner.job_runner import SimpleJobRunner, JobState, SQLiteJobRunner
@@ -47,19 +47,19 @@ class TutorialTest(unittest.TestCase):
         # end creating new repository
 
         # add RawData
-        # A convenient way to add RawData is simply to use the method add_data.
+        # A convenient way to add RawData is simply to use the method add on the raw_data collection.
         # This method just takes a pandas dataframe and the specification, which columns belong to the input
         # and which to the targets.
         data = pd.read_csv('./examples/boston_housing/housing.csv')
-        ml_repo.add_data('boston_housing', data, input_variables=[
-                         'RM', 'LSTAT', 'PTRATIO'], target_variables=['MEDV'])
+        ml_repo.raw_data.add('boston_housing', data, input_variables=[
+            'RM', 'LSTAT', 'PTRATIO'], target_variables=['MEDV'])
         # end adding RawData
 
         # add DataSet
         # create DataSet objects for training and test data
-        training_data = DataSet('boston_housing', 0, 300,
+        training_data = DataSet('raw_data/boston_housing', 0, 300,
                                 repo_info={RepoInfoKey.NAME: 'training_data', RepoInfoKey.CATEGORY: MLObjectType.TRAINING_DATA})
-        test_data = DataSet('boston_housing', 301, None,
+        test_data = DataSet('raw_data/boston_housing', 301, None,
                             repo_info={RepoInfoKey.NAME: 'test_data',  RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA})
         # add the objects to the repository. The method returns a dictionary of object names to version numbers of the added objects.
         version_list = ml_repo.add(
