@@ -39,8 +39,7 @@ def _check_model(repo, model_name, correct, model_version, check_for_latest=Fals
                 tmp[k] = {'modifier version': v,
                           'latest version': latest_version}
         if len(tmp) > 0:
-            result['latest model version ' +
-                   str(model_version) + ' not on latest inputs'] = tmp
+            result['latest model version not on latest inputs'] = tmp
             if correct == True:
                 job_id = repo.run_training(model_name)
                 job_ids = repo.run_evaluation(
@@ -163,8 +162,76 @@ def check_model(repo, model_name=None, correct=False, model_version=RepoStore.LA
 
 
 def _check_no_overlapping_training_test(repo):
-    pass
+    """Checks if current training data does overlap with test data
+
+    Args:
+        repo (MLRepo): ml repository
+    """
+    def compute_start_end_index(dataset, rawdata):
+        start = dataset.start_index
+        if start < 0:
+            start = start + rawdata.n_data
+        end = dataset.end_index
+        if end is None:
+            end = rawdata.n_data
+        elif end < 0:
+            end = rawdata.n_data + end
+        return (start, end)
+
+    def overlap(interval_1, interval_2):
+        if interval_1[0] < interval_2[0] and interval_1[1] < interval_2[0]:
+            return False
+        if interval_2[0] < interval_1[0] and interval_2[1] < interval_1[0]:
+            return False
+        return True
+
+    tmp = repo.get_names(MLObjectType.TRAINING_DATA)
+    if len(tmp) == 0:
+        raise Exception('Repo contains no training data.')
+    training_data = repo.get(tmp[0])
+    training_raw = repo.get(training_data.raw_data,
+                            version=training_data.raw_data_version)
+    training_indices = compute_start_end_index(training_data, training_raw)
+
+    test_data_names = repo.get_names(MLObjectType.TEST_DATA)
+    result = {}
+    for data in test_data_names:
+        test_data = repo.get(data)
+        if test_data.raw_data == training_data.raw_data:
+            test_data_raw = repo.get(
+                test_data.raw_data, version=test_data.raw_data_version)
+            test_indices = compute_start_end_index(test_data, test_data_raw)
+            if overlap(training_indices, test_indices):
+                result[data] = {'training and test data overlap': {
+                    data: test_data.repo_info.version, training_data.repo_info.name: training_data.repo_info.version}}
+    return result
+
+
+def _check_usage(repo):
+    """Check if all RawDaza is used
+
+    Args:
+        repo ([type]): [description]
+
+    Raises:
+        NotImplementedError: [description]
+
+    Returns:
+        [type]: [description]
+    """
+
+    def compute_start_end_index(dataset, rawdata):
+        start = dataset.start_index
+        if start < 0:
+            start = start + rawdata.n_data
+        end = dataset.end_index
+        if end is None:
+            end = rawdata.n_data
+        elif end < 0:
+            end = rawdata.n_data + end
+        return (start, end)
+    raise NotImplementedError()
 
 
 def check_data(repo):
-    pass
+    return _check_no_overlapping_training_test(repo)
