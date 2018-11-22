@@ -61,7 +61,7 @@ class RepoDiskStorageTest(unittest.TestCase):
         '''
         self.assertEqual(self._storage.get_latest_version(
             'obj'), self._object_versions[-1])
-        self.assertEqual(self._storage._get_first_version('obj'),
+        self.assertEqual(self._storage.get_first_version('obj'),
                          self._object_versions[0])
         # single version numbers
         obj = self._storage.get('obj', versions=RepoStore.FIRST_VERSION)[0]

@@ -118,7 +118,7 @@ class RepoObjectMemoryStorage(RepoStore):
 
         return obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value]
 
-    def get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None):
+    def _get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None):
         tmp = self._get_object_list(name)
         result = []
         for x in tmp:
@@ -127,17 +127,36 @@ class RepoObjectMemoryStorage(RepoStore):
                     result.append(deepcopy(x))
         return result
 
-    def get_version_number(self, name, offset):
-        if offset < 0:
-            return len(self._get_object_list(name)) + offset
-        return offset
+    def get_version(self, name, offset):
+        tmp = self._get_object_list(name)
+        if (offset < 0 and abs(offset)>len(tmp)) or offset >= len(tmp):
+            raise Exception('Offset larger then number of versions.')
+        if len(tmp) == 0:
+            raise Exception('No object with name ' +
+                            name + ' exists in storage')
+        return self._get_object_list(name)[offset]['repo_info'][repo_objects.RepoInfoKey.VERSION.value]
 
     def get_latest_version(self, name):
         """Return latest version number of an object.
 
         :param name: name of object
         """
-        return len(self._get_object_list(name))-1
+        tmp = self._get_object_list(name)
+        if len(tmp) == 0:
+            raise Exception('No object with name ' +
+                            name + ' exists in storage')
+        return tmp[-1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value]
+
+    def get_first_version(self, name):
+        """Return latest version number of an object.
+
+        :param name: name of object
+        """
+        tmp = self._get_object_list(name)
+        if len(tmp) == 0:
+            raise Exception('No object with name ' +
+                            name + ' exists in storage')
+        return self._get_object_list(name)[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value]
 
     def get_names(self, category):
         """Return object names of all object in a category.
@@ -166,13 +185,13 @@ class RepoObjectMemoryStorage(RepoStore):
         tmp = self._store[category]
         if not name in tmp.keys():
             logger.error('Cannot replace object: No object with name ' +
-                            name + ' and category ' + category + ' exists.')
+                         name + ' and category ' + category + ' exists.')
             raise Exception('Cannot replace object: No object with name ' +
                             name + ' and category ' + category + ' exists.')
         version = int(obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value])
         if version >= len(tmp[name]):
             logger.error('Cannot replace objct: The version ' + str(obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value])
-                            + ' does not exist in storage.')
+                         + ' does not exist in storage.')
             raise Exception('Cannot replace objct: The version ' + str(obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value])
                             + ' does not exist in storage.')
         tmp[name][version] = obj
@@ -199,7 +218,7 @@ class NumpyMemoryStorage(NumpyStore):
     def append(self, name, version_old, version_new, numpy_dict):
         if not name in self._store.keys():
             logger.error("Cannot append data because " +
-                            name + " does not exist.")
+                         name + " does not exist.")
             raise Exception("Cannot append data because " +
                             name + " does not exist.")
         self._store[name][version_new] = {

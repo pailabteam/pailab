@@ -19,6 +19,7 @@ import pailab.repo_store as repo_store
 logger = logging.getLogger(__name__)
 
 
+
 class MLObjectType(Enum):
     """Enums describing all ml object types.
     """
@@ -1167,7 +1168,7 @@ class MLRepo:
         if len(datasets_) == 0: #if nothing is specified, add evaluation jobs on all training and test datasets
             names = self.get_names(MLObjectType.TEST_DATA.value)
             for n in names:
-                v = self._ml_repo.get_version_number(n, -1)
+                v = self._ml_repo.get_version(n, -1)
                 datasets_[n] = v
             training_data = self.get_training_data(full_object = False)
             datasets_[training_data.repo_info[RepoInfoKey.NAME]] = training_data.repo_info[RepoInfoKey.VERSION] 
@@ -1213,7 +1214,7 @@ class MLRepo:
             names = self.get_names(MLObjectType.TEST_DATA)
             names.extend(self.get_names(MLObjectType.TRAINING_DATA))
             for n in names:
-                v = self._ml_repo.get_version_number(n, -1)
+                v = self._ml_repo.get_version(n, -1)
                 datasets_[n] = v #todo include training data into measures
             
         measure_config = self.get_names(MLObjectType.MEASURE_CONFIGURATION)[0]

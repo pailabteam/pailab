@@ -106,26 +106,12 @@ class RepoObjectDiskStorage(RepoStore):
     def _get_time_from_uuid(uid):
         return datetime(1582, 10, 15) + timedelta(microseconds=uid.time//10)
 
-    def _get_last_version(self, name):
-        cursor = self._conn.cursor()
-        for row in execute(cursor, "select version from versions where name = '" + name + "' order by uuid_time DESC LIMIT 1"):
-            return row[0]
-        logger.error('No object with name ' + name + ' exists.')
-        raise Exception('No object with name ' + name + ' exists.')
-
-    def _get_first_version(self, name):
-        cursor = self._conn.cursor()
-        for row in execute(cursor, "select version from versions where name = '" + name + "' order by uuid_time ASC LIMIT 1"):
-            return row[0]
-        logger.error('No object with name ' + name + ' exists.')
-        raise Exception('No object with name ' + name + ' exists.')
-
     def _replace_version_placeholder(self, name, version):
         if version == RepoStore.FIRST_VERSION:
-            return self._get_first_version(name)
+            return self.get_first_version(name)
         else:
             if version == RepoStore.LAST_VERSION:
-                return self._get_last_version(name)
+                return self.get_latest_version(name)
         return version
 
     # endregion
@@ -241,7 +227,7 @@ class RepoObjectDiskStorage(RepoStore):
                     version_condition += "'" + tmp + "')"
         return version_condition
 
-    def get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None):
+    def _get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None):
         """Get a dictionary/list of dictionaries fulffilling the conditions.
 
             Returns a list of objects matching the name and whose
@@ -287,6 +273,37 @@ class RepoObjectDiskStorage(RepoStore):
             objects.append(self._load_function(
                 self._main_dir + '/' + filename))
         return objects
+
+    def get_latest_version(self, name):
+        cursor = self._conn.cursor()
+        for row in execute(cursor, "select version from versions where name = '" + name + "' order by uuid_time DESC LIMIT 1"):
+            return row[0]
+        logger.error('No object with name ' + name + ' exists.')
+        raise Exception('No object with name ' + name + ' exists.')
+
+    def get_first_version(self, name):
+        cursor = self._conn.cursor()
+        for row in execute(cursor, "select version from versions where name = '" + name + "' order by uuid_time ASC LIMIT 1"):
+            return row[0]
+        logger.error('No object with name ' + name + ' exists.')
+        raise Exception('No object with name ' + name + ' exists.')
+
+    def get_version(self, name, offset):
+        cursor = self._conn.cursor()
+        if offset > 0:
+            inner_select = "(select version, uuid_time from versions where name = '" + name + "' order by uuid_time ASC LIMIT " + str(offset) + ")"
+            stmt = "select version from " + inner_select + " order by uuid_time DESC LIMIT 1" 
+            for row in execute(cursor, stmt):
+                return row[0]
+        elif offset < 0:
+            inner_select = "(select version, uuid_time from versions where name = '" + name + "' order by uuid_time DESC LIMIT " + str(-offset) + ")"
+            stmt = "select version from " + inner_select + " order by uuid_time ASC LIMIT 1" 
+            for row in execute(cursor, stmt):
+                return row[0]
+        if offset == 0:
+            return self.get_first_version(name)
+        logger.error('No object with name ' + name + ' exists.')
+        raise Exception('No object with name ' + name + ' exists.')
 
     def object_exists(self, name, version=RepoStore.LAST_VERSION):
         """Returns True if an object with the given name and version exists.
