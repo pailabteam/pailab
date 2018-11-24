@@ -47,8 +47,6 @@ class RepoInfo:
         for key in RepoInfoKey:
             setattr(self, key.value, None)
         self.set_fields(kwargs)
-        if self[RepoInfoKey.VERSION] is None:
-            self[RepoInfoKey.VERSION] = '0'
         if self[RepoInfoKey.BIG_OBJECTS] is None:
             self[RepoInfoKey.BIG_OBJECTS] = set()
         if self[RepoInfoKey.MODIFICATION_INFO] is None:
