@@ -50,8 +50,7 @@ class RepoObjectMemoryStorage(RepoStore):
         for k, v in modifications.items():
             if not k in modification_info.keys():
                 return False
-            result = result and self._is_in_versions(
-                k, modification_info[k], v)
+            result = result and self._is_in_versions( modification_info[k], v)
             if result == False:
                 return result
         return result
@@ -180,14 +179,18 @@ class RepoObjectMemoryStorage(RepoStore):
                          name + ' and category ' + category + ' exists.')
             raise Exception('Cannot replace object: No object with name ' +
                             name + ' and category ' + category + ' exists.')
-        version = int(obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value])
-        if version >= len(tmp[name]):
-            logger.error('Cannot replace objct: The version ' + str(obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value])
+        all_obj = tmp[name]
+        version = obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value]
+        for i, x in enumerate(all_obj):
+            if version == x['repo_info'][repo_objects.RepoInfoKey.VERSION.value]:
+                all_obj[i] = obj
+                return
+                
+        logger.error('Cannot replace object: The version ' + str(obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value])
                          + ' does not exist in storage.')
-            raise Exception('Cannot replace objct: The version ' + str(obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value])
+        raise Exception('Cannot replace object: The version ' + str(obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value])
                             + ' does not exist in storage.')
-        tmp[name][version] = obj
-
+        
 
 class NumpyMemoryStorage(NumpyStore):
     def __init__(self):

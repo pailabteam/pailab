@@ -369,6 +369,7 @@ class MeasureJob(Job):
         self.data_version = data_version
 
     def _run(self, repo, jobid):
+        logging.info('Start measure job ' + self.repo_info.name)
         target = repo.get(self.data_name, self.data_version, full_object = True)
         m_name = self.model_name.split('/')[0] #if given model name is a name of calibated model, split to find the evaluation
         eval_data_name = NamingConventions.EvalData(data = self.data_name, model = m_name)
@@ -393,8 +394,10 @@ class MeasureJob(Job):
         result = repo_objects.Measure( v, 
                                 repo_info = {RepoInfoKey.NAME : result_name, RepoInfoKey.CATEGORY: MLObjectType.MEASURE.value})
         _add_modification_info(result, eval_data, target)
+        logging.debug('Add result ' + result_name)
         repo.add(result, 'computing  measure ' + self.measure_type + ' on data ' + self.data_name)
-
+        logging.info('Finished measure job ' + self.repo_info.name)
+        
     def _compute(self, target_data, eval_data):
         if self.measure_type == repo_objects.MeasureConfiguration.MAX:
             return self._compute_max(target_data, eval_data)
@@ -495,7 +498,7 @@ class RepoObjectItem:
         self._repo = ml_repo
         if repo_obj is not None:
             self.obj = repo_obj
-        
+     
     def _set(self, path, items):
         if len(path) > 0:
             if len(path) == 1:
