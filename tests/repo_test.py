@@ -211,16 +211,6 @@ class RepoTest(unittest.TestCase):
             test_obj = DataSet('raw_data', repo_info = {repo_objects.RepoInfoKey.CATEGORY: MLObjectType.TRAINING_DATA.value, 'name': 'test_object'})
             self.repository.add(test_obj)
 
-    def test_version_increase(self):
-        '''Test if updating an existing object increases the version
-        '''
-        obj = self.repository.get('raw_1')
-        old_version = obj.repo_info[RepoInfoKey.VERSION]
-        self.repository.add(obj)
-        obj = self.repository.get('raw_1')
-        new_version = obj.repo_info[RepoInfoKey.VERSION]
-        self.assertEqual(old_version+1, new_version)
-
     def test_commit_increase_update(self):
         '''Check if updating an object in repository increases commit but does not change mapping
         '''
@@ -239,16 +229,13 @@ class RepoTest(unittest.TestCase):
         obj = DataSet('raw_data_1', 0, None, 
             repo_info={RepoInfoKey.NAME.value: 'test...', RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA})
         old_num_commits = len(self.repository.get_commits())
-        old_version_mapping = self.repository.get('repo_mapping').repo_info[RepoInfoKey.VERSION]
+        old_version_mapping = self.repository.get('repo_mapping').repo_info.version
         self.repository.add(obj)
         new_num_commits = len(self.repository.get_commits())
-        new_version_mapping = self.repository.get('repo_mapping').repo_info[RepoInfoKey.VERSION]
+        new_version_mapping = self.repository.get('repo_mapping').repo_info.version
         self.assertEqual(old_num_commits+1, new_num_commits)
-        self.assertEqual(old_version_mapping+1, new_version_mapping)
         commits = self.repository.get_commits()
-        self.assertEqual(commits[-1].objects['test...'], 0)
-        self.assertEqual(commits[-1].objects['repo_mapping'], new_version_mapping)
-
+        
     def test_DataSet_get(self):
         '''Test if getting a DataSet does include all informations from the underlying RawData (excluding numpy data)
         '''
@@ -296,7 +283,6 @@ class RepoTest(unittest.TestCase):
         commits = repository.get_commits()
         self.assertEqual(len(commits), 1)
         self.assertEqual(len(commits[0].objects), 2)
-        self.assertEqual(commits[0].objects['RawData_Test'], 0)
         
     def test_add_model_defaults(self):
         """test add_model using defaults to check whether default logic applies correctly
@@ -319,10 +305,6 @@ class RepoTest(unittest.TestCase):
         self.repository.add(training_data)
         training_data_history = self.repository.get_history('training_data_1')
         self.assertEqual(len(training_data_history), 2)
-        self.assertEqual(training_data_history[0]['repo_info']['version'], 0)
-        self.assertEqual(training_data_history[1]['repo_info']['version'], 1)
-        training_data_history = self.repository.get_history('training_data_1', version_start=1, version_end=1)
-        self.assertEqual(len(training_data_history), 1)
 
     def test_run_eval_defaults(self):
         '''Test running evaluation with default arguments
@@ -350,22 +332,24 @@ class RepoTest(unittest.TestCase):
         
         training_data_2 = repository.get_training_data()
         self.assertEqual(training_data_2.repo_info[repo_objects.RepoInfoKey.NAME], training_data.repo_info[repo_objects.RepoInfoKey.NAME])
+        
         test_data = RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data'})
-        repository.add(test_data, category=MLObjectType.TEST_DATA)
+        repository.add(test_data, category=MLObjectType.TEST_DATA)  
+        test_data_ref = repository.get('test_data')
+        self.assertEqual(test_data_ref.repo_info[repo_objects.RepoInfoKey.NAME], test_data.repo_info[repo_objects.RepoInfoKey.NAME])
+        self.assertEqual(test_data_ref.repo_info[repo_objects.RepoInfoKey.VERSION], test_data.repo_info[repo_objects.RepoInfoKey.VERSION])
         
-        test_data_2 = repository.get('test_data')
-        self.assertEqual(test_data_2.repo_info[repo_objects.RepoInfoKey.NAME], test_data.repo_info[repo_objects.RepoInfoKey.NAME])
-        test_data = RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_2'})
-        repository.add(test_data, category = MLObjectType.TEST_DATA)
+        test_data_2 = RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_2'})
+        repository.add(test_data_2, category = MLObjectType.TEST_DATA)
+        test_data_2_ref = repository.get('test_data_2')
+        self.assertEqual(test_data_2.repo_info[repo_objects.RepoInfoKey.NAME], test_data_2_ref.repo_info[repo_objects.RepoInfoKey.NAME])
         
-        test_data_2 = repository.get('test_data_2')
-        self.assertEqual(test_data_2.repo_info[repo_objects.RepoInfoKey.NAME], test_data.repo_info[repo_objects.RepoInfoKey.NAME])
         commits = repository.get_commits()
         self.assertEqual(len(commits), 3)
-        self.assertEqual(commits[1].objects['test_data'], 0)
-        self.assertEqual(commits[1].objects['repo_mapping'], 1)
-        self.assertEqual(commits[2].objects['test_data_2'], 0)
-        self.assertEqual(commits[2].objects['repo_mapping'], 2)
+        self.assertEqual(commits[1].objects['test_data'], test_data.repo_info.version)
+        #self.assertEqual(commits[1].objects['repo_mapping'], 1)
+        self.assertEqual(commits[2].objects['test_data_2'], test_data_2.repo_info.version)
+        #self.assertEqual(commits[2].objects['repo_mapping'], 2)
         
         
 import shutil

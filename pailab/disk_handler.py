@@ -2,12 +2,11 @@
 
 import os
 import sqlite3
-import uuid
 import pickle
 from datetime import datetime, timedelta
 import json
 import pailab.repo_objects as repo_objects
-from pailab.repo_store import RepoInfoKey
+from pailab.repo_store import RepoInfoKey, _time_from_version
 import pailab.repo as repo
 from pailab.repo_store import RepoStore
 import logging
@@ -102,32 +101,6 @@ class RepoObjectDiskStorage(RepoStore):
         else:
             self._conn = sqlite3.connect(self._sqlite_db_name())
 
-    @staticmethod
-    def _get_time_from_uuid(uid):
-        return datetime(1582, 10, 15) + timedelta(microseconds=uid.time//10)
-
-    def _get_last_version(self, name):
-        cursor = self._conn.cursor()
-        for row in execute(cursor, "select version from versions where name = '" + name + "' order by uuid_time DESC LIMIT 1"):
-            return row[0]
-        logger.error('No object with name ' + name + ' exists.')
-        raise Exception('No object with name ' + name + ' exists.')
-
-    def _get_first_version(self, name):
-        cursor = self._conn.cursor()
-        for row in execute(cursor, "select version from versions where name = '" + name + "' order by uuid_time ASC LIMIT 1"):
-            return row[0]
-        logger.error('No object with name ' + name + ' exists.')
-        raise Exception('No object with name ' + name + ' exists.')
-
-    def _replace_version_placeholder(self, name, version):
-        if version == RepoStore.FIRST_VERSION:
-            return self._get_first_version(name)
-        else:
-            if version == RepoStore.LAST_VERSION:
-                return self._get_last_version(name)
-        return version
-
     # endregion
 
     def __init__(self, folder, save_function=pickle_save, load_function=pickle_load):
@@ -156,7 +129,7 @@ class RepoObjectDiskStorage(RepoStore):
             result.append(row[0])
         return result
 
-    def add(self, obj):
+    def _add(self, obj):
         """Add an object to the storage.
 
 
@@ -168,14 +141,13 @@ class RepoObjectDiskStorage(RepoStore):
         """
         cursor = self._conn.cursor()
         try:
-            uid = uuid.uuid1()
-            uid_time = RepoObjectDiskStorage._get_time_from_uuid(uid)
+            uid_time = _time_from_version(
+                obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value])
             name = obj['repo_info'][repo_objects.RepoInfoKey.NAME.value]
             if isinstance(obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value], repo.MLObjectType):
                 category = obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value].name
             else:
                 category = obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value]
-            obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value] = str(uid)
             exists = False
             # region write mapping
             for row in execute(cursor, 'select * from mapping where name = ' + "'" + name + "'"):
@@ -186,18 +158,17 @@ class RepoObjectDiskStorage(RepoStore):
                         "insert into mapping (name, category) VALUES ('" + name + "', '" + category + "')")
             # endregion
             # region write file info
-            version = str(uid)
+            version = obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value]
             file_sub_dir = category + '/' + name + '/'
             os.makedirs(self._main_dir + '/' + file_sub_dir, exist_ok=True)
-            filename = file_sub_dir + '/' + str(uid)
+            filename = file_sub_dir + '/' + version
             execute(cursor, "insert into versions (name, version, file, uuid_time) VALUES('" +
                     name + "', '" + version + "','" + filename + "','" + str(uid_time) + "')")
             # endregion
             # region write modification info
             if repo_objects.RepoInfoKey.MODIFICATION_INFO.value in obj['repo_info']:
                 for k, v in obj['repo_info'][repo_objects.RepoInfoKey.MODIFICATION_INFO.value].items():
-                    tmp = RepoObjectDiskStorage._get_time_from_uuid(
-                        uuid.UUID(v))
+                    tmp = _time_from_version(v)
                     execute(cursor, "insert into modification_info (name, version, modifier, modifier_version, modifier_uuid_time) VALUES ('"
                             + name + "','" + version + "','" + k + "','" + str(v) + "','" + str(tmp) + "')")
             # endregion
@@ -211,37 +182,28 @@ class RepoObjectDiskStorage(RepoStore):
         except Exception as e:
             logger.error('Error: ' + str(e) + ', rolling back changes.')
             self._conn.rollback()
-        return version
 
     def get_version_condition(self, name, versions, version_column, time_column):
         version_condition = ''
         if versions is not None:
             version_condition = ' and '
         if isinstance(versions, str):
-            version_condition += version_column + " = '" + \
-                self._replace_version_placeholder(name, versions) + "'"
+            version_condition += version_column + " = '" + versions + "'"
         else:
             if isinstance(versions, tuple):
-                uid = uuid.UUID(
-                    self._replace_version_placeholder(name, versions[0]))
-                start_time = RepoObjectDiskStorage._get_time_from_uuid(
-                    uid)
-                uid = uuid.UUID(
-                    self._replace_version_placeholder(name, versions[1]))
-                end_time = RepoObjectDiskStorage._get_time_from_uuid(
-                    uid)
+                start_time = _time_from_version(versions[0])
+                end_time = _time_from_version(versions[1])
                 version_condition += "'" + str(
                     start_time) + "' <= " + time_column + " and " + time_column + "<= '" + str(end_time) + "'"
             else:
                 if isinstance(versions, list):
                     version_condition += version_column + ' in ('
                     tmp = "','"
-                    tmp = tmp.join([self._replace_version_placeholder(name, v)
-                                    for v in versions])
+                    tmp = tmp.join([v for v in versions])
                     version_condition += "'" + tmp + "')"
         return version_condition
 
-    def get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None):
+    def _get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None):
         """Get a dictionary/list of dictionaries fulffilling the conditions.
 
             Returns a list of objects matching the name and whose
@@ -287,6 +249,39 @@ class RepoObjectDiskStorage(RepoStore):
             objects.append(self._load_function(
                 self._main_dir + '/' + filename))
         return objects
+
+    def get_latest_version(self, name):
+        cursor = self._conn.cursor()
+        for row in execute(cursor, "select version from versions where name = '" + name + "' order by uuid_time DESC LIMIT 1"):
+            return row[0]
+        logger.error('No object with name ' + name + ' exists.')
+        raise Exception('No object with name ' + name + ' exists.')
+
+    def get_first_version(self, name):
+        cursor = self._conn.cursor()
+        for row in execute(cursor, "select version from versions where name = '" + name + "' order by uuid_time ASC LIMIT 1"):
+            return row[0]
+        logger.error('No object with name ' + name + ' exists.')
+        raise Exception('No object with name ' + name + ' exists.')
+
+    def get_version(self, name, offset):
+        cursor = self._conn.cursor()
+        if offset > 0:
+            inner_select = "(select version, uuid_time from versions where name = '" + \
+                name + "' order by uuid_time ASC LIMIT " + str(offset) + ")"
+            stmt = "select version from " + inner_select + " order by uuid_time DESC LIMIT 1"
+            for row in execute(cursor, stmt):
+                return row[0]
+        elif offset < 0:
+            inner_select = "(select version, uuid_time from versions where name = '" + \
+                name + "' order by uuid_time DESC LIMIT " + str(-offset) + ")"
+            stmt = "select version from " + inner_select + " order by uuid_time ASC LIMIT 1"
+            for row in execute(cursor, stmt):
+                return row[0]
+        if offset == 0:
+            return self.get_first_version(name)
+        logger.error('No object with name ' + name + ' exists.')
+        raise Exception('No object with name ' + name + ' exists.')
 
     def object_exists(self, name, version=RepoStore.LAST_VERSION):
         """Returns True if an object with the given name and version exists.

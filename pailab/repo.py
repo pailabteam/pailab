@@ -19,6 +19,7 @@ import pailab.repo_store as repo_store
 logger = logging.getLogger(__name__)
 
 
+
 class MLObjectType(Enum):
     """Enums describing all ml object types.
     """
@@ -368,6 +369,7 @@ class MeasureJob(Job):
         self.data_version = data_version
 
     def _run(self, repo, jobid):
+        logging.info('Start measure job ' + self.repo_info.name)
         target = repo.get(self.data_name, self.data_version, full_object = True)
         m_name = self.model_name.split('/')[0] #if given model name is a name of calibated model, split to find the evaluation
         eval_data_name = NamingConventions.EvalData(data = self.data_name, model = m_name)
@@ -392,8 +394,10 @@ class MeasureJob(Job):
         result = repo_objects.Measure( v, 
                                 repo_info = {RepoInfoKey.NAME : result_name, RepoInfoKey.CATEGORY: MLObjectType.MEASURE.value})
         _add_modification_info(result, eval_data, target)
+        logging.debug('Add result ' + result_name)
         repo.add(result, 'computing  measure ' + self.measure_type + ' on data ' + self.data_name)
-
+        logging.info('Finished measure job ' + self.repo_info.name)
+        
     def _compute(self, target_data, eval_data):
         if self.measure_type == repo_objects.MeasureConfiguration.MAX:
             return self._compute_max(target_data, eval_data)
@@ -494,7 +498,7 @@ class RepoObjectItem:
         self._repo = ml_repo
         if repo_obj is not None:
             self.obj = repo_obj
-        
+     
     def _set(self, path, items):
         if len(path) > 0:
             if len(path) == 1:
@@ -828,13 +832,12 @@ class MLRepo:
             repo_object.repo_info[RepoInfoKey.AUTHOR] = self._user
             obj_dict = repo_objects.create_repo_obj_dict(repo_object)
             version = self._ml_repo.add(obj_dict)
-            repo_object.repo_info[RepoInfoKey.VERSION] = version
             if len(repo_object.repo_info[RepoInfoKey.BIG_OBJECTS]) > 0:
                 np_dict = repo_object.numpy_to_dict()
                 self._numpy_repo.add(repo_object.repo_info[RepoInfoKey.NAME],
                                     repo_object.repo_info[RepoInfoKey.VERSION],
                                     np_dict)
-            self.reload() # todo make this more efficient by just updating collections and items which ar affcted by this
+            self.reload() # todo make this more efficient by just updating collections and items which are affected by this
             return version, mapping_changed
 
     def _update_job(self, job_object):
@@ -865,6 +868,7 @@ class MLRepo:
 
             :return version number of object added or dictionary of names and versions of objects added
         """
+        version = repo_store._version_str()
         result = {}
         repo_list = repo_object
         mapping_changed = False
@@ -872,14 +876,16 @@ class MLRepo:
             repo_list = [repo_object]
         if isinstance(repo_list, list):
             for obj in repo_list:
+                obj.repo_info.version = version
                 result[obj.repo_info[RepoInfoKey.NAME]], mapping_changed_tmp = self._add(obj, message, category)
                 mapping_changed = mapping_changed or mapping_changed_tmp
         if mapping_changed:
+            self._mapping.repo_info.version = version
             mapping_version, dummy = self._add(self._mapping)
             result['repo_mapping'] = mapping_version
             
         commit_message = repo_objects.CommitInfo(message, self._user, result, repo_info = {RepoInfoKey.CATEGORY: MLObjectType.COMMIT_INFO.value,
-                RepoInfoKey.NAME: 'CommitInfo'} )
+                RepoInfoKey.NAME: 'CommitInfo', RepoInfoKey.VERSION : version} )
         self._add(commit_message)
         if not isinstance(repo_object, list):
             if len(result) == 1 or (mapping_changed and len(result) == 2):
@@ -1167,7 +1173,7 @@ class MLRepo:
         if len(datasets_) == 0: #if nothing is specified, add evaluation jobs on all training and test datasets
             names = self.get_names(MLObjectType.TEST_DATA.value)
             for n in names:
-                v = self._ml_repo.get_version_number(n, -1)
+                v = self._ml_repo.get_version(n, -1)
                 datasets_[n] = v
             training_data = self.get_training_data(full_object = False)
             datasets_[training_data.repo_info[RepoInfoKey.NAME]] = training_data.repo_info[RepoInfoKey.VERSION] 
@@ -1196,7 +1202,7 @@ class MLRepo:
         jobs = self._create_evaluation_jobs(model, model_version, datasets, predecessors)
         job_ids = []
         for job in jobs:
-            self._add(job)
+            self.add(job)
             self._job_runner.add(job.repo_info[RepoInfoKey.NAME], job.repo_info[RepoInfoKey.VERSION], self._user)
             logging.info('Eval job ' + job.repo_info[RepoInfoKey.NAME]+ ', version: ' 
                 + str(job.repo_info[RepoInfoKey.VERSION]) + ' added to jobrunner.')
@@ -1213,7 +1219,7 @@ class MLRepo:
             names = self.get_names(MLObjectType.TEST_DATA)
             names.extend(self.get_names(MLObjectType.TRAINING_DATA))
             for n in names:
-                v = self._ml_repo.get_version_number(n, -1)
+                v = self._ml_repo.get_version(n, -1)
                 datasets_[n] = v #todo include training data into measures
             
         measure_config = self.get_names(MLObjectType.MEASURE_CONFIGURATION)[0]
@@ -1231,7 +1237,7 @@ class MLRepo:
                         repo_info = {RepoInfoKey.NAME: model + '/jobs/measure/' + n + '/' + m[0],
                         RepoInfoKey.CATEGORY: MLObjectType.JOB.value})
                 measure_job.set_predecessor_jobs(predecessors)
-                self._add(measure_job)
+                self.add(measure_job)
                 self._job_runner.add(measure_job.repo_info[RepoInfoKey.NAME], measure_job.repo_info[RepoInfoKey.VERSION], self._user)
                 job_ids.append((measure_job.repo_info[RepoInfoKey.NAME], measure_job.repo_info[RepoInfoKey.VERSION]))
                 logging.info('Measure job ' + measure_job.repo_info[RepoInfoKey.NAME]+ ', version: ' 

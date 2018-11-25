@@ -1,41 +1,36 @@
+import datetime
 from copy import deepcopy
 from numpy import concatenate
 import pailab.repo_objects as repo_objects
 import pailab.repo as repo
-from pailab.repo_store import RepoStore, NumpyStore
+from pailab.repo_store import RepoStore, NumpyStore, _time_from_version
 import logging
 logger = logging.getLogger(__name__)
 
 
 class RepoObjectMemoryStorage(RepoStore):
     # region private
-    def _replace_version_keyword(self, name, versionset):
-        def replace_keyword_by_version(n):
-            if n is None:
-                return None
-            if isinstance(n, str):
-                if n == RepoStore.FIRST_VERSION:
-                    return 0
-                if n == RepoStore.LAST_VERSION:
-                    return self.get_latest_version(name)
-            return n
-        if isinstance(versionset, tuple):
-            return (replace_keyword_by_version(versionset[0]), replace_keyword_by_version(versionset[1]))
-        v = deepcopy(versionset)
-        v = replace_keyword_by_version(v)
-        if isinstance(v, list):
-            for i in range(len(v)):
-                v[i] = replace_keyword_by_version(v[i])
-        return v
+    
 
-    def _is_in_versions(self, name, version, versions):
+    def _is_in_versions(self, version, versions):
+        if version is None:
+            return True
         if versions is None:
             return True
-        v = self._replace_version_keyword(name, versions)
+        v =  versions
         if isinstance(v, list):
             return version in v
         if isinstance(v, tuple):
-            return (version >= v[0]) and (version <= v[1])
+            if v[0] is None:
+                start_time = datetime.datetime(1980,1,1,0,0)
+            else:
+                start_time = _time_from_version(v[0])
+            if v[1] is None:
+                end_time = datetime.datetime(2300,1,1,0,0)
+            else:
+                end_time = _time_from_version(v[1])
+            time = _time_from_version(version)
+            return (time >= start_time) and (time <= end_time)
         return version == v
 
     def _is_in_modifications(self, obj, modifications):
@@ -55,8 +50,7 @@ class RepoObjectMemoryStorage(RepoStore):
         for k, v in modifications.items():
             if not k in modification_info.keys():
                 return False
-            result = result and self._is_in_versions(
-                k, modification_info[k], v)
+            result = result and self._is_in_versions( modification_info[k], v)
             if result == False:
                 return result
         return result
@@ -86,7 +80,7 @@ class RepoObjectMemoryStorage(RepoStore):
         self._name_to_category = {}
         self._categories = {}
 
-    def add(self, obj):
+    def _add(self, obj):
         """ Add an object of given category to the storage.
 
         The objects version will be set to the latest version+1.
@@ -107,8 +101,6 @@ class RepoObjectMemoryStorage(RepoStore):
             tmp[name] = [obj]
         else:
             tmp[name].append(obj)
-        obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value] = len(
-            tmp[name])-1
         self._name_to_category[name] = category
         if not category in self._categories.keys():
             self._categories[category] = set()
@@ -116,28 +108,46 @@ class RepoObjectMemoryStorage(RepoStore):
         logger.debug(obj['repo_info'][repo_objects.RepoInfoKey.NAME.value] +
                      ' added with version ' + str(obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value]) + ', category: ' + category)
 
-        return obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value]
 
-    def get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None):
+    def _get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None):
         tmp = self._get_object_list(name)
         result = []
         for x in tmp:
-            if self._is_in_versions(x['repo_info'][repo_objects.RepoInfoKey.NAME.value], x['repo_info'][repo_objects.RepoInfoKey.VERSION.value], versions):
+            if self._is_in_versions(x['repo_info'][repo_objects.RepoInfoKey.VERSION.value], versions):
                 if self._is_in_modifications(x, modifier_versions):
                     result.append(deepcopy(x))
         return result
 
-    def get_version_number(self, name, offset):
-        if offset < 0:
-            return len(self._get_object_list(name)) + offset
-        return offset
+    def get_version(self, name, offset):
+        tmp = self._get_object_list(name)
+        if (offset < 0 and abs(offset) > len(tmp)) or offset >= len(tmp):
+            raise Exception('Offset larger then number of versions.')
+        if len(tmp) == 0:
+            raise Exception('No object with name ' +
+                            name + ' exists in storage')
+        return self._get_object_list(name)[offset]['repo_info'][repo_objects.RepoInfoKey.VERSION.value]
 
     def get_latest_version(self, name):
         """Return latest version number of an object.
 
         :param name: name of object
         """
-        return len(self._get_object_list(name))-1
+        tmp = self._get_object_list(name)
+        if len(tmp) == 0:
+            raise Exception('No object with name ' +
+                            name + ' exists in storage')
+        return tmp[-1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value]
+
+    def get_first_version(self, name):
+        """Return latest version number of an object.
+
+        :param name: name of object
+        """
+        tmp = self._get_object_list(name)
+        if len(tmp) == 0:
+            raise Exception('No object with name ' +
+                            name + ' exists in storage')
+        return tmp[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value]
 
     def get_names(self, category):
         """Return object names of all object in a category.
@@ -166,17 +176,21 @@ class RepoObjectMemoryStorage(RepoStore):
         tmp = self._store[category]
         if not name in tmp.keys():
             logger.error('Cannot replace object: No object with name ' +
-                            name + ' and category ' + category + ' exists.')
+                         name + ' and category ' + category + ' exists.')
             raise Exception('Cannot replace object: No object with name ' +
                             name + ' and category ' + category + ' exists.')
-        version = int(obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value])
-        if version >= len(tmp[name]):
-            logger.error('Cannot replace objct: The version ' + str(obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value])
+        all_obj = tmp[name]
+        version = obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value]
+        for i, x in enumerate(all_obj):
+            if version == x['repo_info'][repo_objects.RepoInfoKey.VERSION.value]:
+                all_obj[i] = obj
+                return
+                
+        logger.error('Cannot replace object: The version ' + str(obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value])
+                         + ' does not exist in storage.')
+        raise Exception('Cannot replace object: The version ' + str(obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value])
                             + ' does not exist in storage.')
-            raise Exception('Cannot replace objct: The version ' + str(obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value])
-                            + ' does not exist in storage.')
-        tmp[name][version] = obj
-
+        
 
 class NumpyMemoryStorage(NumpyStore):
     def __init__(self):
@@ -199,7 +213,7 @@ class NumpyMemoryStorage(NumpyStore):
     def append(self, name, version_old, version_new, numpy_dict):
         if not name in self._store.keys():
             logger.error("Cannot append data because " +
-                            name + " does not exist.")
+                         name + " does not exist.")
             raise Exception("Cannot append data because " +
                             name + " does not exist.")
         self._store[name][version_new] = {

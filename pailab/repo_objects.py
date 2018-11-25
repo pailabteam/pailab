@@ -1,5 +1,4 @@
 import datetime
-
 import numpy as np
 from enum import Enum
 from types import MethodType
@@ -35,6 +34,7 @@ class RepoInfoKey(Enum):
     BIG_OBJECTS = 'big_objects'
     COMMIT_MESSAGE = 'commit_message'
     AUTHOR = 'author'
+    COMMIT_DATE = 'commit_date'
 
 class RepoInfo:
     """Contains all repo relevent information
@@ -47,8 +47,6 @@ class RepoInfo:
         for key in RepoInfoKey:
             setattr(self, key.value, None)
         self.set_fields(kwargs)
-        if self[RepoInfoKey.VERSION] is None:
-            self[RepoInfoKey.VERSION] = 0
         if self[RepoInfoKey.BIG_OBJECTS] is None:
             self[RepoInfoKey.BIG_OBJECTS] = set()
         if self[RepoInfoKey.MODIFICATION_INFO] is None:
@@ -249,7 +247,6 @@ def create_repo_obj(obj):
     repo_info = obj['repo_info']
     result = get_object_from_classname(repo_info['classname'], obj)
     return result
-
 
 class RawData:
     """Class to store numpy data.

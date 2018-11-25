@@ -1,5 +1,31 @@
+import uuid
+import datetime
+
 import abc
 from pailab.repo_objects import RepoInfoKey  # pylint: disable=E0401
+
+
+def _version_str():
+    return str(uuid.uuid1())
+
+
+def _time_from_version(v):
+    """Return the time included in uuid
+
+    Args:
+        :param v (str): string representin the uuid
+
+    Returns:
+        datetime: the datetime
+    """
+    if isinstance(v, str):
+        tmp = uuid.UUID(v)
+        return datetime.datetime(1582, 10, 15) + datetime.timedelta(microseconds=tmp.time / 10)
+    return datetime.datetime(1582, 10, 15) + datetime.timedelta(microseconds=v.time / 10)
+
+
+FIRST_VERSION = 'first'
+LAST_VERSION = 'last'
 
 
 class RepoScriptStore(abc.ABC):
@@ -22,10 +48,6 @@ class RepoScriptStore(abc.ABC):
         pass
 
 
-FIRST_VERSION = 'first'
-LAST_VERSION = 'last'
-
-
 class RepoStore(abc.ABC):
 
     FIRST_VERSION = FIRST_VERSION
@@ -34,7 +56,39 @@ class RepoStore(abc.ABC):
     """Abstract base class for all storages which can be used in the ML repository
 
     """
+
+    def _replace_version_placeholder(self, name, versions):
+        def replace_version(name, version):
+            if version == FIRST_VERSION:
+                return self.get_first_version(name)
+            if version == LAST_VERSION:
+                return self.get_latest_version(name)
+            if isinstance(version, int):
+                return self.get_version(name, version)
+            return version
+        if isinstance(versions, str):
+            versions = replace_version(name, versions)
+        if isinstance(versions, tuple):
+            versions = (replace_version(
+                name, versions[0]), replace_version(name, versions[1]))
+        if isinstance(versions, list):
+            versions = [replace_version(name, v) for v in versions]
+        return versions
+
     @abc.abstractmethod
+    def _add(self, obj):
+        """Add an object to the storage.
+
+        This method is called internally by the method add that is setting a version if there has not version already been set.
+
+        Arguments:
+            obj {RepoObject} -- repository object
+
+        Raises:
+            Exception if an object with same name already exists.
+        """
+        pass
+
     def add(self, obj):
         """Add an object to the storage.
 
@@ -45,7 +99,10 @@ class RepoStore(abc.ABC):
         Raises:
             Exception if an object with same name already exists.
         """
-        pass
+        if obj['repo_info'][RepoInfoKey.VERSION.value] is None:
+            obj['repo_info'][RepoInfoKey.VERSION.value] = _version_str()
+        self._add(obj)
+        return obj['repo_info'][RepoInfoKey.VERSION.value]
 
     @abc.abstractmethod
     def replace(self, obj):
@@ -56,8 +113,16 @@ class RepoStore(abc.ABC):
         """
         pass
 
-    @abc.abstractmethod
     def get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None):
+        versions = self._replace_version_placeholder(name, versions)
+        if modifier_versions is not None:
+            for k, v in modifier_versions.items():
+                modifier_versions[k] = self._replace_version_placeholder(k, v)
+        return self._get(name, versions, modifier_versions,
+                         obj_fields, repo_info_fields)
+
+    @abc.abstractmethod
+    def _get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None):
         """Get a dictionary/list of dictionaries fulffilling the conditions.
 
             Returns a list of objects matching the name and whose
@@ -90,10 +155,11 @@ class RepoStore(abc.ABC):
         """
         pass
 
-    def get_version_number(self, name, offset):
+    @abc.abstractmethod
+    def get_version(self, name, offset):
         """Return versionnumber for the given offset
 
-        If offset >= 0 it returns the version number of the offest version, if <0 it returns according to the
+        If offset >= 0 it returns the version number of the offset version, if <0 it returns according to the
         python list logic the version number of the (offset-1)-last version
 
         Arguments:
@@ -102,16 +168,26 @@ class RepoStore(abc.ABC):
         """
         pass
 
+    @abc.abstractmethod
     def get_latest_version(self, name):
         """Return latest version number of object in the storage
 
         Arguments:
-            name {string} -- object name
+            :param name {string} -- object name
 
         Returns:
             version number -- latest version number
         """
         return self.get(name, versions=RepoStore.LAST_VERSION, repo_info_fields=[RepoInfoKey.VERSION])[0]['repo_info'][RepoInfoKey.VERSION.value]
+
+    @abc.abstractmethod
+    def get_first_version(self, name):
+        """Return version number of first (in a temporal sense) object in storage
+
+        Args:
+            name (str): object name for which the version is returned
+        """
+        raise NotImplementedError()
 
     def object_exists(self, name, version=LAST_VERSION):
         """Returns True if an object with the given name and version exists.
