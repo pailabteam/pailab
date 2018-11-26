@@ -3,6 +3,7 @@
     This module defines all necessary objects and functions to use sklearn from within pailab.
 """
 
+__version__ = '0.0.1'
 
 from pailab.repo_objects import repo_object_init
 from pailab.repo_objects import RepoInfoKey
