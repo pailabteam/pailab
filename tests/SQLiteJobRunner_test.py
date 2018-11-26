@@ -105,10 +105,8 @@ class SQLiteJobRunner_Test(unittest.TestCase):
                               repo_info={repo_objects.RepoInfoKey.NAME.value: 'test_data_2',  repo_objects.RepoInfoKey.CATEGORY: repo.MLObjectType.TEST_DATA})
         self.repository.add([training_data, test_data_1, test_data_2])
 
-        self.repository.add_eval_function(
-            'tests.SQLiteJobRunner_test', 'eval_func_test')
-        self.repository.add_training_function(
-            'tests.SQLiteJobRunner_test', 'train_func_test')
+        self.repository.add_eval_function(eval_func_test)
+        self.repository.add_training_function(train_func_test)
         self.repository.add(TestClass(1, 2, repo_info={repo_objects.RepoInfoKey.NAME.value: 'training_param',  # pylint: disable=E1123
                                                        repo_objects.RepoInfoKey.CATEGORY: repo.MLObjectType.TRAINING_PARAM}))
         # setup dummy model definition

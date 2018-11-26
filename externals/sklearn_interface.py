@@ -79,10 +79,8 @@ def add_model(repo, skl_learner, model_name=None, model_param=None):
         model_param ([type], optional): Defaults to None. [description]
     """
 
-    repo.add_eval_function('externals.sklearn_interface',
-                           'eval_sklearn', repo_name='eval_sklearn')
-    repo.add_training_function(
-        'externals.sklearn_interface', 'train_sklearn', repo_name='train_sklearn')
+    repo.add_eval_function(eval_sklearn, repo_name='eval_sklearn')
+    repo.add_training_function(train_sklearn, repo_name='train_sklearn')
     m_name = model_name
     if m_name is None:
         m_name = skl_learner.__class__.__name__

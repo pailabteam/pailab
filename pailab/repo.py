@@ -893,7 +893,7 @@ class MLRepo:
             raise Exception("No training_data in repository.")
         return self.get(self._mapping[MLObjectType.TRAINING_DATA][0], version, full_object)
 
-    def add_eval_function(self, module_name, function_name, repo_name = None):
+    def add_eval_function(self, f, repo_name = None):
         """Add the function to evaluate the model
 
         Arguments:
@@ -903,13 +903,13 @@ class MLRepo:
         """
         name = repo_name
         if name is None:
-            name = module_name + "." + function_name
-        func = repo_objects.Function(module_name, function_name, repo_info={
+            name = f.__module__ + "." + f.__name__
+        func = repo_objects.Function(f, repo_info={
                                      RepoInfoKey.NAME: name,
                                      RepoInfoKey.CATEGORY: MLObjectType.MODEL_EVAL_FUNCTION.value})
         self.add(func, 'add model evaluation function ' + name)
     
-    def add_training_function(self, module_name, function_name, repo_name = None):
+    def add_training_function(self, f, repo_name = None):
         """Add function to train a model
 
         Arguments:
@@ -919,8 +919,8 @@ class MLRepo:
         """
         name = repo_name
         if name is None:
-            name = module_name + "." + function_name
-        func = repo_objects.Function(module_name, function_name, repo_info={
+            name = f.__module__ + "." + f.__name__
+        func = repo_objects.Function(f, repo_info={
                                      RepoInfoKey.NAME: name,
                                      RepoInfoKey.CATEGORY: MLObjectType.TRAINING_FUNCTION.value})
         self.add(func, 'add model training function ' + name)

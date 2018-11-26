@@ -193,8 +193,8 @@ class RepoTest(unittest.TestCase):
                                     repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_2',  repo_objects.RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA})
         self.repository.add([training_data, test_data_1, test_data_2])
 
-        self.repository.add_eval_function('tests.repo_test', 'eval_func_test')
-        self.repository.add_training_function('tests.repo_test', 'train_func_test')
+        self.repository.add_eval_function(eval_func_test)
+        self.repository.add_training_function(train_func_test)
         self.repository.add(TestClass(1,2, repo_info={repo_objects.RepoInfoKey.NAME.value: 'training_param', # pylint: disable=E1123
                                             repo_objects.RepoInfoKey.CATEGORY: MLObjectType.TRAINING_PARAM}))
         ## setup dummy model definition
@@ -293,8 +293,8 @@ class RepoTest(unittest.TestCase):
         self.repository.add(training_param)
         self.repository.add_model('model1')
         model = self.repository.get('model1')
-        self.assertEqual(model.eval_function, 'tests.repo_test.eval_func_test')
-        self.assertEqual(model.training_function, 'tests.repo_test.train_func_test')
+        self.assertEqual(model.eval_function, 'repo_test.eval_func_test')
+        self.assertEqual(model.training_function, 'repo_test.train_func_test')
         self.assertEqual(model.training_param, 'training_param')
         self.assertEqual(model.model_param, 'model_param')
         

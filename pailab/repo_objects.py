@@ -328,12 +328,12 @@ class Function:
     """Function
     """
     @repo_object_init()
-    def __init__(self, module_name, function_name):
-        self._module_name = module_name
-        self._function_name = function_name
+    def __init__(self, f):
+        self._module_name = f.__module__
+        self._function_name = f.__name__
         self._module_version = None
 
-        tmp = importlib.import_module(module_name)
+        tmp = importlib.import_module(self._module_name)
         self._module_version = 'None'
         if hasattr(tmp, '__version__'):
             self._module_version = str(tmp.__version__)
