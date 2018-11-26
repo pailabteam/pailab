@@ -1,4 +1,6 @@
 import datetime
+import importlib
+
 import numpy as np
 from enum import Enum
 from types import MethodType
@@ -327,8 +329,33 @@ class Function:
     """
     @repo_object_init()
     def __init__(self, module_name, function_name):
-        self.module_name = module_name
-        self.function_name = function_name
+        self._module_name = module_name
+        self._function_name = function_name
+        self._module_version = None
+
+        tmp = importlib.import_module(module_name)
+        self._module_version = 'None'
+        if hasattr(tmp, '__version__'):
+            self._module_version = str(tmp.__version__)
+        else:
+            logger.warning('Used module does not define a version which may lead to irreproducable results.')
+        
+    def create(self):
+        """Returns the function object
+        
+        Returns:
+            function object: the function object
+        """
+        tmp = importlib.import_module(self._module_name)
+        if hasattr(tmp, '__version__'):
+            if self._module_version != str(tmp.__version__):
+                raise Exception('Module has version different to last version: ' + str(tmp.__version__) + ', orig version: ' 
+                    + self._module_version +'. Either version add the function of newer module again or change module to original version.')
+        return getattr(tmp, self._function_name)
+
+    def get_version(self):
+       return self._module_version
+
 
 class CommitInfo:
     @repo_object_init()
