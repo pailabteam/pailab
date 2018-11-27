@@ -768,13 +768,13 @@ class MLRepo:
         self.test_data = TestDataCollection(self)
         self.models = ModelCollection(self)
 
-    def __init__(self, user, script_repo, numpy_repo, ml_repo, job_runner):
+    def __init__(self, user, script_repo, numpy_repo, ml_repo, job_runner=None):
         """ Constructor of MLRepo
 
             :param script_repo: repository for the user's modules providing the customized model evaluation, raining, calibration and preprocessing methods
             :param numpy_repo: repository where the numpy data is stored in versions
             :param ml_repo: repository where the repo_objects are stored
-            :param job_runner: the jobrunner to execute calibration, evaluations etc.
+            :param job_runner: the jobrunner to execute calibration, evaluations etc. If None, a SimpleJobRunner is used.
         """
         self._script_repo = script_repo
         self._numpy_repo = numpy_repo
@@ -797,6 +797,10 @@ class MLRepo:
                 repo_info={RepoInfoKey.NAME: 'repo_mapping', 
                 RepoInfoKey.CATEGORY: MLObjectType.MAPPING.value})
         self.reload()
+        if job_runner is None:
+            from pailab.job_runner.job_runner import SimpleJobRunner
+            self._job_runner = SimpleJobRunner(self)
+            #self._job_runner.set_repo(self)
         
     def _add(self, repo_object, message='', category = None):
             """ Add a repo_object to the repository.
