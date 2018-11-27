@@ -82,7 +82,7 @@ class SQLiteJobRunner_Test(unittest.TestCase):
         numpy_handler = NumpyHDFStorage('tmp/numpy')
 
         self.repository = repo.MLRepo(
-            'doeltz', self.handler, numpy_handler, self.handler, None)
+            'doeltz', numpy_handler, self.handler, None)
         self.job_runner = SQLiteJobRunner(
             'tmp/job_runner.sqlite', self.repository)
         self.repository._job_runner = self.job_runner

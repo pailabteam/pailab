@@ -768,15 +768,13 @@ class MLRepo:
         self.test_data = TestDataCollection(self)
         self.models = ModelCollection(self)
 
-    def __init__(self, user, script_repo, numpy_repo, ml_repo, job_runner=None):
+    def __init__(self, user, numpy_repo, ml_repo, job_runner=None, file_name = None):
         """ Constructor of MLRepo
 
-            :param script_repo: repository for the user's modules providing the customized model evaluation, raining, calibration and preprocessing methods
             :param numpy_repo: repository where the numpy data is stored in versions
             :param ml_repo: repository where the repo_objects are stored
             :param job_runner: the jobrunner to execute calibration, evaluations etc. If None, a SimpleJobRunner is used.
         """
-        self._script_repo = script_repo
         self._numpy_repo = numpy_repo
         self._ml_repo = ml_repo
         self._user = user
