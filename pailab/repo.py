@@ -768,15 +768,25 @@ class MLRepo:
         self.test_data = TestDataCollection(self)
         self.models = ModelCollection(self)
 
-    def __init__(self, user, numpy_repo, ml_repo, job_runner=None, file_name = None):
+    def __init__(self, user, numpy_repo =None, ml_repo=None, job_runner=None, repo_dir = None):
         """ Constructor of MLRepo
 
-            :param numpy_repo: repository where the numpy data is stored in versions
-            :param ml_repo: repository where the repo_objects are stored
+            :param numpy_repo: repository where the numpy data is stored in versions. If None, a NumpyHDFHandler will be used with directory equal to repo_dir.
+            :param ml_repo: repository where the repo_objects are stored. If None, a RepoDiskHandler with directory repo_dir will be used.
             :param job_runner: the jobrunner to execute calibration, evaluations etc. If None, a SimpleJobRunner is used.
         """
         self._numpy_repo = numpy_repo
         self._ml_repo = ml_repo
+        if ml_repo is None:
+            if repo_dir is None:
+                raise Exception('You must either specify a repository directory or the ml_repo directly.')
+            from pailab.disk_handler import RepoObjectDiskStorage
+            self._ml_repo = RepoObjectDiskStorage(repo_dir)
+        if numpy_repo is None:
+            if repo_dir is None:
+                raise Exception('You must either specify a repository directory or the numpy repo directly.')
+            from pailab.numpy_handler_hdf import NumpyHDFStorage
+            self._numpy_repo = NumpyHDFStorage(repo_dir) 
         self._user = user
         self._job_runner = job_runner
         # check if the ml mapping is already contained in the repo, otherwise add it
@@ -799,6 +809,8 @@ class MLRepo:
             from pailab.job_runner.job_runner import SimpleJobRunner
             self._job_runner = SimpleJobRunner(self)
             #self._job_runner.set_repo(self)
+        
+    
         
     def _add(self, repo_object, message='', category = None):
             """ Add a repo_object to the repository.
