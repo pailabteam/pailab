@@ -5,7 +5,7 @@ Machine learning repository
 """
 import abc
 from numpy import linalg
-from numpy import inf
+from numpy import inf, load
 from enum import Enum
 from copy import deepcopy
 from deepdiff import DeepDiff
@@ -645,6 +645,17 @@ class RawDataCollection(RepoObjectItem):
         obj = self._repo.get(path, version=v, full_object = False)
         setattr(self, name, RawDataItem(path, self._repo, obj))
 
+    def add_from_numpy_file(self, name, filename_X, x_names, filename_Y=None, y_names = None):
+        path = name
+        X = load(filename_X)
+        Y = None
+        if filename_Y is not None:
+            Y = load(filename_Y)
+        raw_data =  repo_objects.RawData(X, x_names, Y, y_names, repo_info = {RepoInfoKey.NAME: path})
+        v = self._repo.add(raw_data, 'data ' + path + ' added to repository' , category = MLObjectType.RAW_DATA)
+        obj = self._repo.get(path, version=v, full_object = False)
+        setattr(self, name, RawDataItem(path, self._repo, obj))
+
 class TrainingDataCollection(RepoObjectItem):
     def __get_name_from_path(path):
         return path.split('/')[-1]
@@ -1225,8 +1236,12 @@ class MLRepo:
             for n in names:
                 v = self._ml_repo.get_version(n, -1)
                 datasets_[n] = v #todo include training data into measures
-            
-        measure_config = self.get_names(MLObjectType.MEASURE_CONFIGURATION)[0]
+
+        measure_names =   self.get_names(MLObjectType.MEASURE_CONFIGURATION)
+        if len(measure_names) == 0:
+            logger.warning('No measures defined.')
+            return      
+        measure_config = measure_names[0]
         measure_config = self.get(measure_config)
         measures_to_run = {}
         if len(measures) == 0: # if no measures are specified, use all from configuration
