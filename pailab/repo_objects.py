@@ -205,7 +205,6 @@ class repo_object_init:  # pylint: disable=too-few-public-methods
                 if isinstance(repo_info, dict):
                     repo_info = RepoInfo(repo_info)
                 if not '_init_from_dict' in kwargs.keys():
-                    logger.error('Calling ' + str(f))
                     f(init_self, *args, **kwargs)
                 self.init_repo_object(init_self, repo_info)
                 if '_init_from_dict' in kwargs.keys() and kwargs['_init_from_dict'] == True:
