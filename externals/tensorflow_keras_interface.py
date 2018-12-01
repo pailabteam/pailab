@@ -4,24 +4,35 @@ from tensorflow.keras.models import Sequential
 from pailab.repo_objects import repo_object_init
 from pailab.repo_objects import RepoInfoKey
 from pailab.repo import MLObjectType
+import logging
+logger = logging.getLogger(__name__)
 
 
 class TensorflowKerasModel:
-    @repo_object_init()
-    def __init__(self, model=None):
-        self.keras_model = model
+    @repo_object_init(['model_weights'])
+    def __init__(self, model, model_weights):
+        #logger.error("In constructor")
+        self.keras_model_config = model
+        self.model_weights = model_weights
+        #logger.error("Leaving constructor, model: " + str(model))
 
-    def numpy_to_dict(self, repo_obj):
-        model_weights = self.keras_model.get_weights()
+    def numpy_to_dict(self):
         result = {}
-        for i in range(len(model_weights)):
-            result[str(i)] = model_weights[i]
+        for i in range(len(self.model_weights)):
+            result[str(i)] = self.model_weights[i]
+        return result  # {'model_weights': result}
 
     def numpy_from_dict(self, repo_numpy_dict):
-        weights = [None] * len(repo_numpy_dict)
-        for k, v in repo_numpy_dict.items():
-            weights[int(k)] = v
-        self.keras_model.set_weights(weights)
+        #logger.error("In numpy_from_dict")
+        self.model_weights = [None] * len(repo_numpy_dict)
+        # logger.error(str(repo_numpy_dict))
+        for i in range(len(repo_numpy_dict)):
+            self.model_weights[i] = repo_numpy_dict[str(i)]
+
+    def get_model(self):
+        model = Sequential.from_config(self.keras_model_config)
+        model.set_weights(self.model_weights)
+        return model
 
 
 class TensorflowKerasTrainingParameter:
@@ -60,7 +71,7 @@ def eval_keras_tensorflow(model, data):
         numpy-data: evaluated data
     """
 
-    return model.keras_model.predict(data)
+    return model.get_model().predict(data)
 
 
 def train_keras_tensorflow(model_param, train_param, data_x, data_y):
@@ -69,14 +80,17 @@ def train_keras_tensorflow(model_param, train_param, data_x, data_y):
     #reduce_lr = ReduceLROnPlateau(monitor = 'loss', factor=0.8, patience=100, min_lr=0.00001)
 
     # model_from_json(param.param)
-
     model = Sequential.from_config(model_param.param)
+    logger.info("Compiling model.")
     model.compile(loss=train_param.loss, optimizer=train_param.get_optimizer())
-    history = model.fit(data_x, data_y, epochs=train_param.epochs,
-                        batch_size=train_param.batch_size,
+    logger.info("Start training, epochs: " + str(train_param.epochs) +
+                ", batch_size: " + str(train_param.batch_size))
+    history = model.fit(data_x, data_y, epochs=2,  # train_param.epochs,
+                        batch_size=2,  # train_param.batch_size,
                         #callbacks=[reduce_lr, stopping],
-                        verbose=0)
-    return TensorflowKerasModel(model)
+                        verbose=1)
+    logger.info("Finished training")
+    return TensorflowKerasModel(model.get_config(), model.get_weights(), repo_info={})
 
 
 def add_model(repo, tensorflow_keras_model, model_name, loss, epochs, batch_size, optimizer='ADAM', optimizer_param={}):
