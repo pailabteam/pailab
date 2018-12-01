@@ -118,4 +118,18 @@ class NumpyHDFStorage(NumpyStore):
             result = {}
             for k, v in ref_g.items():
                 result[k] = grp[k][v[()]]
+        # todo needs improvement, handle indices in reading
+        if from_index != 0 or (to_index is not None):
+            tmp = {}
+            if from_index != 0 and (to_index is not None):
+                for k, v in result.items():
+                    tmp[k] = v[from_index:to_index, :]
+            else:
+                if from_index != 0:
+                    for k, v in result.items():
+                        tmp[k] = v[from_index:-1, :]
+                if to_index is not None:
+                    for k, v in result.items():
+                        tmp[k] = v[0:to_index, :]
+            return tmp
         return result
