@@ -262,7 +262,7 @@ class EvalJob(Job):
             jobid {string} -- id of job which will be run
         """
         logging.info('Start evaluation job ' + str(jobid) +' on model ' + self.model + ' ' + str(self.model_version) + ' ')
-        model = repo.get(self.model, self.model_version)
+        model = repo.get(self.model, self.model_version, full_object = True)
         #if model.repo_info[RepoInfoKey.CATEGORY] == MLObjectType.Model:
         #    model = repo.get(self.model + '/model', self.model_version)
         model_definition_name = self.model.split('/')[0]
@@ -792,12 +792,12 @@ class MLRepo:
             if repo_dir is None:
                 raise Exception('You must either specify a repository directory or the ml_repo directly.')
             from pailab.disk_handler import RepoObjectDiskStorage
-            self._ml_repo = RepoObjectDiskStorage(repo_dir)
+            self._ml_repo = RepoObjectDiskStorage(repo_dir + '/objects')
         if numpy_repo is None:
             if repo_dir is None:
                 raise Exception('You must either specify a repository directory or the numpy repo directly.')
             from pailab.numpy_handler_hdf import NumpyHDFStorage
-            self._numpy_repo = NumpyHDFStorage(repo_dir) 
+            self._numpy_repo = NumpyHDFStorage(repo_dir + '/hdf') 
         self._user = user
         self._job_runner = job_runner
         # check if the ml mapping is already contained in the repo, otherwise add it
@@ -1065,9 +1065,9 @@ class MLRepo:
             if len(result.repo_info[RepoInfoKey.BIG_OBJECTS]) > 0 and full_object:
                 numpy_dict = self._numpy_repo.get(
                     result.repo_info[RepoInfoKey.NAME], result.repo_info[RepoInfoKey.VERSION])
-            for x in result.repo_info[RepoInfoKey.BIG_OBJECTS]:
-                if not x in numpy_dict:
-                    numpy_dict[x] = None
+            #for x in result.repo_info[RepoInfoKey.BIG_OBJECTS]:
+            #    if not x in numpy_dict:
+            #        numpy_dict[x] = None
             result.numpy_from_dict(numpy_dict)
             tmp.append(result)
         if len(tmp) == 1:

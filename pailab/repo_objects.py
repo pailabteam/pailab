@@ -167,8 +167,10 @@ class repo_object_init:  # pylint: disable=too-few-public-methods
 
     def numpy_from_dict(repo_obj, repo_numpy_dict):  # pylint: disable=E0213
         for x in repo_obj.repo_info[RepoInfoKey.BIG_OBJECTS]:  # pylint: disable=E1101
-            setattr(repo_obj, x, repo_numpy_dict[x])
-
+            if x in repo_numpy_dict.keys():
+                setattr(repo_obj, x, repo_numpy_dict[x])
+            else:
+                setattr(repo_obj, x, None)
     def __init__(self, big_objects=[]):
         """
         """
@@ -203,6 +205,7 @@ class repo_object_init:  # pylint: disable=too-few-public-methods
                 if isinstance(repo_info, dict):
                     repo_info = RepoInfo(repo_info)
                 if not '_init_from_dict' in kwargs.keys():
+                    logger.error('Calling ' + str(f))
                     f(init_self, *args, **kwargs)
                 self.init_repo_object(init_self, repo_info)
                 if '_init_from_dict' in kwargs.keys() and kwargs['_init_from_dict'] == True:
