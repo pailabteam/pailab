@@ -85,8 +85,8 @@ def train_keras_tensorflow(model_param, train_param, data_x, data_y):
     model.compile(loss=train_param.loss, optimizer=train_param.get_optimizer())
     logger.info("Start training, epochs: " + str(train_param.epochs) +
                 ", batch_size: " + str(train_param.batch_size))
-    history = model.fit(data_x, data_y, epochs=2,  # train_param.epochs,
-                        batch_size=2,  # train_param.batch_size,
+    history = model.fit(data_x, data_y, epochs=train_param.epochs,
+                        batch_size=train_param.batch_size,
                         #callbacks=[reduce_lr, stopping],
                         verbose=1)
     logger.info("Finished training")
