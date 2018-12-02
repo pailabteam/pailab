@@ -27,6 +27,9 @@ class _LabelChecker:
                     l.version: l.repo_info[RepoInfoKey.NAME]}
 
     def get_label(self, name, version):
+        _name = name
+        if len(_name.split('/')) == 1:
+            _name = name + '/model'
         if name in self._labels.keys():
             if version in self._labels[name].keys():
                 return self._labels[name][version]
@@ -128,7 +131,7 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
     _data = data
     if isinstance(_data, str):
         _data = [data]
-    
+
     _models = get_model_dict(ml_repo, models, label_checker)
     ref_data = ml_repo.get(_data[0], version=data_version, full_object=False)
     coord = 0
@@ -142,17 +145,16 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
     else:
         result['x0_name'] = x_coord_name
         result['x1_name'] = 'model-target  [' + coord_name + ']'
-        x_points = ref_data.x_data[:,
-                                   ref_data.x_coord_names.index(x_coord_name)]
+
     for d in _data:
         ref_data = ml_repo.get(d, version=data_version, full_object=True)
-    
+
         for m_name, m_versions in _models.items():
             tmp = m_name.split('/')[0]
             eval_data_name = str(
                 NamingConventions.EvalData(data=d, model=tmp))
             logging.info('Retrieving eval data for model ' + tmp + ', versions ' +
-                        str(m_versions) + ' and data ' + d + ', versions ' + str(data_version))
+                         str(m_versions) + ' and data ' + d + ', versions ' + str(data_version))
             eval_data = ml_repo.get(
                 eval_data_name, version=(FIRST_VERSION, LAST_VERSION), modifier_versions={m_name: m_versions, d: data_version}, full_object=True)
             if not isinstance(eval_data, list):
@@ -165,23 +167,18 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
                 else:
                     tmp['x1'] = error
                     tmp['x0_name'] = x_coord_name
-                    tmp['x0'] = x_points
+                    tmp['x0'] = ref_data.x_data[:,
+                                                ref_data.x_coord_names.index(x_coord_name)]
                 tmp['info'] = {d: str(data_version),
-                            m_name: str(eval_d.repo_info[RepoInfoKey.MODIFICATION_INFO][m_name])}
+                               m_name: str(eval_d.repo_info[RepoInfoKey.MODIFICATION_INFO][m_name])}
 
                 model_label = label_checker.get_label(
                     m_name, eval_d.repo_info[RepoInfoKey.MODIFICATION_INFO][m_name])
                 if model_label is not None:
-                    if len(_names)>0 and len(_models)>0:
-                        tmp['label'] = model_label + ':' + d
-                    elif len(_models)>0:
-                        tmp['label'] = model_label
-                    else:
-                        tmp['label'] = d
-
+                    tmp['label'] = model_label
 
                 result['data'][eval_data_name + ': ' +
-                            str(eval_d.repo_info[RepoInfoKey.VERSION])] = tmp
+                               str(eval_d.repo_info[RepoInfoKey.VERSION])] = tmp
     return result
 
 
