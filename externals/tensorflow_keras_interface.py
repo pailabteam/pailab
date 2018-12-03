@@ -74,7 +74,7 @@ def eval_keras_tensorflow(model, data):
     return model.get_model().predict(data)
 
 
-def train_keras_tensorflow(model_param, train_param, data_x, data_y):
+def train_keras_tensorflow(model_param, train_param, data_x, data_y, verbose = 0):
     # stopping = EarlyStopping(monitor = 'loss', min_delta = training_parameter.metadata['param']['delta'],
     #                             patience=training_parameter.metadata['param']['patience'], mode='auto')
     #reduce_lr = ReduceLROnPlateau(monitor = 'loss', factor=0.8, patience=100, min_lr=0.00001)
@@ -88,7 +88,7 @@ def train_keras_tensorflow(model_param, train_param, data_x, data_y):
     history = model.fit(data_x, data_y, epochs=train_param.epochs,
                         batch_size=train_param.batch_size,
                         #callbacks=[reduce_lr, stopping],
-                        verbose=1)
+                        verbose=verbose)
     logger.info("Finished training")
     return TensorflowKerasModel(model.get_config(), model.get_weights(), repo_info={})
 
