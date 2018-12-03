@@ -747,6 +747,14 @@ class ModelItem(RepoObjectItem):
     def set_label(self, label_name, version = repo_store.RepoStore.LAST_VERSION, message=''):
         self._repo.set_label(label_name, self._name+ '/model', version, message)
 
+
+class LabelCollection(RepoObjectItem):
+    def __init__(self, repo):
+        names = repo.get_names(MLObjectType.LABEL)
+        for n in names:
+            #label = ml_repo.get()
+            setattr(self, n, RepoObjectItem(n, repo))
+        
 class ModelCollection:
     @staticmethod
     def __get_name_from_path(name):
@@ -756,6 +764,7 @@ class ModelCollection:
         names = repo.get_names(MLObjectType.MODEL)
         for n in names:
             setattr(self, ModelCollection.__get_name_from_path(n), ModelItem(n,repo))
+        self.labels = LabelCollection(repo)
         self._repo = repo
 
     def add(self, name):
