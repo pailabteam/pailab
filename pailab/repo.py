@@ -41,6 +41,7 @@ class MLObjectType(Enum):
     MEASURE = 'MEASURE'
     MEASURE_CONFIGURATION = 'MEASURE_CONFIGURATION'
     JOB = 'JOB'
+    TRAINING_STATISTIC = 'TRAINING_STATISTIC'
 
     @staticmethod
     def _get_key(category): 
@@ -320,18 +321,29 @@ class TrainingJob(Job):
         if not model.model_param is None:
             model_param = repo.get(
                 model.model_param, self.model_param_version)
-        m = None
         if model_param is None:
-            m = train_func.create()(train_param, train_data.x_data, train_data.y_data)
+            result = train_func.create()(train_param, train_data.x_data, train_data.y_data)
         else:
             if train_param is None:
-                m = train_func.create()(model_param, train_data.x_data, train_data.y_data)
+                result = train_func.create()(model_param, train_data.x_data, train_data.y_data)
             else:
-               m = train_func.create()(model_param, train_param, train_data.x_data, train_data.y_data)
-        m.repo_info[RepoInfoKey.NAME] = self.model + '/model'
-        m.repo_info[RepoInfoKey.CATEGORY] = MLObjectType.CALIBRATED_MODEL.value
-        _add_modification_info(m, model_param, train_param, train_data, model, train_func)
-        repo.add(m, 'training of model ' + self.model)
+               result = train_func.create()(model_param, train_param, train_data.x_data, train_data.y_data)
+        if isinstance(result, tuple):
+            calibrated_model = result[0]
+            training_stat = result[1]
+            training_stat.repo_info[RepoInfoKey.NAME] = self.model + '/training_stat'
+            training_stat.repo_info[RepoInfoKey.CATEGORY] = MLObjectType.TRAINING_STATISTIC.value
+            _add_modification_info(calibrated_model, model_param, train_param, train_data, model, train_func)
+        else:
+            calibrated_model = result    
+            training_stat=None
+        calibrated_model.repo_info[RepoInfoKey.NAME] = self.model + '/model'
+        calibrated_model.repo_info[RepoInfoKey.CATEGORY] = MLObjectType.CALIBRATED_MODEL.value
+        _add_modification_info(calibrated_model, model_param, train_param, train_data, model, train_func)
+        if training_stat is not None:
+            repo.add([training_stat, calibrated_model], 'training of model ' + self.model)
+        else: 
+            repo.add(calibrated_model, 'training of model ' + self.model)
 
 
 class MeasureJob(Job):
