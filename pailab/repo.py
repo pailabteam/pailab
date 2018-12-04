@@ -755,12 +755,13 @@ class LabelCollection(RepoObjectItem):
             #label = ml_repo.get()
             setattr(self, n, RepoObjectItem(n, repo))
         
-class ModelCollection:
+class ModelCollection(RepoObjectItem):
     @staticmethod
     def __get_name_from_path(name):
         return name
 
     def __init__(self, repo):
+        super(ModelCollection,self).__init__('models', repo)
         names = repo.get_names(MLObjectType.MODEL)
         for n in names:
             setattr(self, ModelCollection.__get_name_from_path(n), ModelItem(n,repo))
