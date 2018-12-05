@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 init_notebook_mode(connected=True)
 
 
-def measure_by_model_parameter(ml_repo, measure_name, param_name, data_versions=None):
+def measure_by_parameter(ml_repo, measure_name, param_name, data_versions=None, training_param=False):
     '''[summary]
 
     Args:
@@ -23,10 +23,11 @@ def measure_by_model_parameter(ml_repo, measure_name, param_name, data_versions=
         :param measure_name ([type]): [description]
         :param param_name ([type]): [description]
         :param data_versions ([type], optional): Defaults to None. [description]
+        :param training_parm (bool, optional): If True, training parameters are used otherwise model parameter (default is False)
     '''
 
-    x = plot_helper.get_measure_by_model_parameter(
-        ml_repo, measure_name, param_name, data_versions)
+    x = plot_helper.get_measure_by_parameter(
+        ml_repo, measure_name, param_name, data_versions, training_param)
     data = []
     model_label_annotations = []
     for k, measures in x.items():
@@ -95,7 +96,7 @@ def _histogram(plot_dict):
         for l, w in x['info'].items():
             text += l + ':' + str(w) + '<br>'
         if 'label' in x.keys():
-            k = k + ', ' + x['label']
+            k = x['label'] + ', ' + k
         plot_data.append(go.Histogram(x=x['x0'],
                                       text=text,
                                       name=k,
@@ -117,7 +118,7 @@ def histogram_model_error(ml_repo, models, data_name, y_coordinate=None, data_ve
     Args:
         :param ml_repo ([type]): [description]
         :param models ([type]): [description]
-        :param data_name ([type]): [description]
+        :param data_name (str or list of str): [description]
         :param y_coordinate ([type], optional): Defaults to None. [description]
         :param data_version ([type], optional): Defaults to LAST_VERSION. [description]
 
@@ -166,7 +167,7 @@ def scatter_model_error(ml_repo, models, data_name, x_coordinate, y_coordinate=N
         for l, w in x['info'].items():
             text += l + ':' + str(w) + '<br>'
         if 'label' in x.keys():
-            k = k + ', ' + x['label']
+            k = x['label'] + ', ' + k
         plot_data.append(go.Scatter(x=x['x0'],
                                     y=x['x1'],
                                     text=text,

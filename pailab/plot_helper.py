@@ -10,6 +10,23 @@ from pailab.repo_store import RepoStore, LAST_VERSION, FIRST_VERSION  # pylint: 
 logger = logging.getLogger(__name__)
 
 
+def _get_value_by_path(source, path):
+    if not isinstance(path, list):
+        p = path.split('/')
+    else:
+        p = path
+    if '[' in p[0]:
+        tmp = p[0].split('[')
+        name = tmp[0]
+        index = int(tmp.split(']')[0])
+        value = source[name][index]
+    else:
+        value = source[p[0]]
+    if len(p) > 1:
+        return _get_value_by_path(value, p[1:-1])
+    return value
+
+
 class _LabelChecker:
     """Checks wether a certain object and object version has a label
     """
@@ -36,7 +53,7 @@ class _LabelChecker:
         return None
 
 
-def get_measure_by_model_parameter(ml_repo, measure_names, param_name, data_versions=LAST_VERSION):
+def get_measure_by_parameter(ml_repo, measure_names, param_name, data_versions=LAST_VERSION, training_param=False):
     """Returns for a (list of) measure(s) the measures and corresponding param values for a certain parameter 
 
     Args:
@@ -66,11 +83,15 @@ def get_measure_by_model_parameter(ml_repo, measure_names, param_name, data_vers
             NamingConventions.Measure(measure_name))))
         measures = ml_repo.get(measure_name, version=(
             RepoStore.FIRST_VERSION, RepoStore.LAST_VERSION), modifier_versions={data: data_versions})
+        if not isinstance(measures, list):
+            measures = [measures]
         model_name = NamingConventions.CalibratedModel(
             NamingConventions.Measure(measure_name)
         )
-
-        model_param_name = str(NamingConventions.ModelParam(model_name))
+        if training_param:
+            p_name = str(NamingConventions.TrainingParam(model_name))
+        else:
+            p_name = str(NamingConventions.ModelParam(model_name))
         train_data = ml_repo.get_names(MLObjectType.TRAINING_DATA)[0]
         model_name = str(model_name)
         # eval_name
@@ -78,8 +99,8 @@ def get_measure_by_model_parameter(ml_repo, measure_names, param_name, data_vers
         result = []
         for x in measures:
             p = ml_repo.get(
-                model_param_name, version=x.repo_info[RepoInfoKey.MODIFICATION_INFO][model_param_name])
-            param_value = p.get_params()[param_name]
+                p_name, version=x.repo_info[RepoInfoKey.MODIFICATION_INFO][p_name])
+            param_value = _get_value_by_path(p.get_params(), param_name)
             info = {'model_version': x.repo_info[RepoInfoKey.MODIFICATION_INFO][model_name],
                     param_name: param_value, 'param_version': p.repo_info[RepoInfoKey.VERSION],
                     'data_version': x.repo_info[RepoInfoKey.MODIFICATION_INFO][data],
