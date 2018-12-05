@@ -197,7 +197,11 @@ class Job(abc.ABC):
 
         def add(self, obj, message , category = None):
             self.ml_repo.add(obj, message, category = category)
-            self.modification_info[obj.repo_info[RepoInfoKey.NAME]] = obj.repo_info[RepoInfoKey.VERSION]
+            if isinstance(obj, list):
+                for o in obj:
+                    self.modification_info[o.repo_info[RepoInfoKey.NAME]] = o.repo_info[RepoInfoKey.VERSION]   
+            else:     
+                self.modification_info[obj.repo_info[RepoInfoKey.NAME]] = obj.repo_info[RepoInfoKey.VERSION]
 
         def get_training_data(self, obj_version, full_object):
             tmp = self.ml_repo.get_training_data(obj_version, full_object = False) # TODO: replace get_trainign data by get using the training data name
@@ -333,7 +337,7 @@ class TrainingJob(Job):
             training_stat = result[1]
             training_stat.repo_info[RepoInfoKey.NAME] = self.model + '/training_stat'
             training_stat.repo_info[RepoInfoKey.CATEGORY] = MLObjectType.TRAINING_STATISTIC.value
-            _add_modification_info(calibrated_model, model_param, train_param, train_data, model, train_func)
+            _add_modification_info(training_stat, model_param, train_param, train_data, model, train_func)
         else:
             calibrated_model = result    
             training_stat=None
@@ -491,8 +495,12 @@ class NamingConventions:
     CalibratedModel = Name('model/*', 'model')
     Model = Name('model', '')
     ModelParam = Name('model/*', 'model_param')
+    TrainingParam = Name('model/*', 'training_param')
 
 #region collections and items
+
+   
+
 class RepoObjectItem:
 
     def __init__(self, name, ml_repo, repo_obj = None):
@@ -524,6 +532,7 @@ class RepoObjectItem:
                     v.load(version, full_object, modifier_versions, containing_str)
 
     def modifications(self, commit=False, commit_message=''):
+        result = {}
         if self._name is not None:
             try:
                 obj_orig = self._repo.get(
@@ -539,15 +548,27 @@ class RepoObjectItem:
                     version = self._repo.add(
                         self.obj, message=commit_message)
                     self.obj = self._repo.get(self._name, version=version)
-                return {self._name: diff}
-        else:
-            result = {}
-            for k, v in self.__dict__.items():
-                if hasattr(v, 'modifications'):
-                    tmp = v.modifications(commit, commit_message)
-                    if tmp is not None:
-                        result.update(tmp)
-            return result
+                result = {self._name: diff}
+        for k, v in self.__dict__.items():
+            if hasattr(v, 'modifications'):
+                tmp = v.modifications(commit, commit_message)
+                if tmp is not None:
+                    result.update(tmp)
+        return result
+
+    def history(self, version = (repo_store.FIRST_VERSION,repo_store.LAST_VERSION), repo_info = [RepoInfoKey.AUTHOR, RepoInfoKey.COMMIT_DATE, RepoInfoKey.COMMIT_MESSAGE], obj_data = []):
+        history = self._repo.get(self._name, version = version)
+        if not isinstance(history, list):
+            history = [history]
+        result = {}
+        for h in history:
+            r = {}
+            for r_info in repo_info:
+                r[str(r_info)] = h.repo_info[r_info]
+            for o_info in obj_data:
+                r[o_info] = obj_data.__dict__[o_info]
+            result[h.repo_info[RepoInfoKey.VERSION]] = r
+        return result
 
     def __call__(self, containing_str=None):
         # if len(self.__dict__) == 1:
@@ -751,9 +772,14 @@ class ModelItem(RepoObjectItem):
         self.model = RepoObjectItem(name + '/model', ml_repo)
         self.eval = RepoObjectItem(name + '/eval', ml_repo)
         self.model_param = RepoObjectItem(name + '/model_param', ml_repo)
-        self.training_param = RepoObjectItem(name + '/training_param', ml_repo)
         self.measures = MeasureCollection(name+ '/measure', ml_repo, name)
         self.jobs = JobCollection(name+'/jobs', ml_repo, name)
+        if ml_repo._object_exists(name+'/training_stat'):
+            self.training_statistic = RepoObjectItem(name+'/training_stat', ml_repo)
+        if ml_repo._object_exists(name+'/training_param'):
+            self.training_param = RepoObjectItem(name + '/training_param', ml_repo)
+
+        
         #self.param = RepoObjectItem(name)
 
     def set_label(self, label_name, version = repo_store.RepoStore.LAST_VERSION, message=''):
@@ -762,6 +788,7 @@ class ModelItem(RepoObjectItem):
 
 class LabelCollection(RepoObjectItem):
     def __init__(self, repo):
+        super(LabelCollection,self).__init__(None, repo)
         names = repo.get_names(MLObjectType.LABEL)
         for n in names:
             #label = ml_repo.get()
@@ -1316,4 +1343,15 @@ class MLRepo:
             RepoInfoKey.CATEGORY: MLObjectType.LABEL.value})
         self.add(label)        
         
+    def _object_exists(self, name):
+        """returns True if an object with this name exsts in repo
+        
+        Args:
+            name (str): name of object
+        
+        Returns:
+            [type]: [description]
+        """
+
+        return self._ml_repo.object_exists(name)
 
