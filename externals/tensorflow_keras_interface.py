@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy
 from tensorflow.keras.models import model_from_config  # model_from_json
 from tensorflow.keras.models import Sequential
 from pailab.repo_objects import repo_object_init
@@ -35,6 +36,12 @@ class TensorflowKerasModel:
         return model
 
 
+class TensorflowKerasHistory:
+    @repo_object_init(['loss'])
+    def __init__(self, loss):
+        self.loss = loss
+
+
 class TensorflowKerasTrainingParameter:
     @repo_object_init()
     def __init__(self, loss, epochs, batch_size, optimizer='ADAM', optimizer_param={}):
@@ -49,6 +56,9 @@ class TensorflowKerasTrainingParameter:
         self.epochs = epochs
         self.batch_size = batch_size
 
+    def get_params(self):
+        return self.__dict__
+
     def get_optimizer(self):
         tmp = tf.keras.optimizers.get(self.optimizer)
         return tmp.from_config(self.optimizer_parameter)
@@ -58,6 +68,9 @@ class TensorflowKerasModelParameter:
     @repo_object_init()
     def __init__(self, model):
         self.param = model.get_config()  # model.to_json()
+
+    def get_params(self):
+        return self.param
 
 
 def eval_keras_tensorflow(model, data):
@@ -74,12 +87,15 @@ def eval_keras_tensorflow(model, data):
     return model.get_model().predict(data)
 
 
-def train_keras_tensorflow(model_param, train_param, data_x, data_y, verbose = 0):
+def train_keras_tensorflow(model_param, train_param, data_x, data_y, verbose=0):
     # stopping = EarlyStopping(monitor = 'loss', min_delta = training_parameter.metadata['param']['delta'],
     #                             patience=training_parameter.metadata['param']['patience'], mode='auto')
     #reduce_lr = ReduceLROnPlateau(monitor = 'loss', factor=0.8, patience=100, min_lr=0.00001)
 
     # model_from_json(param.param)
+    # fix random seed for reproducibility
+    seed = 7
+    numpy.random.seed(seed)
     model = Sequential.from_config(model_param.param)
     logger.info("Compiling model.")
     model.compile(loss=train_param.loss, optimizer=train_param.get_optimizer())
@@ -90,7 +106,12 @@ def train_keras_tensorflow(model_param, train_param, data_x, data_y, verbose = 0
                         #callbacks=[reduce_lr, stopping],
                         verbose=verbose)
     logger.info("Finished training")
-    return TensorflowKerasModel(model.get_config(), model.get_weights(), repo_info={})
+    h = None
+    if 'loss' in history.history:
+        loss = numpy.asarray(history.history['loss'])
+        return TensorflowKerasModel(model.get_config(), model.get_weights(), repo_info={}), TensorflowKerasHistory(loss, repo_info={})
+    else:
+        return TensorflowKerasModel(model.get_config(), model.get_weights(), repo_info={})
 
 
 def add_model(repo, tensorflow_keras_model, model_name, loss, epochs, batch_size, optimizer='ADAM', optimizer_param={}):
