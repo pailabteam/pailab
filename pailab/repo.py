@@ -3,9 +3,7 @@
 This module contains pailab's machine learning repository, i.e. the repository 
 Machine learning repository
 """
-import importlib
 import abc
-
 from numpy import linalg
 from numpy import inf
 from enum import Enum
@@ -273,18 +271,15 @@ class EvalJob(Job):
         
         data = repo.get(self.data, self.data_version, full_object=True)
         eval_func = repo.get(model_definition.eval_function, self.eval_function_version)
-        tmp = importlib.import_module(eval_func.module_name)
-        module_version = None
-        if hasattr(tmp, '__version__'):
-            module_version = tmp.__version__
-        f = getattr(tmp, eval_func.function_name)
-        y = f(model, data.x_data)
+
+        y = eval_func.create()(model, data.x_data)
+        
         result = repo_objects.RawData(y, data.y_coord_names, repo_info={
                             RepoInfoKey.NAME: MLRepo.get_eval_name(model_definition, data),
                             RepoInfoKey.CATEGORY: MLObjectType.EVAL_DATA.value
                             }
                             )
-        _add_modification_info(result, model, data)
+        _add_modification_info(result, model, data, eval_func)
         repo.add(result, 'evaluate data ' +
                  self.data + ' with model ' + self.model)
         logging.info('Finished evaluation job ' + str(jobid))
@@ -325,22 +320,17 @@ class TrainingJob(Job):
         if not model.model_param is None:
             model_param = repo.get(
                 model.model_param, self.model_param_version)
-        tmp = importlib.import_module(train_func.module_name)
-        module_version = None
-        if hasattr(tmp, '__version__'):
-            module_version = tmp.__version__
-        f = getattr(tmp, train_func.function_name)
         m = None
         if model_param is None:
-            m = f(train_param, train_data.x_data, train_data.y_data)
+            m = train_func.create()(train_param, train_data.x_data, train_data.y_data)
         else:
             if train_param is None:
-                m = f(model_param, train_data.x_data, train_data.y_data)
+                m = train_func.create()(model_param, train_data.x_data, train_data.y_data)
             else:
-               m = f(model_param, train_param, train_data.x_data, train_data.y_data)
+               m = train_func.create()(model_param, train_param, train_data.x_data, train_data.y_data)
         m.repo_info[RepoInfoKey.NAME] = self.model + '/model'
         m.repo_info[RepoInfoKey.CATEGORY] = MLObjectType.CALIBRATED_MODEL.value
-        _add_modification_info(m, model_param, train_param, train_data, model)
+        _add_modification_info(m, model_param, train_param, train_data, model, train_func)
         repo.add(m, 'training of model ' + self.model)
 
 
@@ -903,7 +893,7 @@ class MLRepo:
             raise Exception("No training_data in repository.")
         return self.get(self._mapping[MLObjectType.TRAINING_DATA][0], version, full_object)
 
-    def add_eval_function(self, module_name, function_name, repo_name = None):
+    def add_eval_function(self, f, repo_name = None):
         """Add the function to evaluate the model
 
         Arguments:
@@ -913,13 +903,13 @@ class MLRepo:
         """
         name = repo_name
         if name is None:
-            name = module_name + "." + function_name
-        func = repo_objects.Function(module_name, function_name, repo_info={
+            name = f.__module__ + "." + f.__name__
+        func = repo_objects.Function(f, repo_info={
                                      RepoInfoKey.NAME: name,
                                      RepoInfoKey.CATEGORY: MLObjectType.MODEL_EVAL_FUNCTION.value})
         self.add(func, 'add model evaluation function ' + name)
     
-    def add_training_function(self, module_name, function_name, repo_name = None):
+    def add_training_function(self, f, repo_name = None):
         """Add function to train a model
 
         Arguments:
@@ -929,8 +919,8 @@ class MLRepo:
         """
         name = repo_name
         if name is None:
-            name = module_name + "." + function_name
-        func = repo_objects.Function(module_name, function_name, repo_info={
+            name = f.__module__ + "." + f.__name__
+        func = repo_objects.Function(f, repo_info={
                                      RepoInfoKey.NAME: name,
                                      RepoInfoKey.CATEGORY: MLObjectType.TRAINING_FUNCTION.value})
         self.add(func, 'add model training function ' + name)
