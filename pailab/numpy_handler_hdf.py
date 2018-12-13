@@ -133,3 +133,14 @@ class NumpyHDFStorage(NumpyStore):
                         tmp[k] = v[0:to_index, :]
             return tmp
         return result
+
+    def object_exists(self, name, version):
+        result = False
+        try:
+            with h5py.File(self.main_dir + '/' + name + '.hdf5', 'a') as f:
+                grp_name = '/data/' + str(version) + '/'
+                result = grp_name in f
+        except:
+            pass
+        return result
+
