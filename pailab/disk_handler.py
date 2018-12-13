@@ -5,10 +5,12 @@ import sqlite3
 import pickle
 from datetime import datetime, timedelta
 import json
+import pathlib
 import pailab.repo_objects as repo_objects
 from pailab.repo_store import RepoInfoKey, _time_from_version
 import pailab.repo as repo
 from pailab.repo_store import RepoStore
+from shutil import copy
 import logging
 logger = logging.getLogger(__name__)
 
@@ -36,7 +38,6 @@ def execute(cursor, cmd):
 
     logger.info('Executing: ' + cmd)
     return cursor.execute(cmd)
-
 
 class RepoObjectDiskStorage(RepoStore):
 
@@ -81,7 +82,7 @@ class RepoObjectDiskStorage(RepoStore):
                     '''CREATE TABLE mapping (name text PRIMARY KEY, category text)''')
             # versions
             execute(cursor,
-                    '''CREATE TABLE versions (name TEXT NOT NULL, version TEXT NOT NULL, file TEXT NOT NULL, uuid_time TIMESTAMP,
+                    '''CREATE TABLE versions (name TEXT NOT NULL, version TEXT NOT NULL, path TEXT NOT NULL, file TEXT NOT NULL, uuid_time TIMESTAMP,
                                         insert_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY(name, version) ) ''')
 
             # modification_info
@@ -116,7 +117,7 @@ class RepoObjectDiskStorage(RepoStore):
         self._setup_new()
         self._save_function = save_function
         self._load_function = load_function
-
+ 
     def get_names(self, ml_obj_type):
         """Return the names of all objects belonging to the given category.
 
@@ -161,9 +162,9 @@ class RepoObjectDiskStorage(RepoStore):
             version = obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value]
             file_sub_dir = category + '/' + name + '/'
             os.makedirs(self._main_dir + '/' + file_sub_dir, exist_ok=True)
-            filename = file_sub_dir + '/' + version
-            execute(cursor, "insert into versions (name, version, file, uuid_time) VALUES('" +
-                    name + "', '" + version + "','" + filename + "','" + str(uid_time) + "')")
+            filename = version
+            execute(cursor, "insert into versions (name, version, path, file, uuid_time) VALUES('" +
+                    name + "', '" + version + "','" + file_sub_dir+ "','" + filename + "','" + str(uid_time) + "')")
             # endregion
             # region write modification info
             if repo_objects.RepoInfoKey.MODIFICATION_INFO.value in obj['repo_info']:
@@ -177,7 +178,7 @@ class RepoObjectDiskStorage(RepoStore):
             logger.debug(
                 'Write object as json file with filename ' + filename)
 
-            self._save_function(self._main_dir + '/' + filename, obj)
+            self._save_function(self._main_dir + '/' + file_sub_dir + '/' + filename, obj)
             # endregion
         except Exception as e:
             logger.error('Error: ' + str(e) + ', rolling back changes.')
@@ -234,7 +235,7 @@ class RepoObjectDiskStorage(RepoStore):
         version_condition = self.get_version_condition(
             name, versions, 'version', 'uuid_time')
 
-        select_statement = "select file from versions where name = '" + \
+        select_statement = "select path, file from versions where name = '" + \
             name + "'" + version_condition
         if modifier_versions is not None:
             for k, v in modifier_versions.items():
@@ -243,7 +244,7 @@ class RepoObjectDiskStorage(RepoStore):
                 if tmp != '':
                     select_statement += " and version in ( select version from modification_info where name ='" + \
                         name + "' and modifier = '" + k + "'" + tmp + ")"
-        files = [row[0] for row in execute(cursor, select_statement)]
+        files = [row[0] +'/' + row[1] for row in execute(cursor, select_statement)]
         objects = []
         for filename in files:
             objects.append(self._load_function(
@@ -300,3 +301,45 @@ class RepoObjectDiskStorage(RepoStore):
         """Closes the database connection
         """
         self._conn.close()
+
+    def _get_all_files(self):
+        """Returns set of all files in directory
+        
+        Returns:
+            set: set with all filenames (including relative paths)
+        """
+        f = set()
+        for path, subdirs, files in os.walk(self._main_dir):
+            if '.git' in subdirs:
+                subdirs.remove('.git')
+            if '.gitignore' in files:
+                files.remove('.gitignore')
+            if '.version.sqlite' in files:
+                files.remove('.version.sqlite')
+            for name in files:
+                f.add(os.path.splitext(name)[0])
+        print(str(f))
+        return f
+
+    def check_integrity(self):
+        """Checks if files are missing or have not yet been added
+        
+        Returns:
+            dictionary: contains sets of missing files and/or set of files not yet added
+        """
+
+        # first get list of all files
+        f = self._get_all_files()
+        cursor = self._conn.cursor()
+        repo_f = set()
+        for row in execute(cursor, "select file from versions"):
+            repo_f.add(row[0])
+        tmp = f.copy()
+        files_not_added = tmp-repo_f
+        result = {}
+        if(len(files_not_added)>0):
+            result = {'files not added to repo': files_not_added}
+        files_missing = repo_f - f
+        if(len(files_missing)>0):
+            result = {'files missing in repo': files_missing}
+        return result
