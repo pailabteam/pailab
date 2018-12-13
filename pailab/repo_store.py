@@ -94,7 +94,7 @@ class RepoStore(abc.ABC):
 
 
         Arguments:
-            obj {RepoObject} -- repository object
+            obj {RepoObject|list(RepoObject)} -- repository object or list o repository objects
 
         Raises:
             Exception if an object with same name already exists.

@@ -253,3 +253,9 @@ def _check_usage(repo):
 
 def check_data(repo):
     return _check_no_overlapping_training_test(repo)
+
+def check_repo_integrity(repo):
+    ml_repo = repo.get_ml_repo_store()
+    if hasattr(ml_repo, 'check_integrity'):
+        return ml_repo.check_integrity()
+    return {}
