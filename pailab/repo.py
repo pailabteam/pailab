@@ -840,8 +840,8 @@ class MLRepo:
         if ml_repo is None:
             if repo_dir is None:
                 raise Exception('You must either specify a repository directory or the ml_repo directly.')
-            from pailab.disk_handler import RepoObjectDiskStorage
-            self._ml_repo = RepoObjectDiskStorage(repo_dir + '/objects')
+            from pailab.git_handler import RepoObjectGitStorage
+            self._ml_repo = RepoObjectGitStorage(repo_dir + '/objects')
         if numpy_repo is None:
             if repo_dir is None:
                 raise Exception('You must either specify a repository directory or the numpy repo directly.')
