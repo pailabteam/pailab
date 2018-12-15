@@ -290,12 +290,13 @@ class RepoObjectDiskStorage(RepoStore):
         Args:
             obj (RepoObject): repo object to be overwritten
         """
-        select_statement = "select file from versions where name = '" +\
+        logger.info('Replacing ' + obj["repo_info"][RepoInfoKey.NAME.value] + ', version ' +  str(obj["repo_info"][RepoInfoKey.VERSION.value]))
+        select_statement = "select path, file from versions where name = '" +\
             obj["repo_info"][RepoInfoKey.NAME.value] + "' and version = '" +\
             str(obj["repo_info"][RepoInfoKey.VERSION.value]) + "'"
         cursor = self._conn.cursor()
         for row in execute(cursor, select_statement):
-            self._save_function(self._main_dir + '/' + str(row[0]), obj)
+            self._save_function(self._main_dir + '/' + str(row[0]) + '/' + str(row[1]), obj)
 
     def close_connection(self):
         """Closes the database connection
