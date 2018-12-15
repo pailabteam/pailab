@@ -1084,6 +1084,9 @@ class MLRepo:
         """
         return self._ml_repo
 
+    def get_numpy_data_store(self):
+        return self._numpy_repo
+        
     def get(self, name, version=repo_store.RepoStore.LAST_VERSION, full_object=False,
              modifier_versions=None, obj_fields=None,  repo_info_fields=None):
         """ Get repo objects. It throws an exception, if an object with the name does not exist.
