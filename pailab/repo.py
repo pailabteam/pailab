@@ -163,6 +163,11 @@ def _add_modification_info(repo_obj, *args):
 
 class Job(abc.ABC):
 
+    def __init__(self):
+        self.state = 'created'
+        self.started = 'not yet started'
+        self.finished = 'not yet finished'
+
     class RepoWrapper:
         
         def __init__(self, job, ml_repo):
@@ -236,9 +241,19 @@ class Job(abc.ABC):
 
     def run(self, ml_repo, jobid):
         wrapper = Job.RepoWrapper(self, ml_repo)
-        self._run(wrapper,  jobid)
-        self.repo_info[RepoInfoKey.MODIFICATION_INFO] = wrapper.modification_info
+        self.state = 'running'
+        self.started = str(datetime.now())
         ml_repo._update_job(self)
+        try:
+            self._run(wrapper,  jobid)
+            self.state ='finished'
+            self.repo_info[RepoInfoKey.MODIFICATION_INFO] = wrapper.modification_info
+            self.finished = str(datetime.now())
+            ml_repo._update_job(self)
+        except Exception as e:
+            self.finished = str(datetime.now())
+            self.state = 'error' 
+            raise e from None
 
     @abc.abstractmethod
     def _run(self, ml_repo, jobid):
@@ -251,6 +266,7 @@ class EvalJob(Job):
     @repo_object_init()
     def __init__(self, model, data, user, eval_function_version=repo_store.RepoStore.LAST_VERSION,
                 model_version=repo_store.RepoStore.LAST_VERSION, data_version=repo_store.RepoStore.LAST_VERSION):
+        super(EvalJob, self).__init__()
         self.model = model
         self.data = data
         self.user = user
@@ -298,6 +314,7 @@ class TrainingJob(Job):
     def __init__(self, model, user, training_function_version=repo_store.RepoStore.LAST_VERSION, model_version=repo_store.RepoStore.LAST_VERSION,
                 training_data_version=repo_store.RepoStore.LAST_VERSION, training_param_version=repo_store.RepoStore.LAST_VERSION,
                  model_param_version=repo_store.RepoStore.LAST_VERSION):
+        super(TrainingJob, self).__init__()
         self.model = model
         self.user = user
         self.training_function_version = training_function_version
@@ -367,7 +384,7 @@ class MeasureJob(Job):
             data_version {versionnumber} -- version of data to be used (default: {repo_store.RepoStore.LAST_VERSION})
             model_version {versionnumber} -- version of model to be used (default: {repo_store.RepoStore.LAST_VERSION})
         """
-
+        super(MeasureJob, self).__init__()
         self.measure_type = measure_type
         self.coordinates = coordinates
         self.model_name = model_name
