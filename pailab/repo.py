@@ -4,6 +4,7 @@ This module contains pailab's machine learning repository, i.e. the repository
 Machine learning repository
 """
 import abc
+from datetime import datetime
 from numpy import linalg
 from numpy import inf, load
 from enum import Enum
@@ -466,24 +467,29 @@ class Name:
         return self
     
 class NamingConventions:
-    
+    @staticmethod
     def _get_object_name(name):
         if not isinstance(name, str):
             return eval_data.repo_info[RepoInfoKey.NAME]
         return name
 
+    @staticmethod
     def get_model_from_name(name):
         return name.split('/')[0]
 
+    @staticmethod
     def get_model_param_name(model_name):
         return NamingConventions.get_model_from_name(model_name) +'/model_param'
 
+    @staticmethod
     def get_calibrated_model_name(model):
         return model.split('/')[0]+'/model'
 
+    @staticmethod
     def get_eval_name(model_name, data_name):
         return model_name + '/eval/' + data_name
 
+    @staticmethod
     def get_eval_name_from_measure_name(measure_name):
         model = NamingConventions.get_model_from_name(measure_name)
         data_name = measure_name.split('/')[2] 
@@ -690,6 +696,8 @@ class RawDataCollection(RepoObjectItem):
         setattr(self, name, RawDataItem(path, self._repo, obj))
 
 class TrainingDataCollection(RepoObjectItem):
+
+    @staticmethod
     def __get_name_from_path(path):
         return path.split('/')[-1]
     
@@ -811,7 +819,10 @@ class ModelCollection(RepoObjectItem):
         setattr(self, name, ModelItem(name,self._repo))
 #endregion
 
+
+
 class MLRepo:   
+
     """ Repository for doing machine learning
 
         The repository and his extensions provide a solid fundament to do machine learning science supporting features such as:
@@ -893,6 +904,7 @@ class MLRepo:
             mapping_changed = self._mapping.add(repo_object.repo_info[RepoInfoKey.CATEGORY], repo_object.repo_info[RepoInfoKey.NAME])
 
             repo_object.repo_info[RepoInfoKey.COMMIT_MESSAGE] = message
+            repo_object.repo_info[RepoInfoKey.COMMIT_DATE] = str(datetime.now())
             repo_object.repo_info[RepoInfoKey.AUTHOR] = self._user
             obj_dict = repo_objects.create_repo_obj_dict(repo_object)
             version = self._ml_repo.add(obj_dict)
