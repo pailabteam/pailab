@@ -99,7 +99,8 @@ class RepoObjectDiskStorage(RepoStore):
 
         self._main_dir = folder
         self._setup_new()
-        if file_format == 'pickle':
+        self._file_format = file_format
+        if self._file_format == 'pickle':
             import pickle
             
             def __pickle_save(file_prefix, obj):
@@ -138,6 +139,9 @@ class RepoObjectDiskStorage(RepoStore):
         else:
             raise Exception("Unknwon file format " + file_format)
 
+    def get_config(self):
+        return {'folder': self._main_dir, 'file_format': self._file_format}
+        
     def get_names(self, ml_obj_type):
         """Return the names of all objects belonging to the given category.
 
