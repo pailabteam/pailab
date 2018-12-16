@@ -63,12 +63,12 @@ class NumpyHDFStorage(NumpyStore):
         :param numpy_dict: numpy dictionary
 
         """
-        #dir_name = os.path.dirname(self.main_dir + '/' + name )
+        # dir_name = os.path.dirname(self.main_dir + '/' + name )
         tmp = pathlib.Path(self.main_dir + '/' + name + 'hdf')
         save_dir = tmp.parent
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
-        with h5py.File(self.main_dir + '/' + name, 'w') as f:
+        with h5py.File(self.main_dir + '/' + name + '.hdf5', 'a') as f:
             grp_name = '/data/' + version + '/'
             logging.debug('Saving data ' + name +
                           ' in hdf5 to group ' + grp_name)
@@ -78,7 +78,7 @@ class NumpyHDFStorage(NumpyStore):
 
     @trace
     def append(self, name, version_old, version_new, numpy_dict):
-        with h5py.File(self.main_dir + '/' + name, 'a') as f:
+        with h5py.File(self.main_dir + '/' + name + '.hdf5', 'a') as f:
             ref_grp = f.create_group('/ref/' + str(version_new) + '/')
             grp = f.create_group('/data/' + str(version_new) + '/')
             grp_previous = f['/data/' + str(version_old) + '/']
@@ -108,7 +108,7 @@ class NumpyHDFStorage(NumpyStore):
     @trace
     def get(self, name, version, from_index=0, to_index=None):
         # \todo auch hier muss die referenz einschl. Namen verwendet werden
-        with h5py.File(self.main_dir + '/' + name, 'a') as f:
+        with h5py.File(self.main_dir + '/' + name + '.hdf5', 'a') as f:
             grp_name = '/data/' + str(version) + '/'
             ref_grp = '/ref/' + str(version) + '/'
             logging.debug('Reading object ' + name +
@@ -118,4 +118,18 @@ class NumpyHDFStorage(NumpyStore):
             result = {}
             for k, v in ref_g.items():
                 result[k] = grp[k][v[()]]
+        # todo needs improvement, handle indices in reading
+        if from_index != 0 or (to_index is not None):
+            tmp = {}
+            if from_index != 0 and (to_index is not None):
+                for k, v in result.items():
+                    tmp[k] = v[from_index:to_index, :]
+            else:
+                if from_index != 0:
+                    for k, v in result.items():
+                        tmp[k] = v[from_index:-1, :]
+                if to_index is not None:
+                    for k, v in result.items():
+                        tmp[k] = v[0:to_index, :]
+            return tmp
         return result

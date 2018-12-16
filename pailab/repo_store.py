@@ -198,7 +198,11 @@ class RepoStore(abc.ABC):
         Keyword Arguments:
             version {version number} -- version number (default: {LAST_VERSION})
         """
-        obj = self.get(name, versions=[version])
+        obj = []
+        try:
+            obj = self.get(name, versions=[version])
+        except:
+            pass
         return len(obj) != 0
 
 

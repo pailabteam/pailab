@@ -10,6 +10,23 @@ from pailab.repo_store import RepoStore, LAST_VERSION, FIRST_VERSION  # pylint: 
 logger = logging.getLogger(__name__)
 
 
+def _get_value_by_path(source, path):
+    if not isinstance(path, list):
+        p = path.split('/')
+    else:
+        p = path
+    if '[' in p[0]:
+        tmp = p[0].split('[')
+        name = tmp[0]
+        index = int(tmp.split(']')[0])
+        value = source[name][index]
+    else:
+        value = source[p[0]]
+    if len(p) > 1:
+        return _get_value_by_path(value, p[1:-1])
+    return value
+
+
 class _LabelChecker:
     """Checks wether a certain object and object version has a label
     """
@@ -27,13 +44,16 @@ class _LabelChecker:
                     l.version: l.repo_info[RepoInfoKey.NAME]}
 
     def get_label(self, name, version):
+        _name = name
+        if len(_name.split('/')) == 1:
+            _name = name + '/model'
         if name in self._labels.keys():
             if version in self._labels[name].keys():
                 return self._labels[name][version]
         return None
 
 
-def get_measure_by_model_parameter(ml_repo, measure_names, param_name, data_versions=LAST_VERSION):
+def get_measure_by_parameter(ml_repo, measure_names, param_name, data_versions=LAST_VERSION, training_param=False):
     """Returns for a (list of) measure(s) the measures and corresponding param values for a certain parameter 
 
     Args:
@@ -63,11 +83,15 @@ def get_measure_by_model_parameter(ml_repo, measure_names, param_name, data_vers
             NamingConventions.Measure(measure_name))))
         measures = ml_repo.get(measure_name, version=(
             RepoStore.FIRST_VERSION, RepoStore.LAST_VERSION), modifier_versions={data: data_versions})
+        if not isinstance(measures, list):
+            measures = [measures]
         model_name = NamingConventions.CalibratedModel(
             NamingConventions.Measure(measure_name)
         )
-
-        model_param_name = str(NamingConventions.ModelParam(model_name))
+        if training_param:
+            p_name = str(NamingConventions.TrainingParam(model_name))
+        else:
+            p_name = str(NamingConventions.ModelParam(model_name))
         train_data = ml_repo.get_names(MLObjectType.TRAINING_DATA)[0]
         model_name = str(model_name)
         # eval_name
@@ -75,8 +99,8 @@ def get_measure_by_model_parameter(ml_repo, measure_names, param_name, data_vers
         result = []
         for x in measures:
             p = ml_repo.get(
-                model_param_name, version=x.repo_info[RepoInfoKey.MODIFICATION_INFO][model_param_name])
-            param_value = p.get_params()[param_name]
+                p_name, version=x.repo_info[RepoInfoKey.MODIFICATION_INFO][p_name])
+            param_value = _get_value_by_path(p.get_params(), param_name)
             info = {'model_version': x.repo_info[RepoInfoKey.MODIFICATION_INFO][model_name],
                     param_name: param_value, 'param_version': p.repo_info[RepoInfoKey.VERSION],
                     'data_version': x.repo_info[RepoInfoKey.MODIFICATION_INFO][data],
@@ -125,11 +149,12 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
             _models = models
         return _models
 
-    if not isinstance(data, str):
-        raise Exception('Data must be a name (str).')
+    _data = data
+    if isinstance(_data, str):
+        _data = [data]
 
     _models = get_model_dict(ml_repo, models, label_checker)
-    ref_data = ml_repo.get(data, version=data_version, full_object=True)
+    ref_data = ml_repo.get(_data[0], version=data_version, full_object=False)
     coord = 0
     if coord_name is None:
         coord_name = ref_data.y_coord_names[0]
@@ -141,37 +166,40 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
     else:
         result['x0_name'] = x_coord_name
         result['x1_name'] = 'model-target  [' + coord_name + ']'
-        x_points = ref_data.x_data[:,
-                                   ref_data.x_coord_names.index(x_coord_name)]
 
-    for m_name, m_versions in _models.items():
-        tmp = m_name.split('/')[0]
-        eval_data_name = str(
-            NamingConventions.EvalData(data=data, model=tmp))
-        logging.info('Retrieving eval data for model ' + tmp + ', versions ' +
-                     str(m_versions) + ' and data ' + data + ', versions ' + str(data_version))
-        eval_data = ml_repo.get(
-            eval_data_name, version=(FIRST_VERSION, LAST_VERSION), modifier_versions={m_name: m_versions, data: data_version}, full_object=True)
-        if not isinstance(eval_data, list):
-            eval_data = [eval_data]
-        for eval_d in eval_data:
-            error = ref_data.y_data[:, coord] - eval_d.x_data[:, coord]
-            tmp = {}
-            if x_coord_name is None:
-                tmp['x0'] = error
-            else:
-                tmp['x1'] = error
-                tmp['x0_name'] = x_coord_name
-                tmp['x0'] = x_points
-            tmp['info'] = {data: str(data_version),
-                           m_name: str(eval_d.repo_info[RepoInfoKey.MODIFICATION_INFO][m_name])}
+    for d in _data:
+        ref_data = ml_repo.get(d, version=data_version, full_object=True)
 
-            model_label = label_checker.get_label(
-                m_name, eval_d.repo_info[RepoInfoKey.MODIFICATION_INFO][m_name])
-            if model_label is not None:
-                tmp['label'] = model_label
-            result['data'][eval_data_name + ': ' +
-                           str(eval_d.repo_info[RepoInfoKey.VERSION])] = tmp
+        for m_name, m_versions in _models.items():
+            tmp = m_name.split('/')[0]
+            eval_data_name = str(
+                NamingConventions.EvalData(data=d, model=tmp))
+            logging.info('Retrieving eval data for model ' + tmp + ', versions ' +
+                         str(m_versions) + ' and data ' + d + ', versions ' + str(data_version))
+            eval_data = ml_repo.get(
+                eval_data_name, version=(FIRST_VERSION, LAST_VERSION), modifier_versions={m_name: m_versions, d: data_version}, full_object=True)
+            if not isinstance(eval_data, list):
+                eval_data = [eval_data]
+            for eval_d in eval_data:
+                error = ref_data.y_data[:, coord] - eval_d.x_data[:, coord]
+                tmp = {}
+                if x_coord_name is None:
+                    tmp['x0'] = error
+                else:
+                    tmp['x1'] = error
+                    tmp['x0_name'] = x_coord_name
+                    tmp['x0'] = ref_data.x_data[:,
+                                                ref_data.x_coord_names.index(x_coord_name)]
+                tmp['info'] = {d: str(data_version),
+                               m_name: str(eval_d.repo_info[RepoInfoKey.MODIFICATION_INFO][m_name])}
+
+                model_label = label_checker.get_label(
+                    m_name, eval_d.repo_info[RepoInfoKey.MODIFICATION_INFO][m_name])
+                if model_label is not None:
+                    tmp['label'] = model_label
+
+                result['data'][eval_data_name + ': ' +
+                               str(eval_d.repo_info[RepoInfoKey.VERSION])] = tmp
     return result
 
 

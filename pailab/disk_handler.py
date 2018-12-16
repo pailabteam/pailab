@@ -283,17 +283,6 @@ class RepoObjectDiskStorage(RepoStore):
         logger.error('No object with name ' + name + ' exists.')
         raise Exception('No object with name ' + name + ' exists.')
 
-    def object_exists(self, name, version=RepoStore.LAST_VERSION):
-        """Returns True if an object with the given name and version exists.
-
-        Arguments:
-            name {string} -- object name
-
-        Keyword Arguments:
-            version {version number} -- version number (default: {LAST_VERSION})
-        """
-        raise NotImplementedError()
-
     def replace(self, obj):
         """Overwrite existing object without incrementing version
 

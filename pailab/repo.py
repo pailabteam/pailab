@@ -5,7 +5,7 @@ Machine learning repository
 """
 import abc
 from numpy import linalg
-from numpy import inf
+from numpy import inf, load
 from enum import Enum
 from copy import deepcopy
 from deepdiff import DeepDiff
@@ -41,6 +41,7 @@ class MLObjectType(Enum):
     MEASURE = 'MEASURE'
     MEASURE_CONFIGURATION = 'MEASURE_CONFIGURATION'
     JOB = 'JOB'
+    TRAINING_STATISTIC = 'TRAINING_STATISTIC'
 
     @staticmethod
     def _get_key(category): 
@@ -196,7 +197,11 @@ class Job(abc.ABC):
 
         def add(self, obj, message , category = None):
             self.ml_repo.add(obj, message, category = category)
-            self.modification_info[obj.repo_info[RepoInfoKey.NAME]] = obj.repo_info[RepoInfoKey.VERSION]
+            if isinstance(obj, list):
+                for o in obj:
+                    self.modification_info[o.repo_info[RepoInfoKey.NAME]] = o.repo_info[RepoInfoKey.VERSION]   
+            else:     
+                self.modification_info[obj.repo_info[RepoInfoKey.NAME]] = obj.repo_info[RepoInfoKey.VERSION]
 
         def get_training_data(self, obj_version, full_object):
             tmp = self.ml_repo.get_training_data(obj_version, full_object = False) # TODO: replace get_trainign data by get using the training data name
@@ -262,7 +267,7 @@ class EvalJob(Job):
             jobid {string} -- id of job which will be run
         """
         logging.info('Start evaluation job ' + str(jobid) +' on model ' + self.model + ' ' + str(self.model_version) + ' ')
-        model = repo.get(self.model, self.model_version)
+        model = repo.get(self.model, self.model_version, full_object = True)
         #if model.repo_info[RepoInfoKey.CATEGORY] == MLObjectType.Model:
         #    model = repo.get(self.model + '/model', self.model_version)
         model_definition_name = self.model.split('/')[0]
@@ -320,18 +325,29 @@ class TrainingJob(Job):
         if not model.model_param is None:
             model_param = repo.get(
                 model.model_param, self.model_param_version)
-        m = None
         if model_param is None:
-            m = train_func.create()(train_param, train_data.x_data, train_data.y_data)
+            result = train_func.create()(train_param, train_data.x_data, train_data.y_data)
         else:
             if train_param is None:
-                m = train_func.create()(model_param, train_data.x_data, train_data.y_data)
+                result = train_func.create()(model_param, train_data.x_data, train_data.y_data)
             else:
-               m = train_func.create()(model_param, train_param, train_data.x_data, train_data.y_data)
-        m.repo_info[RepoInfoKey.NAME] = self.model + '/model'
-        m.repo_info[RepoInfoKey.CATEGORY] = MLObjectType.CALIBRATED_MODEL.value
-        _add_modification_info(m, model_param, train_param, train_data, model, train_func)
-        repo.add(m, 'training of model ' + self.model)
+               result = train_func.create()(model_param, train_param, train_data.x_data, train_data.y_data)
+        if isinstance(result, tuple):
+            calibrated_model = result[0]
+            training_stat = result[1]
+            training_stat.repo_info[RepoInfoKey.NAME] = self.model + '/training_stat'
+            training_stat.repo_info[RepoInfoKey.CATEGORY] = MLObjectType.TRAINING_STATISTIC.value
+            _add_modification_info(training_stat, model_param, train_param, train_data, model, train_func)
+        else:
+            calibrated_model = result    
+            training_stat=None
+        calibrated_model.repo_info[RepoInfoKey.NAME] = self.model + '/model'
+        calibrated_model.repo_info[RepoInfoKey.CATEGORY] = MLObjectType.CALIBRATED_MODEL.value
+        _add_modification_info(calibrated_model, model_param, train_param, train_data, model, train_func)
+        if training_stat is not None:
+            repo.add([training_stat, calibrated_model], 'training of model ' + self.model)
+        else: 
+            repo.add(calibrated_model, 'training of model ' + self.model)
 
 
 class MeasureJob(Job):
@@ -479,8 +495,12 @@ class NamingConventions:
     CalibratedModel = Name('model/*', 'model')
     Model = Name('model', '')
     ModelParam = Name('model/*', 'model_param')
+    TrainingParam = Name('model/*', 'training_param')
 
 #region collections and items
+
+   
+
 class RepoObjectItem:
 
     def __init__(self, name, ml_repo, repo_obj = None):
@@ -512,6 +532,7 @@ class RepoObjectItem:
                     v.load(version, full_object, modifier_versions, containing_str)
 
     def modifications(self, commit=False, commit_message=''):
+        result = {}
         if self._name is not None:
             try:
                 obj_orig = self._repo.get(
@@ -527,15 +548,27 @@ class RepoObjectItem:
                     version = self._repo.add(
                         self.obj, message=commit_message)
                     self.obj = self._repo.get(self._name, version=version)
-                return {self._name: diff}
-        else:
-            result = {}
-            for k, v in self.__dict__.items():
-                if hasattr(v, 'modifications'):
-                    tmp = v.modifications(commit, commit_message)
-                    if tmp is not None:
-                        result.update(tmp)
-            return result
+                result = {self._name: diff}
+        for k, v in self.__dict__.items():
+            if hasattr(v, 'modifications'):
+                tmp = v.modifications(commit, commit_message)
+                if tmp is not None:
+                    result.update(tmp)
+        return result
+
+    def history(self, version = (repo_store.FIRST_VERSION,repo_store.LAST_VERSION), repo_info = [RepoInfoKey.AUTHOR, RepoInfoKey.COMMIT_DATE, RepoInfoKey.COMMIT_MESSAGE], obj_data = []):
+        history = self._repo.get(self._name, version = version)
+        if not isinstance(history, list):
+            history = [history]
+        result = {}
+        for h in history:
+            r = {}
+            for r_info in repo_info:
+                r[str(r_info)] = h.repo_info[r_info]
+            for o_info in obj_data:
+                r[o_info] = obj_data.__dict__[o_info]
+            result[h.repo_info[RepoInfoKey.VERSION]] = r
+        return result
 
     def __call__(self, containing_str=None):
         # if len(self.__dict__) == 1:
@@ -645,6 +678,17 @@ class RawDataCollection(RepoObjectItem):
         obj = self._repo.get(path, version=v, full_object = False)
         setattr(self, name, RawDataItem(path, self._repo, obj))
 
+    def add_from_numpy_file(self, name, filename_X, x_names, filename_Y=None, y_names = None):
+        path = name
+        X = load(filename_X)
+        Y = None
+        if filename_Y is not None:
+            Y = load(filename_Y)
+        raw_data =  repo_objects.RawData(X, x_names, Y, y_names, repo_info = {RepoInfoKey.NAME: path})
+        v = self._repo.add(raw_data, 'data ' + path + ' added to repository' , category = MLObjectType.RAW_DATA)
+        obj = self._repo.get(path, version=v, full_object = False)
+        setattr(self, name, RawDataItem(path, self._repo, obj))
+
 class TrainingDataCollection(RepoObjectItem):
     def __get_name_from_path(path):
         return path.split('/')[-1]
@@ -728,23 +772,39 @@ class ModelItem(RepoObjectItem):
         self.model = RepoObjectItem(name + '/model', ml_repo)
         self.eval = RepoObjectItem(name + '/eval', ml_repo)
         self.model_param = RepoObjectItem(name + '/model_param', ml_repo)
-        self.training_param = RepoObjectItem(name + '/training_param', ml_repo)
         self.measures = MeasureCollection(name+ '/measure', ml_repo, name)
         self.jobs = JobCollection(name+'/jobs', ml_repo, name)
+        if ml_repo._object_exists(name+'/training_stat'):
+            self.training_statistic = RepoObjectItem(name+'/training_stat', ml_repo)
+        if ml_repo._object_exists(name+'/training_param'):
+            self.training_param = RepoObjectItem(name + '/training_param', ml_repo)
+
+        
         #self.param = RepoObjectItem(name)
 
     def set_label(self, label_name, version = repo_store.RepoStore.LAST_VERSION, message=''):
         self._repo.set_label(label_name, self._name+ '/model', version, message)
 
-class ModelCollection:
+
+class LabelCollection(RepoObjectItem):
+    def __init__(self, repo):
+        super(LabelCollection,self).__init__(None, repo)
+        names = repo.get_names(MLObjectType.LABEL)
+        for n in names:
+            #label = ml_repo.get()
+            setattr(self, n, RepoObjectItem(n, repo))
+        
+class ModelCollection(RepoObjectItem):
     @staticmethod
     def __get_name_from_path(name):
         return name
 
     def __init__(self, repo):
+        super(ModelCollection,self).__init__('models', repo)
         names = repo.get_names(MLObjectType.MODEL)
         for n in names:
             setattr(self, ModelCollection.__get_name_from_path(n), ModelItem(n,repo))
+        self.labels = LabelCollection(repo)
         self._repo = repo
 
     def add(self, name):
@@ -768,17 +828,25 @@ class MLRepo:
         self.test_data = TestDataCollection(self)
         self.models = ModelCollection(self)
 
-    def __init__(self, user, script_repo, numpy_repo, ml_repo, job_runner):
+    def __init__(self, user, numpy_repo =None, ml_repo=None, job_runner=None, repo_dir = None):
         """ Constructor of MLRepo
 
-            :param script_repo: repository for the user's modules providing the customized model evaluation, raining, calibration and preprocessing methods
-            :param numpy_repo: repository where the numpy data is stored in versions
-            :param ml_repo: repository where the repo_objects are stored
-            :param job_runner: the jobrunner to execute calibration, evaluations etc.
+            :param numpy_repo: repository where the numpy data is stored in versions. If None, a NumpyHDFHandler will be used with directory equal to repo_dir.
+            :param ml_repo: repository where the repo_objects are stored. If None, a RepoDiskHandler with directory repo_dir will be used.
+            :param job_runner: the jobrunner to execute calibration, evaluations etc. If None, a SimpleJobRunner is used.
         """
-        self._script_repo = script_repo
         self._numpy_repo = numpy_repo
         self._ml_repo = ml_repo
+        if ml_repo is None:
+            if repo_dir is None:
+                raise Exception('You must either specify a repository directory or the ml_repo directly.')
+            from pailab.disk_handler import RepoObjectDiskStorage
+            self._ml_repo = RepoObjectDiskStorage(repo_dir + '/objects')
+        if numpy_repo is None:
+            if repo_dir is None:
+                raise Exception('You must either specify a repository directory or the numpy repo directly.')
+            from pailab.numpy_handler_hdf import NumpyHDFStorage
+            self._numpy_repo = NumpyHDFStorage(repo_dir + '/hdf') 
         self._user = user
         self._job_runner = job_runner
         # check if the ml mapping is already contained in the repo, otherwise add it
@@ -797,6 +865,12 @@ class MLRepo:
                 repo_info={RepoInfoKey.NAME: 'repo_mapping', 
                 RepoInfoKey.CATEGORY: MLObjectType.MAPPING.value})
         self.reload()
+        if job_runner is None:
+            from pailab.job_runner.job_runner import SimpleJobRunner
+            self._job_runner = SimpleJobRunner(self)
+            #self._job_runner.set_repo(self)
+        
+    
         
     def _add(self, repo_object, message='', category = None):
             """ Add a repo_object to the repository.
@@ -1040,9 +1114,9 @@ class MLRepo:
             if len(result.repo_info[RepoInfoKey.BIG_OBJECTS]) > 0 and full_object:
                 numpy_dict = self._numpy_repo.get(
                     result.repo_info[RepoInfoKey.NAME], result.repo_info[RepoInfoKey.VERSION])
-            for x in result.repo_info[RepoInfoKey.BIG_OBJECTS]:
-                if not x in numpy_dict:
-                    numpy_dict[x] = None
+            #for x in result.repo_info[RepoInfoKey.BIG_OBJECTS]:
+            #    if not x in numpy_dict:
+            #        numpy_dict[x] = None
             result.numpy_from_dict(numpy_dict)
             tmp.append(result)
         if len(tmp) == 1:
@@ -1211,8 +1285,12 @@ class MLRepo:
             for n in names:
                 v = self._ml_repo.get_version(n, -1)
                 datasets_[n] = v #todo include training data into measures
-            
-        measure_config = self.get_names(MLObjectType.MEASURE_CONFIGURATION)[0]
+
+        measure_names =   self.get_names(MLObjectType.MEASURE_CONFIGURATION)
+        if len(measure_names) == 0:
+            logger.warning('No measures defined.')
+            return      
+        measure_config = measure_names[0]
         measure_config = self.get(measure_config)
         measures_to_run = {}
         if len(measures) == 0: # if no measures are specified, use all from configuration
@@ -1265,4 +1343,15 @@ class MLRepo:
             RepoInfoKey.CATEGORY: MLObjectType.LABEL.value})
         self.add(label)        
         
+    def _object_exists(self, name):
+        """returns True if an object with this name exsts in repo
+        
+        Args:
+            name (str): name of object
+        
+        Returns:
+            [type]: [description]
+        """
+
+        return self._ml_repo.object_exists(name)
 
