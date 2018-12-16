@@ -6,7 +6,7 @@ import json
 import pailab.repo_objects as repo_objects
 from pailab.repo_store import RepoInfoKey, _time_from_version
 import pailab.repo as repo
-from pailab.disk_handler import RepoObjectDiskStorage, pickle_save, pickle_load
+from pailab.disk_handler import RepoObjectDiskStorage
 from git import Repo
 import logging
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ class RepoObjectGitStorage(RepoObjectDiskStorage):
         except:
             return False
 
-    def __init__(self, folder, save_function=pickle_save, load_function=pickle_load):
+    def __init__(self, **kwargs):
         """Constructor
 
         Args:
@@ -29,8 +29,7 @@ class RepoObjectGitStorage(RepoObjectDiskStorage):
             save_function (function, optional): Defaults to pickle_save. Function used to save the objects to disk.
             load_function (function, optional): Defaults to pickle_load. Function used to load the objects from disk.
         """
-        super(RepoObjectGitStorage, self).__init__(
-            folder, save_function=save_function, load_function=load_function)
+        super(RepoObjectGitStorage, self).__init__(**kwargs)
         if RepoObjectGitStorage.is_git_repo(self._main_dir):
             self._git_repo = Repo(self._main_dir)
         else:
