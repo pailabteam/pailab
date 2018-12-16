@@ -2,9 +2,8 @@
 
 import os
 import sqlite3
-import pickle
 from datetime import datetime, timedelta
-import json
+
 import pathlib
 import pailab.repo_objects as repo_objects
 from pailab.repo_store import RepoInfoKey, _time_from_version
@@ -13,16 +12,6 @@ from pailab.repo_store import RepoStore
 from shutil import copy
 import logging
 logger = logging.getLogger(__name__)
-
-
-def pickle_save(file_prefix, obj):
-    with open(file_prefix + '.pck', 'wb') as f:
-        pickle.dump(obj, f)
-
-
-def pickle_load(file_prefix):
-    with open(file_prefix+'.pck', 'rb') as f:
-        return pickle.load(f)
 
 
 def execute(cursor, cmd):
@@ -49,14 +38,9 @@ class RepoObjectDiskStorage(RepoStore):
         # ...
     }
 
-    class CustomEncoder(json.JSONEncoder):
-        def default(self, obj):
-            if type(obj) in RepoObjectDiskStorage.PUBLIC_ENUMS.values():
-                return {"__enum__": str(obj)}
-            else:
-                if isinstance(obj, datetime):
-                    return {"__datetime__": str(obj)}
-            return json.JSONEncoder.default(self, obj)
+ 
+    
+
 
     @staticmethod
     def as_custom(d):
@@ -104,7 +88,7 @@ class RepoObjectDiskStorage(RepoStore):
 
     # endregion
 
-    def __init__(self, folder, save_function=pickle_save, load_function=pickle_load):
+    def __init__(self, folder, file_format = 'pickle'):
         """Constructor
 
         Args:
@@ -115,9 +99,45 @@ class RepoObjectDiskStorage(RepoStore):
 
         self._main_dir = folder
         self._setup_new()
-        self._save_function = save_function
-        self._load_function = load_function
- 
+        if file_format == 'pickle':
+            import pickle
+            
+            def __pickle_save(file_prefix, obj):
+                with open(file_prefix + '.pck', 'wb') as f:
+                    pickle.dump(obj, f)
+
+            
+            def __pickle_load(file_prefix):
+                with open(file_prefix+'.pck', 'rb') as f:
+                    return pickle.load(f)
+
+            self._save_function = __pickle_save
+            self._load_function = __pickle_load
+        elif format == 'json':
+            import json
+            class CustomEncoder(json.JSONEncoder):
+                def default(self, obj):
+                    if type(obj) in RepoObjectDiskStorage.PUBLIC_ENUMS.values():
+                        return {"__enum__": str(obj)}
+                    else:
+                        if isinstance(obj, datetime):
+                            return {"__datetime__": str(obj)}
+                    return json.JSONEncoder.default(self, obj)
+
+            def __json_load(file_prefix):
+                with open(file_prefix+'.json', 'r') as f:
+                    return json.load(f, cls = CustomEncoder)
+
+            def __json_save(file_prefix, obj):
+                with open(file_prefix + '.json', 'w') as f:
+                    json.dump(f, obj, cls = CustomEncoder)
+
+            
+            self._save_function = __json_save
+            self._load_function = __json_load
+        else:
+            raise Exception("Unknwon file format " + file_format)
+
     def get_names(self, ml_obj_type):
         """Return the names of all objects belonging to the given category.
 
