@@ -4,6 +4,7 @@ This module contains pailab's machine learning repository, i.e. the repository
 Machine learning repository
 """
 import abc
+import json
 from datetime import datetime
 from numpy import linalg
 from numpy import inf, load
@@ -15,6 +16,7 @@ import pailab.repo_objects as repo_objects
 from pailab.repo_objects import RepoInfoKey, DataSet
 from pailab.repo_objects import repo_object_init  # pylint: disable=E0401
 import pailab.repo_store as repo_store
+from pailab.repo_store_factory import RepoStoreFactory
 logger = logging.getLogger(__name__)
 
 
@@ -856,26 +858,40 @@ class MLRepo:
         self.test_data = TestDataCollection(self)
         self.models = ModelCollection(self)
 
-    def __init__(self, user, numpy_repo =None, ml_repo=None, job_runner=None, repo_dir = None):
+    @staticmethod
+    def __create_default_config(user, workspace):
+        if user is None:
+            raise Exception('Please specify a user.')
+        return {'user': user, 'workspace': workspace, 'repo_store': 
+                    {'type': 'memory_handler', 
+                    'config': {} } }
+
+    def __save_config(self):
+        with open(self._config['workspace']  + '/.config.json', 'w') as f:
+            json.dump(self._config, f)
+
+        
+    def __init__(self,  workspace = None, user=None, config = None, numpy_repo =None, job_runner=None, save_config = False):
         """ Constructor of MLRepo
 
             :param numpy_repo: repository where the numpy data is stored in versions. If None, a NumpyHDFHandler will be used with directory equal to repo_dir.
             :param ml_repo: repository where the repo_objects are stored. If None, a RepoDiskHandler with directory repo_dir will be used.
             :param job_runner: the jobrunner to execute calibration, evaluations etc. If None, a SimpleJobRunner is used.
         """
+        self._config = config
+        if config is None:
+            if workspace is not None:
+                with open(workspace + '/.config.json', 'r') as f:
+                    self._config = json.load(f)
+            else:
+                self._config = MLRepo.__create_default_config(user, workspace)
         self._numpy_repo = numpy_repo
-        self._ml_repo = ml_repo
-        if ml_repo is None:
-            if repo_dir is None:
-                raise Exception('You must either specify a repository directory or the ml_repo directly.')
-            from pailab.git_handler import RepoObjectGitStorage
-            self._ml_repo = RepoObjectGitStorage(repo_dir + '/objects')
+        self._ml_repo = RepoStoreFactory.get(self._config['repo_store']['type'], **self._config['repo_store']['config'])
+        
         if numpy_repo is None:
-            if repo_dir is None:
-                raise Exception('You must either specify a repository directory or the numpy repo directly.')
             from pailab.numpy_handler_hdf import NumpyHDFStorage
-            self._numpy_repo = NumpyHDFStorage(repo_dir + '/hdf') 
-        self._user = user
+            self._numpy_repo = NumpyHDFStorage(self._config['workspace'] + '/hdf') 
+        self._user = self._config['user']
         self._job_runner = job_runner
         # check if the ml mapping is already contained in the repo, otherwise add it
         logging.info('Get mapping.')
@@ -897,7 +913,8 @@ class MLRepo:
             from pailab.job_runner.job_runner import SimpleJobRunner
             self._job_runner = SimpleJobRunner(self)
             #self._job_runner.set_repo(self)
-        
+        if save_config:
+            self.__save_config()
     
         
     def _add(self, repo_object, message='', category = None):

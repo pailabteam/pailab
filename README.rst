@@ -4,7 +4,7 @@
 
 pailab
 ==============
-Pailab is an open source platform to version, analyze and automatize your machine learning model building processes and deployments.
+Pailab is an integrated machine learning environment to version, analyze and automatize your machine learning model building processes and deployments.
 It keeps track of changes in your machine learning pipeline (code, data, parameters) similar to classical 
 version control systems considering special characteristics of ai model building processes. Pailab offers tools to analyze models and their changes,
 automated testing, quality checks and methods to boost your models such as hyperparameter optimization.

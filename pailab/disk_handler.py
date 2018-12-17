@@ -42,14 +42,6 @@ class RepoObjectDiskStorage(RepoStore):
     
 
 
-    @staticmethod
-    def as_custom(d):
-        if "__enum__" in d:
-            name, member = d["__enum__"].split(".")
-            return getattr(RepoObjectDiskStorage.PUBLIC_ENUMS[name], member)
-        if "__datetime__" in d:
-            return datetime.strptime(d["__datetime__"], 'YYYY-MM-DD HH:MM:SS.mmmmmm ')
-        return d
     # endregion
 
     def _sqlite_db_name(self):
@@ -114,7 +106,7 @@ class RepoObjectDiskStorage(RepoStore):
 
             self._save_function = __pickle_save
             self._load_function = __pickle_load
-        elif format == 'json':
+        elif self._file_format == 'json':
             import json
             class CustomEncoder(json.JSONEncoder):
                 def default(self, obj):
@@ -124,20 +116,31 @@ class RepoObjectDiskStorage(RepoStore):
                         if isinstance(obj, datetime):
                             return {"__datetime__": str(obj)}
                     return json.JSONEncoder.default(self, obj)
+            class CustomDecoder(json.JSONDecoder):
+                def __init__(self, *args, **kwargs):
+                    json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
+
+                def object_hook(self, obj):
+                    if "__enum__" in obj:
+                        name, member = obj["__enum__"].split(".")
+                        return getattr(RepoObjectDiskStorage.PUBLIC_ENUMS[name], member)
+                    if "__datetime__" in obj:
+                        return datetime.strptime(obj["__datetime__"], 'YYYY-MM-DD HH:MM:SS.mmmmmm ')
+                    return obj    
 
             def __json_load(file_prefix):
                 with open(file_prefix+'.json', 'r') as f:
-                    return json.load(f, cls = CustomEncoder)
+                    return json.load(f, cls = CustomDecoder)
 
             def __json_save(file_prefix, obj):
                 with open(file_prefix + '.json', 'w') as f:
-                    json.dump(f, obj, cls = CustomEncoder)
+                    json.dump(obj, f, cls = CustomEncoder, indent=4, separators=(',', ': '))
 
             
             self._save_function = __json_save
             self._load_function = __json_load
         else:
-            raise Exception("Unknwon file format " + file_format)
+            raise Exception("Unknown file format " + file_format)
 
     def get_config(self):
         return {'folder': self._main_dir, 'file_format': self._file_format}
