@@ -40,9 +40,10 @@ def measure_by_parameter(ml_repo, measure_name, param_name, data_versions=None, 
             if 'model_label' in measure:
                 model_label_annotations.append(dict(x=measure[param_name], y=measure['value'], xref='x', yref='y', text=measure['model_label'],
                                                     showarrow=True,
-                                                    arrowhead=7,
-                                                    ax=0,
-                                                    ay=-20))
+                                                    arrowhead=2,
+                                                    # ax=0,
+                                                    # ay=-30
+                                                    ))
         measures = pd.DataFrame(measures)
         for d_version in data_versions:
             # if True:
@@ -71,6 +72,64 @@ def measure_by_parameter(ml_repo, measure_name, param_name, data_versions=None, 
         title='measure by parameter',
         annotations=model_label_annotations,
         xaxis=dict(title=param_name),
+        yaxis=dict(title=NamingConventions.Measure(
+            measure_name).values['measure_type'])
+    )
+    # IPython notebook
+    # py.iplot(data, filename='pandas/basic-line-plot')
+    fig = go.Figure(data=data, layout=layout)
+
+    iplot(fig)  # , filename='pandas/basic-line-plot')
+
+
+def measure_history(ml_repo, measure_name):
+
+    x = plot_helper.get_measure_history(
+        ml_repo, measure_name)
+    data = []
+    model_label_annotations = []
+    for k, measures in x.items():
+        data_name = str(NamingConventions.Data(
+            NamingConventions.EvalData(NamingConventions.Measure(measure_name))))
+        data_versions = set()
+
+        for measure in measures:
+            data_versions.add(measure['data_version'])
+            if 'model_label' in measure:
+                model_label_annotations.append(dict(x=str(measure['datetime']), y=measure['value'], xref='x', yref='y', text=measure['model_label'],
+                                                    showarrow=True,
+                                                    arrowhead=2,  # 1
+                                                    # ax=,
+                                                    # ay=-30
+                                                    ))
+        measures = pd.DataFrame(measures)
+        for d_version in data_versions:
+            # if True:
+            df = measures.loc[measures['data_version'] == d_version]
+            text = ["model version: " + str(x['model_version']) + '<br>' +
+                    data_name + ': ' + str(x['data_version']) + '<br>'
+                    + 'train_data: ' + str(x['train_data_version'])
+                    for index, x in df.iterrows()]
+
+            if True:  # len(x) > 1:
+                plot_name = k + ': ' + str(d_version)
+            # else:
+            #    plot_name = data_name + ': ' + str(d_version)
+            data.append(
+                go.Scatter(
+                    x=df['datetime'],
+                    y=df['value'],
+                    text=text,
+                    name=plot_name,
+                    mode='markers'
+                )
+
+            )
+
+    layout = go.Layout(
+        title='measure history',
+        annotations=model_label_annotations,
+        xaxis=dict(title='t'),
         yaxis=dict(title=NamingConventions.Measure(
             measure_name).values['measure_type'])
     )
