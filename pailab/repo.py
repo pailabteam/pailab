@@ -864,13 +864,12 @@ class MLRepo:
             raise Exception('Please specify a user.')
         return {'user': user, 'workspace': workspace, 'repo_store': 
                     {'type': 'memory_handler', 
-                    'config': {} } }
+                    'config': {} }}
 
-    def __save_config(self):
+    def _save_config(self):
         with open(self._config['workspace']  + '/.config.json', 'w') as f:
-            json.dump(self._config, f)
+            json.dump(self._config, f, indent=4, separators=(',', ': '))
 
-        
     def __init__(self,  workspace = None, user=None, config = None, numpy_repo =None, job_runner=None, save_config = False):
         """ Constructor of MLRepo
 
@@ -914,7 +913,7 @@ class MLRepo:
             self._job_runner = SimpleJobRunner(self)
             #self._job_runner.set_repo(self)
         if save_config:
-            self.__save_config()
+            self._save_config()
     
         
     def _add(self, repo_object, message='', category = None):
