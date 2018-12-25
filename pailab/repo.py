@@ -4,6 +4,8 @@ This module contains pailab's machine learning repository, i.e. the repository
 Machine learning repository
 """
 import abc
+import json
+from datetime import datetime
 from numpy import linalg
 from numpy import inf, load
 from enum import Enum
@@ -14,6 +16,7 @@ import pailab.repo_objects as repo_objects
 from pailab.repo_objects import RepoInfoKey, DataSet
 from pailab.repo_objects import repo_object_init  # pylint: disable=E0401
 import pailab.repo_store as repo_store
+from pailab.repo_store_factory import RepoStoreFactory
 logger = logging.getLogger(__name__)
 
 
@@ -162,6 +165,11 @@ def _add_modification_info(repo_obj, *args):
 
 class Job(abc.ABC):
 
+    def __init__(self):
+        self.state = 'created'
+        self.started = 'not yet started'
+        self.finished = 'not yet finished'
+
     class RepoWrapper:
         
         def __init__(self, job, ml_repo):
@@ -235,9 +243,19 @@ class Job(abc.ABC):
 
     def run(self, ml_repo, jobid):
         wrapper = Job.RepoWrapper(self, ml_repo)
-        self._run(wrapper,  jobid)
-        self.repo_info[RepoInfoKey.MODIFICATION_INFO] = wrapper.modification_info
+        self.state = 'running'
+        self.started = str(datetime.now())
         ml_repo._update_job(self)
+        try:
+            self._run(wrapper,  jobid)
+            self.state ='finished'
+            self.repo_info[RepoInfoKey.MODIFICATION_INFO] = wrapper.modification_info
+            self.finished = str(datetime.now())
+            ml_repo._update_job(self)
+        except Exception as e:
+            self.finished = str(datetime.now())
+            self.state = 'error' 
+            raise e from None
 
     @abc.abstractmethod
     def _run(self, ml_repo, jobid):
@@ -250,6 +268,7 @@ class EvalJob(Job):
     @repo_object_init()
     def __init__(self, model, data, user, eval_function_version=repo_store.RepoStore.LAST_VERSION,
                 model_version=repo_store.RepoStore.LAST_VERSION, data_version=repo_store.RepoStore.LAST_VERSION):
+        super(EvalJob, self).__init__()
         self.model = model
         self.data = data
         self.user = user
@@ -297,6 +316,7 @@ class TrainingJob(Job):
     def __init__(self, model, user, training_function_version=repo_store.RepoStore.LAST_VERSION, model_version=repo_store.RepoStore.LAST_VERSION,
                 training_data_version=repo_store.RepoStore.LAST_VERSION, training_param_version=repo_store.RepoStore.LAST_VERSION,
                  model_param_version=repo_store.RepoStore.LAST_VERSION):
+        super(TrainingJob, self).__init__()
         self.model = model
         self.user = user
         self.training_function_version = training_function_version
@@ -366,7 +386,7 @@ class MeasureJob(Job):
             data_version {versionnumber} -- version of data to be used (default: {repo_store.RepoStore.LAST_VERSION})
             model_version {versionnumber} -- version of model to be used (default: {repo_store.RepoStore.LAST_VERSION})
         """
-
+        super(MeasureJob, self).__init__()
         self.measure_type = measure_type
         self.coordinates = coordinates
         self.model_name = model_name
@@ -466,24 +486,29 @@ class Name:
         return self
     
 class NamingConventions:
-    
+    @staticmethod
     def _get_object_name(name):
         if not isinstance(name, str):
             return eval_data.repo_info[RepoInfoKey.NAME]
         return name
 
+    @staticmethod
     def get_model_from_name(name):
         return name.split('/')[0]
 
+    @staticmethod
     def get_model_param_name(model_name):
         return NamingConventions.get_model_from_name(model_name) +'/model_param'
 
+    @staticmethod
     def get_calibrated_model_name(model):
         return model.split('/')[0]+'/model'
 
+    @staticmethod
     def get_eval_name(model_name, data_name):
         return model_name + '/eval/' + data_name
 
+    @staticmethod
     def get_eval_name_from_measure_name(measure_name):
         model = NamingConventions.get_model_from_name(measure_name)
         data_name = measure_name.split('/')[2] 
@@ -690,6 +715,8 @@ class RawDataCollection(RepoObjectItem):
         setattr(self, name, RawDataItem(path, self._repo, obj))
 
 class TrainingDataCollection(RepoObjectItem):
+
+    @staticmethod
     def __get_name_from_path(path):
         return path.split('/')[-1]
     
@@ -811,7 +838,10 @@ class ModelCollection(RepoObjectItem):
         setattr(self, name, ModelItem(name,self._repo))
 #endregion
 
+
+
 class MLRepo:   
+
     """ Repository for doing machine learning
 
         The repository and his extensions provide a solid fundament to do machine learning science supporting features such as:
@@ -828,26 +858,40 @@ class MLRepo:
         self.test_data = TestDataCollection(self)
         self.models = ModelCollection(self)
 
-    def __init__(self, user, numpy_repo =None, ml_repo=None, job_runner=None, repo_dir = None):
+    @staticmethod
+    def __create_default_config(user, workspace):
+        if user is None:
+            raise Exception('Please specify a user.')
+        return {'user': user, 'workspace': workspace, 'repo_store': 
+                    {'type': 'memory_handler', 
+                    'config': {} }}
+
+    def _save_config(self):
+        if self._config['workspace']  is not None:
+            with open(self._config['workspace']  + '/.config.json', 'w') as f:
+                json.dump(self._config, f, indent=4, separators=(',', ': '))
+
+    def __init__(self,  workspace = None, user=None, config = None, numpy_repo =None, job_runner=None, save_config = False):
         """ Constructor of MLRepo
 
             :param numpy_repo: repository where the numpy data is stored in versions. If None, a NumpyHDFHandler will be used with directory equal to repo_dir.
             :param ml_repo: repository where the repo_objects are stored. If None, a RepoDiskHandler with directory repo_dir will be used.
             :param job_runner: the jobrunner to execute calibration, evaluations etc. If None, a SimpleJobRunner is used.
         """
+        self._config = config
+        if config is None:
+            if workspace is not None:
+                with open(workspace + '/.config.json', 'r') as f:
+                    self._config = json.load(f)
+            else:
+                self._config = MLRepo.__create_default_config(user, workspace)
         self._numpy_repo = numpy_repo
-        self._ml_repo = ml_repo
-        if ml_repo is None:
-            if repo_dir is None:
-                raise Exception('You must either specify a repository directory or the ml_repo directly.')
-            from pailab.disk_handler import RepoObjectDiskStorage
-            self._ml_repo = RepoObjectDiskStorage(repo_dir + '/objects')
+        self._ml_repo = RepoStoreFactory.get(self._config['repo_store']['type'], **self._config['repo_store']['config'])
+        
         if numpy_repo is None:
-            if repo_dir is None:
-                raise Exception('You must either specify a repository directory or the numpy repo directly.')
             from pailab.numpy_handler_hdf import NumpyHDFStorage
-            self._numpy_repo = NumpyHDFStorage(repo_dir + '/hdf') 
-        self._user = user
+            self._numpy_repo = NumpyHDFStorage(self._config['workspace'] + '/hdf') 
+        self._user = self._config['user']
         self._job_runner = job_runner
         # check if the ml mapping is already contained in the repo, otherwise add it
         logging.info('Get mapping.')
@@ -869,7 +913,8 @@ class MLRepo:
             from pailab.job_runner.job_runner import SimpleJobRunner
             self._job_runner = SimpleJobRunner(self)
             #self._job_runner.set_repo(self)
-        
+        if save_config:
+            self._save_config()
     
         
     def _add(self, repo_object, message='', category = None):
@@ -893,6 +938,7 @@ class MLRepo:
             mapping_changed = self._mapping.add(repo_object.repo_info[RepoInfoKey.CATEGORY], repo_object.repo_info[RepoInfoKey.NAME])
 
             repo_object.repo_info[RepoInfoKey.COMMIT_MESSAGE] = message
+            repo_object.repo_info[RepoInfoKey.COMMIT_DATE] = str(datetime.now())
             repo_object.repo_info[RepoInfoKey.AUTHOR] = self._user
             obj_dict = repo_objects.create_repo_obj_dict(repo_object)
             version = self._ml_repo.add(obj_dict)
@@ -1084,6 +1130,9 @@ class MLRepo:
         """
         return self._ml_repo
 
+    def get_numpy_data_store(self):
+        return self._numpy_repo
+        
     def get(self, name, version=repo_store.RepoStore.LAST_VERSION, full_object=False,
              modifier_versions=None, obj_fields=None,  repo_info_fields=None):
         """ Get repo objects. It throws an exception, if an object with the name does not exist.

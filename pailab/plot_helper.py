@@ -5,7 +5,7 @@ such as axes labels, titles, additional info which may be shown on hover in the 
 import logging
 from pailab.repo import MLObjectType, MLRepo, NamingConventions  # pylint: disable=E0401,E0611
 from pailab.repo_objects import RepoInfoKey  # pylint: disable=E0401
-from pailab.repo_store import RepoStore, LAST_VERSION, FIRST_VERSION  # pylint: disable=E0401
+from pailab.repo_store import RepoStore, LAST_VERSION, FIRST_VERSION, _time_from_version  # pylint: disable=E0401
 
 logger = logging.getLogger(__name__)
 
@@ -234,3 +234,50 @@ def get_data(ml_repo, data, x0_coord_name, x1_coord_name=None):
             result['data'][d.repo_info[RepoInfoKey.NAME] + ': ' +
                            str(d.repo_info[RepoInfoKey.VERSION])] = tmp
     return result
+
+
+def get_measure_history(ml_repo, measure_names):
+    """Returns for a (list of) measure(s) the historic evolution of the measure  (using the order induced by the datetime encoded in the version number)
+
+    Args:
+        ml_repo (MLRepo): the ml repo
+        measure_names (str, list(str)): string or list of strings of measure names (inlcuding full path) 
+
+    Returns:
+
+    """
+    label_checker = _LabelChecker(ml_repo)
+
+    if isinstance(measure_names, str):
+        measure_names = [measure_names]
+
+    result_all = {}
+    for measure_name in measure_names:
+        data = str(NamingConventions.Data(NamingConventions.EvalData(
+            NamingConventions.Measure(measure_name))))
+        measures = ml_repo.get(measure_name, version=(
+            RepoStore.FIRST_VERSION, RepoStore.LAST_VERSION))  # , modifier_versions={data: data_versions})
+        if not isinstance(measures, list):
+            measures = [measures]
+        model_name = NamingConventions.CalibratedModel(
+            NamingConventions.Measure(measure_name)
+        )
+        model_name = str(model_name)
+        train_data = ml_repo.get_names(MLObjectType.TRAINING_DATA)[0]
+
+        # eval_name
+
+        result = []
+        for x in measures:
+            info = {'model_version': x.repo_info[RepoInfoKey.MODIFICATION_INFO][model_name],
+                    'data_version': x.repo_info[RepoInfoKey.MODIFICATION_INFO][data],
+                    'train_data_version': x.repo_info[RepoInfoKey.MODIFICATION_INFO][train_data],
+                    'value': x.value, 'datetime': _time_from_version(x.repo_info[RepoInfoKey.MODIFICATION_INFO][model_name])}
+            label = label_checker.get_label(
+                model_name, x.repo_info[RepoInfoKey.MODIFICATION_INFO][model_name])
+            if label is not None:
+                info['model_label'] = label
+            result.append(info)
+
+        result_all[measure_name] = result
+    return result_all

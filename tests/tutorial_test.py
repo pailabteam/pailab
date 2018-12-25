@@ -40,7 +40,7 @@ class TutorialTest(unittest.TestCase):
         handler = RepoObjectDiskStorage(repo_path)
         numpy_handler = NumpyHDFStorage(repo_path)
         job_runner = SimpleJobRunner(None)
-        ml_repo = MLRepo('test_user', numpy_handler, handler, job_runner)
+        ml_repo = MLRepo(user='test_user', numpy_repo=numpy_handler)
         job_runner.set_repo(ml_repo)
         ml_repo._job_runner = job_runner
         # end creating new repository

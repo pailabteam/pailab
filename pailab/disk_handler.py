@@ -2,25 +2,16 @@
 
 import os
 import sqlite3
-import pickle
 from datetime import datetime, timedelta
-import json
+
+import pathlib
 import pailab.repo_objects as repo_objects
 from pailab.repo_store import RepoInfoKey, _time_from_version
 import pailab.repo as repo
 from pailab.repo_store import RepoStore
+from shutil import copy
 import logging
 logger = logging.getLogger(__name__)
-
-
-def pickle_save(file_prefix, obj):
-    with open(file_prefix + '.pck', 'wb') as f:
-        pickle.dump(obj, f)
-
-
-def pickle_load(file_prefix):
-    with open(file_prefix+'.pck', 'rb') as f:
-        return pickle.load(f)
 
 
 def execute(cursor, cmd):
@@ -37,7 +28,6 @@ def execute(cursor, cmd):
     logger.info('Executing: ' + cmd)
     return cursor.execute(cmd)
 
-
 class RepoObjectDiskStorage(RepoStore):
 
     # region private
@@ -48,23 +38,10 @@ class RepoObjectDiskStorage(RepoStore):
         # ...
     }
 
-    class CustomEncoder(json.JSONEncoder):
-        def default(self, obj):
-            if type(obj) in RepoObjectDiskStorage.PUBLIC_ENUMS.values():
-                return {"__enum__": str(obj)}
-            else:
-                if isinstance(obj, datetime):
-                    return {"__datetime__": str(obj)}
-            return json.JSONEncoder.default(self, obj)
+ 
+    
 
-    @staticmethod
-    def as_custom(d):
-        if "__enum__" in d:
-            name, member = d["__enum__"].split(".")
-            return getattr(RepoObjectDiskStorage.PUBLIC_ENUMS[name], member)
-        if "__datetime__" in d:
-            return datetime.strptime(d["__datetime__"], 'YYYY-MM-DD HH:MM:SS.mmmmmm ')
-        return d
+
     # endregion
 
     def _sqlite_db_name(self):
@@ -81,7 +58,7 @@ class RepoObjectDiskStorage(RepoStore):
                     '''CREATE TABLE mapping (name text PRIMARY KEY, category text)''')
             # versions
             execute(cursor,
-                    '''CREATE TABLE versions (name TEXT NOT NULL, version TEXT NOT NULL, file TEXT NOT NULL, uuid_time TIMESTAMP,
+                    '''CREATE TABLE versions (name TEXT NOT NULL, version TEXT NOT NULL, path TEXT NOT NULL, file TEXT NOT NULL, uuid_time TIMESTAMP,
                                         insert_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY(name, version) ) ''')
 
             # modification_info
@@ -103,7 +80,7 @@ class RepoObjectDiskStorage(RepoStore):
 
     # endregion
 
-    def __init__(self, folder, save_function=pickle_save, load_function=pickle_load):
+    def __init__(self, folder, file_format = 'pickle'):
         """Constructor
 
         Args:
@@ -114,9 +91,60 @@ class RepoObjectDiskStorage(RepoStore):
 
         self._main_dir = folder
         self._setup_new()
-        self._save_function = save_function
-        self._load_function = load_function
+        self._file_format = file_format
+        if self._file_format == 'pickle':
+            import pickle
+            
+            def __pickle_save(file_prefix, obj):
+                with open(file_prefix + '.pck', 'wb') as f:
+                    pickle.dump(obj, f)
 
+            
+            def __pickle_load(file_prefix):
+                with open(file_prefix+'.pck', 'rb') as f:
+                    return pickle.load(f)
+
+            self._save_function = __pickle_save
+            self._load_function = __pickle_load
+        elif self._file_format == 'json':
+            import json
+            class CustomEncoder(json.JSONEncoder):
+                def default(self, obj):
+                    if type(obj) in RepoObjectDiskStorage.PUBLIC_ENUMS.values():
+                        return {"__enum__": str(obj)}
+                    else:
+                        if isinstance(obj, datetime):
+                            return {"__datetime__": str(obj)}
+                    return json.JSONEncoder.default(self, obj)
+            class CustomDecoder(json.JSONDecoder):
+                def __init__(self, *args, **kwargs):
+                    json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
+
+                def object_hook(self, obj):
+                    if "__enum__" in obj:
+                        name, member = obj["__enum__"].split(".")
+                        return getattr(RepoObjectDiskStorage.PUBLIC_ENUMS[name], member)
+                    if "__datetime__" in obj:
+                        return datetime.strptime(obj["__datetime__"], 'YYYY-MM-DD HH:MM:SS.mmmmmm ')
+                    return obj    
+
+            def __json_load(file_prefix):
+                with open(file_prefix+'.json', 'r') as f:
+                    return json.load(f, cls = CustomDecoder)
+
+            def __json_save(file_prefix, obj):
+                with open(file_prefix + '.json', 'w') as f:
+                    json.dump(obj, f, cls = CustomEncoder, indent=4, separators=(',', ': '))
+
+            
+            self._save_function = __json_save
+            self._load_function = __json_load
+        else:
+            raise Exception("Unknown file format " + file_format)
+
+    def get_config(self):
+        return {'folder': self._main_dir, 'file_format': self._file_format}
+        
     def get_names(self, ml_obj_type):
         """Return the names of all objects belonging to the given category.
 
@@ -161,9 +189,9 @@ class RepoObjectDiskStorage(RepoStore):
             version = obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value]
             file_sub_dir = category + '/' + name + '/'
             os.makedirs(self._main_dir + '/' + file_sub_dir, exist_ok=True)
-            filename = file_sub_dir + '/' + version
-            execute(cursor, "insert into versions (name, version, file, uuid_time) VALUES('" +
-                    name + "', '" + version + "','" + filename + "','" + str(uid_time) + "')")
+            filename = version
+            execute(cursor, "insert into versions (name, version, path, file, uuid_time) VALUES('" +
+                    name + "', '" + version + "','" + file_sub_dir+ "','" + filename + "','" + str(uid_time) + "')")
             # endregion
             # region write modification info
             if repo_objects.RepoInfoKey.MODIFICATION_INFO.value in obj['repo_info']:
@@ -177,7 +205,7 @@ class RepoObjectDiskStorage(RepoStore):
             logger.debug(
                 'Write object as json file with filename ' + filename)
 
-            self._save_function(self._main_dir + '/' + filename, obj)
+            self._save_function(self._main_dir + '/' + file_sub_dir + '/' + filename, obj)
             # endregion
         except Exception as e:
             logger.error('Error: ' + str(e) + ', rolling back changes.')
@@ -234,7 +262,7 @@ class RepoObjectDiskStorage(RepoStore):
         version_condition = self.get_version_condition(
             name, versions, 'version', 'uuid_time')
 
-        select_statement = "select file from versions where name = '" + \
+        select_statement = "select path, file from versions where name = '" + \
             name + "'" + version_condition
         if modifier_versions is not None:
             for k, v in modifier_versions.items():
@@ -243,7 +271,7 @@ class RepoObjectDiskStorage(RepoStore):
                 if tmp != '':
                     select_statement += " and version in ( select version from modification_info where name ='" + \
                         name + "' and modifier = '" + k + "'" + tmp + ")"
-        files = [row[0] for row in execute(cursor, select_statement)]
+        files = [row[0] +'/' + row[1] for row in execute(cursor, select_statement)]
         objects = []
         for filename in files:
             objects.append(self._load_function(
@@ -289,14 +317,57 @@ class RepoObjectDiskStorage(RepoStore):
         Args:
             obj (RepoObject): repo object to be overwritten
         """
-        select_statement = "select file from versions where name = '" +\
+        logger.info('Replacing ' + obj["repo_info"][RepoInfoKey.NAME.value] + ', version ' +  str(obj["repo_info"][RepoInfoKey.VERSION.value]))
+        select_statement = "select path, file from versions where name = '" +\
             obj["repo_info"][RepoInfoKey.NAME.value] + "' and version = '" +\
             str(obj["repo_info"][RepoInfoKey.VERSION.value]) + "'"
         cursor = self._conn.cursor()
         for row in execute(cursor, select_statement):
-            self._save_function(self._main_dir + '/' + str(row[0]), obj)
+            self._save_function(self._main_dir + '/' + str(row[0]) + '/' + str(row[1]), obj)
 
     def close_connection(self):
         """Closes the database connection
         """
         self._conn.close()
+
+    def _get_all_files(self):
+        """Returns set of all files in directory
+        
+        Returns:
+            set: set with all filenames (including relative paths)
+        """
+        f = set()
+        for path, subdirs, files in os.walk(self._main_dir):
+            if '.git' in subdirs:
+                subdirs.remove('.git')
+            if '.gitignore' in files:
+                files.remove('.gitignore')
+            if '.version.sqlite' in files:
+                files.remove('.version.sqlite')
+            for name in files:
+                f.add(os.path.splitext(name)[0])
+        print(str(f))
+        return f
+
+    def check_integrity(self):
+        """Checks if files are missing or have not yet been added
+        
+        Returns:
+            dictionary: contains sets of missing files and/or set of files not yet added
+        """
+
+        # first get list of all files
+        f = self._get_all_files()
+        cursor = self._conn.cursor()
+        repo_f = set()
+        for row in execute(cursor, "select file from versions"):
+            repo_f.add(row[0])
+        tmp = f.copy()
+        files_not_added = tmp-repo_f
+        result = {}
+        if(len(files_not_added)>0):
+            result = {'files not added to repo': files_not_added}
+        files_missing = repo_f - f
+        if(len(files_missing)>0):
+            result = {'files missing in repo': files_missing}
+        return result

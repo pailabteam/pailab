@@ -40,6 +40,9 @@ class TensorflowKerasHistory:
     @repo_object_init(['loss'])
     def __init__(self, loss):
         self.loss = loss
+        self.n_epochs = 0
+        if len(loss) > 0:
+            self.n_epochs = loss.shape[0]
 
 
 class TensorflowKerasTrainingParameter:
@@ -53,8 +56,12 @@ class TensorflowKerasTrainingParameter:
         for k, v in optimizer_param.items():  # overwrite defaults where values are specified
             self.optimizer_parameter[k] = v
         self.loss = loss
+        self.random_seed = 7
         self.epochs = epochs
         self.batch_size = batch_size
+        self.validation_split = 0.0
+        self.early_stopping = {'monitor': 'loss', 'min_delta': 0,
+                               'patience': 500, 'verbose': 1, 'baseline': None}
 
     def get_params(self):
         return self.__dict__
@@ -88,14 +95,17 @@ def eval_keras_tensorflow(model, data):
 
 
 def train_keras_tensorflow(model_param, train_param, data_x, data_y, verbose=0):
+    cb = []
+    if train_param.early_stopping != {}:
+        cb.append(tf.keras.callbacks.EarlyStopping(
+            **train_param.early_stopping))
     # stopping = EarlyStopping(monitor = 'loss', min_delta = training_parameter.metadata['param']['delta'],
     #                             patience=training_parameter.metadata['param']['patience'], mode='auto')
     #reduce_lr = ReduceLROnPlateau(monitor = 'loss', factor=0.8, patience=100, min_lr=0.00001)
 
     # model_from_json(param.param)
     # fix random seed for reproducibility
-    seed = 7
-    numpy.random.seed(seed)
+    numpy.random.seed(train_param.random_seed)
     model = Sequential.from_config(model_param.param)
     logger.info("Compiling model.")
     model.compile(loss=train_param.loss, optimizer=train_param.get_optimizer())
@@ -103,8 +113,10 @@ def train_keras_tensorflow(model_param, train_param, data_x, data_y, verbose=0):
                 ", batch_size: " + str(train_param.batch_size))
     history = model.fit(data_x, data_y, epochs=train_param.epochs,
                         batch_size=train_param.batch_size,
-                        #callbacks=[reduce_lr, stopping],
-                        verbose=verbose)
+                        callbacks=cb,
+                        verbose=verbose,
+                        validation_split=train_param.validation_split)
+
     logger.info("Finished training")
     h = None
     if 'loss' in history.history:

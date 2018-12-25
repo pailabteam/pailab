@@ -174,7 +174,7 @@ class RepoTest(unittest.TestCase):
         '''
         handler = memory_handler.RepoObjectMemoryStorage()
         numpy_handler = memory_handler.NumpyMemoryStorage()
-        self.repository = MLRepo('doeltz', numpy_handler, handler, None)
+        self.repository = MLRepo(user = 'doeltz', numpy_repo = numpy_handler)
         job_runner = SimpleJobRunner(self.repository)
         self.repository._job_runner = job_runner
         #### Setup dummy RawData
@@ -269,7 +269,7 @@ class RepoTest(unittest.TestCase):
         handler = memory_handler.RepoObjectMemoryStorage()
         numpy_handler = memory_handler.NumpyMemoryStorage()
         # init repository with sample in memory handler
-        repository = MLRepo('doeltz', numpy_handler, handler, None)
+        repository = MLRepo(user = 'doeltz', numpy_repo = numpy_handler)
         job_runner = SimpleJobRunner(repository)
         repository._job_runner = job_runner
         raw_data = repo_objects.RawData(np.zeros([10, 1]), ['test_coord'], repo_info={  # pylint: disable=E0602
@@ -324,7 +324,7 @@ class RepoTest(unittest.TestCase):
         handler = memory_handler.RepoObjectMemoryStorage()
         numpy_handler = memory_handler.NumpyMemoryStorage()
         # init repository with sample in memory handler
-        repository = MLRepo('doeltz', numpy_handler, handler, None)
+        repository = MLRepo(user = 'doeltz', numpy_repo = numpy_handler)
         job_runner = SimpleJobRunner(repository)
         repository._job_runner = job_runner
         training_data = RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'training_data'})
