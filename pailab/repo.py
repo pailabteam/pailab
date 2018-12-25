@@ -867,8 +867,9 @@ class MLRepo:
                     'config': {} }}
 
     def _save_config(self):
-        with open(self._config['workspace']  + '/.config.json', 'w') as f:
-            json.dump(self._config, f, indent=4, separators=(',', ': '))
+        if self._config['workspace']  is not None:
+            with open(self._config['workspace']  + '/.config.json', 'w') as f:
+                json.dump(self._config, f, indent=4, separators=(',', ': '))
 
     def __init__(self,  workspace = None, user=None, config = None, numpy_repo =None, job_runner=None, save_config = False):
         """ Constructor of MLRepo
