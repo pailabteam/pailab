@@ -28,7 +28,8 @@ class MLObjectType(Enum):
     RAW_DATA = 'RAW_DATA'
     TRAINING_DATA = 'TRAINING_DATA'
     TEST_DATA = 'TEST_DATA'
-    TEST_RESULT = 'TEST_RESULT'
+    TEST = 'TEST'
+    TEST_DEFINITION = 'TEST_DEFINITION'
     MODEL_PARAM = 'MODEL_PARAM'
     TRAINING_PARAM = 'TRAINING_PARAM'
     TRAINING_FUNCTION = 'TRAINING_FUNCTION'
@@ -521,6 +522,7 @@ class NamingConventions:
     Model = Name('model', '')
     ModelParam = Name('model/*', 'model_param')
     TrainingParam = Name('model/*', 'training_param')
+    Test = Name('model/*/test_name/data', 'test')
 
 #region collections and items
 
