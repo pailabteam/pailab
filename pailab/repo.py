@@ -13,7 +13,7 @@ from copy import deepcopy
 from deepdiff import DeepDiff
 import logging
 import pailab.repo_objects as repo_objects
-from pailab.repo_objects import RepoInfoKey, DataSet
+from pailab.repo_objects import RepoInfoKey, DataSet, MeasureConfiguration
 from pailab.repo_objects import repo_object_init  # pylint: disable=E0401
 import pailab.repo_store as repo_store
 from pailab.repo_store_factory import RepoStoreFactory
@@ -410,21 +410,21 @@ class MeasureJob(Job):
         #if len(self.coordinates) == 0 or repo_objects.MeasureConfiguration._ALL_COORDINATES in self.coordinates:
         #    return target.y_data, eval_data.x_data
         columns = []
+        measure_name = MeasureConfiguration.get_name(self.measure_type)
         if not repo_objects.MeasureConfiguration._ALL_COORDINATES in self.coordinates:
+            measure_name = MeasureConfiguration.get_name((self.measure_type, self.coordinates))
             for x in self.coordinates:
                 columns.append(target.y_coord_names.index(x))
         if len(columns) == 0:
             v = self._compute(target.y_data, eval_data.x_data)
         else:
             v = self._compute(target.y_data[:,columns], eval_data.x_data[:,columns])
-        result_name = str(NamingConventions.Measure(eval_data_name, measure_type = self.measure_type))
-        if not repo_objects.MeasureConfiguration._ALL_COORDINATES in self.coordinates:
-            for x in self.coordinates:
-                result_name = result_name + '_' + x
+        result_name = str(NamingConventions.Measure(eval_data_name, measure_type = measure_name))
         result = repo_objects.Measure( v, 
                                 repo_info = {RepoInfoKey.NAME : result_name, RepoInfoKey.CATEGORY: MLObjectType.MEASURE.value})
         _add_modification_info(result, eval_data, target)
         logging.debug('Add result ' + result_name)
+
         repo.add(result, 'computing  measure ' + self.measure_type + ' on data ' + self.data_name)
         logging.info('Finished measure job ' + self.repo_info.name)
         

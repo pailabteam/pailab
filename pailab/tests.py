@@ -163,10 +163,11 @@ class RegressionTest(Test):
                 raise Exception(
                     'No regression test possible since no measure defined.')
             m_config = ml_repo.get(tmp[0])
-            measure_types = [x for x in m_config.measures.keys()]
+            measure_types = [MeasureConfiguration.get_name(
+                x) for k, x in m_config.measures.items()]
         for measure_type in measure_types:
             measure_name = str(NamingConventions.Measure(
-                {'model': self.model, 'data': self.data, 'measure_type': measure_type}))
+                {'model': self.model.split('/')[0], 'data': self.data, 'measure_type': measure_type}))
             measure = ml_repo.get(measure_name,
                                   modifier_versions={
                                       str(NamingConventions.CalibratedModel(self.model)): self.model_version,
@@ -174,11 +175,11 @@ class RegressionTest(Test):
                                   }
                                   )
             measure_name = str(NamingConventions.Measure(
-                {'model': label.name, 'data': regression_test.data, 'measure_type': measure_type}))
+                {'model': label.name.split('/')[0], 'data': self.data, 'measure_type': measure_type}))
             reference_value = ml_repo.get(measure_name,
-                                          modifier_versions={NamingConventions.CalibratedModel(
-                                              label.name): label.version,
-                                              regression_test.data: self.data_version})
+                                          modifier_versions={str(NamingConventions.CalibratedModel(
+                                              label.name)): label.version,
+                                              self.data: self.data_version})
             if measure.value-reference_value.value > regression_test.tol:
                 result[measure_type] = {
                     'reference_value': reference_value.value, 'value': measure.value}

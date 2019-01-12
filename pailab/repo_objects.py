@@ -426,18 +426,19 @@ class MeasureConfiguration:
     
     @staticmethod
     def get_name(measure_def):
-        return _create_name(measure_def)
-        
+        return MeasureConfiguration._create_name(measure_def)
+
     #region private
     @staticmethod
     def _create_name(measure_def):
         if isinstance(measure_def, tuple):
             name = measure_def[0]
             if isinstance(measure_def[1], list):
-                separator = ','
-                name = name +'(' + str(measure_def[1]) + ')'
+                separator = '_'
+                name = name +'_' + separator.join(measure_def[1])
             if isinstance(measure_def[1], str):
-                name = name + '(' + measure_def[1] + ')'
+                if not measure_def[1] == MeasureConfiguration._ALL_COORDINATES:
+                    name = name + '_' + measure_def[1]
             return name
         if isinstance(measure_def, str):
             return measure_def
