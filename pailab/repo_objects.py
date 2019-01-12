@@ -1,3 +1,4 @@
+import abc
 import datetime
 import importlib
 
@@ -46,13 +47,17 @@ class RepoInfo:
     """
 
     def __init__(self, kwargs):
-        for key in RepoInfoKey:
-            setattr(self, key.value, None)
+        self.version = None
+        self.name = None
+        self.classname = None
+        self.modification_info = {}
+        self.description = None
+        self.category = None
+        self.big_objects = set()
+        self.commit_message = None
+        self.author = None
+        self.commit_date = None
         self.set_fields(kwargs)
-        if self[RepoInfoKey.BIG_OBJECTS] is None:
-            self[RepoInfoKey.BIG_OBJECTS] = set()
-        if self[RepoInfoKey.MODIFICATION_INFO] is None:
-            self[RepoInfoKey.MODIFICATION_INFO] = {}
             
     def set_fields(self, kwargs):
         """Set repo info fields from a dictionary
@@ -62,18 +67,7 @@ class RepoInfo:
         """
         for k,v in kwargs.items():
             self[k] = v
-        return 
-        if not kwargs is None:
-            for key in RepoInfoKey:
-                if key.name in kwargs.keys():
-                    setattr(self, key.value, kwargs[key.name])
-                else:
-                    if key.value in kwargs.keys():
-                        setattr(self, key.value, kwargs[key.value])
-                    else:
-                        if key in kwargs.keys():
-                            setattr(self, key.value, kwargs[key])
-
+       
     def __setitem__(self, field, value):
         """Set an item.
 
@@ -131,6 +125,56 @@ def create_repo_obj_dict(obj):
     result['repo_info'] = obj.repo_info.get_dictionary()
     return result
 
+
+class RepoObject:
+    def _init_repo_info(**kwargs):
+        self.repo_info = RepoInfo()
+        if 'repo_info' in kwargs.keys():
+            repo_info = kwargs['repo_info']
+            if isinstance(repo_info, RepoInfo):
+                self.repo_info = repo_info
+            else:
+                self.repo_info = RepoInfo(repo_info)
+            del kwargs['repo_info']
+
+    def __init__(self, **kwargs):
+        _init_repo_info(**kwargs)
+        self.from_dict(kwargs)
+
+    def to_dict(self):
+        """ Return a data dictionary for a given repo_object without the big data objects
+
+        Args:
+         
+            :returns: dictionary of data
+        """
+        excluded = [
+            x for x in self.repo_info[RepoInfoKey.BIG_OBJECTS]]  # pylint: disable=E1101
+        excluded.append('repo_info')
+        return _get_attribute_dict(self, excluded)
+    
+    def from_dict(self, repo_obj_dict):  # pylint: disable=E0213
+        """ set object from a dictionary
+
+        Args:
+            :param repo_object_dict: dictionary with the object data
+        """
+        for key, value in repo_obj_dict.items():
+            self.__dict__[key] = value
+
+    
+    def numpy_to_dict(self):  # pylint: disable=E0213
+        result = {}
+        for x in self.repo_info[RepoInfoKey.BIG_OBJECTS]:  # pylint: disable=E1101
+            result[x] = getattr(self, x)
+        return result
+
+    def numpy_from_dict(self, repo_numpy_dict):  # pylint: disable=E0213
+        for x in self.repo_info[RepoInfoKey.BIG_OBJECTS]:  # pylint: disable=E1101
+            if x in repo_numpy_dict.keys():
+                setattr(self, x, repo_numpy_dict[x])
+            else:
+                setattr(self, x, None)
 
 class repo_object_init:  # pylint: disable=too-few-public-methods
     """ Decorator class to modify a constructor so that the class can be used within the ml repository as repo_object.
