@@ -1,6 +1,7 @@
 import abc
 from collections import defaultdict
 import logging
+from pailab.repo_objects import RepoInfo
 from pailab import repo_object_init, MLRepo, RepoInfoKey, MLObjectType, MeasureConfiguration
 from pailab.repo_store import LAST_VERSION, FIRST_VERSION
 from pailab.repo import Job, NamingConventions, _add_modification_info
@@ -95,8 +96,8 @@ class TestDefinition(abc.ABC):
 
 
 class Test(Job):
-    def __init__(self, model, data, test_definition_version=LAST_VERSION, model_version=LAST_VERSION, data_version=LAST_VERSION):
-        super(Test, self).__init__()
+    def __init__(self, model, data, test_definition_version=LAST_VERSION, model_version=LAST_VERSION, data_version=LAST_VERSION, repo_info=RepoInfo()):
+        super(Test, self).__init__(repo_info)
         self.test_definition = None
         self.test_definition_version = test_definition_version
         self.model_version = model_version

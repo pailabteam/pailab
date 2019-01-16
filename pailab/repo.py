@@ -14,7 +14,7 @@ from deepdiff import DeepDiff
 import logging
 import pailab.repo_objects as repo_objects
 from pailab.repo_objects import RepoInfoKey, DataSet, MeasureConfiguration
-from pailab.repo_objects import repo_object_init  # pylint: disable=E0401
+from pailab.repo_objects import repo_object_init, RepoInfo, RepoObject  # pylint: disable=E0401
 import pailab.repo_store as repo_store
 from pailab.repo_store_factory import RepoStoreFactory
 logger = logging.getLogger(__name__)
@@ -164,9 +164,10 @@ def _add_modification_info(repo_obj, *args):
     
 # region Jobs
 
-class Job(abc.ABC):
+class Job(RepoObject, abc.ABC):
 
-    def __init__(self):
+    def __init__(self, repo_info):
+        super(Job, self).__init__(repo_info)
         self.state = 'created'
         self.started = 'not yet started'
         self.finished = 'not yet finished'
@@ -269,10 +270,10 @@ class Job(abc.ABC):
 class EvalJob(Job):
     """definition of a model evaluation job
     """
-    @repo_object_init()
     def __init__(self, model, data, user, eval_function_version=repo_store.RepoStore.LAST_VERSION,
-                model_version=repo_store.RepoStore.LAST_VERSION, data_version=repo_store.RepoStore.LAST_VERSION):
-        super(EvalJob, self).__init__()
+                model_version=repo_store.RepoStore.LAST_VERSION, data_version=repo_store.RepoStore.LAST_VERSION,
+                repo_info = RepoInfo()):
+        super(EvalJob, self).__init__(repo_info)
         self.model = model
         self.data = data
         self.user = user
@@ -319,8 +320,8 @@ class TrainingJob(Job):
     @repo_object_init()
     def __init__(self, model, user, training_function_version=repo_store.RepoStore.LAST_VERSION, model_version=repo_store.RepoStore.LAST_VERSION,
                 training_data_version=repo_store.RepoStore.LAST_VERSION, training_param_version=repo_store.RepoStore.LAST_VERSION,
-                 model_param_version=repo_store.RepoStore.LAST_VERSION):
-        super(TrainingJob, self).__init__()
+                 model_param_version=repo_store.RepoStore.LAST_VERSION, repo_info = RepoInfo()):
+        super(TrainingJob, self).__init__(repo_info)
         self.model = model
         self.user = user
         self.training_function_version = training_function_version
@@ -377,7 +378,7 @@ class TrainingJob(Job):
 class MeasureJob(Job):
     @repo_object_init()
     def __init__(self, result_name, measure_type, coordinates, data_name, model_name, data_version=repo_store.RepoStore.LAST_VERSION,
-                model_version=repo_store.RepoStore.LAST_VERSION):
+                model_version=repo_store.RepoStore.LAST_VERSION, repo_info = RepoInfo()):
         """Constructor
 
         Arguments:
@@ -390,7 +391,7 @@ class MeasureJob(Job):
             data_version {versionnumber} -- version of data to be used (default: {repo_store.RepoStore.LAST_VERSION})
             model_version {versionnumber} -- version of model to be used (default: {repo_store.RepoStore.LAST_VERSION})
         """
-        super(MeasureJob, self).__init__()
+        super(MeasureJob, self).__init__(repo_info)
         self.measure_type = measure_type
         self.coordinates = coordinates
         self.model_name = model_name
