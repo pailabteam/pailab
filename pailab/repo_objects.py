@@ -46,13 +46,15 @@ class RepoInfo:
     It must be a member of all objects which are handled by the repo.
     """
 
-    def __init__(self, kwargs):
-        self.version = None
-        self.name = None
+    def __init__(self, kwargs = {}, name = None, version = None, category = None, modification_info = None):
+        self.version = version
+        self.name = name
         self.classname = None
         self.modification_info = {}
+        if modification_info is not None:
+            self.modification_info = modification_info
         self.description = None
-        self.category = None
+        self.category = category
         self.big_objects = set()
         self.commit_message = None
         self.author = None
@@ -67,7 +69,7 @@ class RepoInfo:
         """
         for k,v in kwargs.items():
             self[k] = v
-       
+    
     def __setitem__(self, field, value):
         """Set an item.
 
@@ -127,19 +129,42 @@ def create_repo_obj_dict(obj):
 
 
 class RepoObject:
-    def _init_repo_info(**kwargs):
+   
+    def __init__(self, repo_info):
         self.repo_info = RepoInfo()
+        # if 'repo_info' in kwargs.keys():
+        #     repo_info = kwargs['repo_info']
+        #     del kwargs['repo_info']
+        if isinstance(repo_info, dict):
+            self.repo_info = RepoInfo(repo_info)
+        else:
+            self.repo_info = repo_info
+    
+        self.repo_info.classname = self.__class__.__module__ + \
+        '.' + self.__class__.__name__
+
+       #RepoObject._init_repo_info(**kwargs)
+        #if 'repo_info' in kwargs.keys():
+        #    del kwargs['repo_info']
+        #self.from_dict(kwargs)
+
+    @classmethod
+    def _create_from_dict(cls, **kwargs):
+        repo_info = RepoInfo()
         if 'repo_info' in kwargs.keys():
             repo_info = kwargs['repo_info']
-            if isinstance(repo_info, RepoInfo):
-                self.repo_info = repo_info
-            else:
-                self.repo_info = RepoInfo(repo_info)
             del kwargs['repo_info']
-
-    def __init__(self, **kwargs):
-        _init_repo_info(**kwargs)
-        self.from_dict(kwargs)
+            if isinstance(repo_info, dict):
+                repo_info = RepoInfo(repo_info)
+            else:
+                repo_info = repo_info
+        if '_init_from_dict' in kwargs.keys():
+            del kwargs['_init_from_dict']
+        repo_info.classname = cls.__module__ + '.' + cls.__name__
+        result = cls.__new__(cls)
+        result.from_dict(kwargs)
+        setattr(result, 'repo_info', repo_info)
+        return result
 
     def to_dict(self):
         """ Return a data dictionary for a given repo_object without the big data objects
@@ -244,10 +269,12 @@ class repo_object_init:  # pylint: disable=too-few-public-methods
         def wrap(init_self, *args, **kwargs):
             repo_info = None
             if 'repo_info' in kwargs.keys():  # check if arguments contain a repo_info object
-                repo_info = kwargs['repo_info']
+                repo_info_dict = kwargs['repo_info']
                 del kwargs['repo_info']
-                if isinstance(repo_info, dict):
-                    repo_info = RepoInfo(repo_info)
+                if isinstance(repo_info_dict, dict):
+                    repo_info = RepoInfo(repo_info_dict)   
+                else:
+                    repo_info = RepoInfo()
                 if not '_init_from_dict' in kwargs.keys():
                     f(init_self, *args, **kwargs)
                 self.init_repo_object(init_self, repo_info)
@@ -273,7 +300,11 @@ def get_object_from_classname(classname, data):
     m = __import__(module)
     for comp in parts[1:]:
         m = getattr(m, comp)
-    return m(_init_from_dict=True, **data)
+    try:
+        result = m._create_from_dict(**data)
+        return result
+    except:
+        return m(_init_from_dict=True, **data)
 
 
 def create_repo_obj(obj):
@@ -296,7 +327,7 @@ def create_repo_obj(obj):
     result = get_object_from_classname(repo_info['classname'], obj)
     return result
 
-class RawData:
+class RawData(RepoObject):
     """Class to store numpy data.
     
     """
@@ -313,8 +344,7 @@ class RawData:
 
     """Class encapsulating raw data
     """
-    @repo_object_init(['x_data', 'y_data'])
-    def __init__(self, x_data, x_coord_names, y_data=None, y_coord_names=None):
+    def __init__(self, x_data, x_coord_names, y_data=None, y_coord_names=None, repo_info = RepoInfo()):
         """Constructor
 
         Arguments:
@@ -323,7 +353,12 @@ class RawData:
             :param y_data: numpy object (array or matrix) containing x_data
             :param y_coord_names: list of y_data coordinate names
         """
+        super(RawData, self).__init__(repo_info)
+        self.repo_info.big_objects = ['x_data', 'y_data']
+        if x_data is None:
+            raise Exception("No x_data specified.")
         x_data = RawData._cast_data_to_numpy(x_data)
+        self.n_data = x_data.shape[0]  # pylint: disable=E1101
         if x_data.shape[1] != len(x_coord_names):  # pylint: disable=E1101
             logger.error('Number of x-coordinates does not equal number of names for x-coordinates.')
             raise Exception(
@@ -339,19 +374,21 @@ class RawData:
                     'Number of x-datapoints does not equal number of y-datapoints.')
         self.x_data = x_data
         self.x_coord_names = x_coord_names
-        self.n_data = x_data.shape[0]  # pylint: disable=E1101
+        
         self.y_data = None
         self.y_coord_names = None
         if not y_data is None:
             self.y_data = y_data
             self.y_coord_names = y_coord_names
+        
 
     def __str__(self):
         return str(self.to_dict()) # pylint: disable=E1101
    
-class Model:
-    @repo_object_init()
-    def __init__(self, preprocessing = None, preprocessing_param = None, eval_function = None, train_function = None, train_param = None, model_param = None):
+class Model(RepoObject):
+    def __init__(self, preprocessing = None, preprocessing_param = None, 
+                eval_function = None, train_function = None, train_param = None, 
+                model_param = None, repo_info = RepoInfo()):
         """Defines all model relevant information
         
         Keyword Arguments:
@@ -363,6 +400,7 @@ class Model:
             model_param {string} -- name of model parameter object used for creating the model, i.e. network architecture (default: {None})
             model {object} -- the object defining the model
         """
+        super(Model, self).__init__(repo_info)
         self.preprocessing_function = preprocessing
         self.preprocessing_param = preprocessing_param
         self.eval_function = eval_function
@@ -370,11 +408,11 @@ class Model:
         self.training_param = train_param
         self.model_param = model_param
     
-class Function:
+class Function(RepoObject):
     """Function
     """
-    @repo_object_init()
-    def __init__(self, f):
+    def __init__(self, f, repo_info = RepoInfo()):
+        super(Function, self).__init__(repo_info)
         self._module_name = f.__module__
         self._function_name = f.__name__
         self._module_version = None
@@ -403,9 +441,8 @@ class Function:
        return self._module_version
 
 
-class CommitInfo:
-    @repo_object_init()
-    def __init__(self, message, author, objects):
+class CommitInfo(RepoObject):
+    def __init__(self, message, author, objects, repo_info = RepoInfo()):
         """Constructor
         
         Arguments:
@@ -413,6 +450,7 @@ class CommitInfo:
             author {string} -- author
             objects {dictionary} --  dictionary of names of committed objects and version numbers
         """
+        super(CommitInfo, self).__init__(repo_info)
         self.message = message
         self.author = author
         self.objects = objects
@@ -424,16 +462,16 @@ class CommitInfo:
         result =  'time: ' + str(self.time) + ', author: ' + self.author + ', message: '+ self.message + ', objects: ' + str(self.objects)
         return result
 
-class Label:
+class Label(RepoObject):
     """RepoObject to label a certain model version
     """
-    @repo_object_init()
-    def __init__(self, model_name, model_version):
+    def __init__(self, model_name, model_version, repo_info = RepoInfo()):
+        super(Label, self).__init__(repo_info)
         self.name = model_name
         self.version = model_version
     
     
-class MeasureConfiguration:
+class MeasureConfiguration(RepoObject):
     """RepoObject defining a configuration for all measures which shall be computed.
     """    
     L2 = 'l2'
@@ -443,8 +481,7 @@ class MeasureConfiguration:
     
     _ALL_COORDINATES = '_all'
     
-    @repo_object_init()
-    def __init__(self, measures):
+    def __init__(self, measures, repo_info = RepoInfo()):
         """Constructor
         
         Arguments:
@@ -452,6 +489,7 @@ class MeasureConfiguration:
             (containing names of coordinates used computing the measure) or only strings (just the measure types where we assume that then all coordinates are used o compute the measure)
 
         """
+        super(MeasureConfiguration, self).__init__(repo_info)
         self.measures = {}
         for x in measures:
             if isinstance(x,tuple):
@@ -493,23 +531,22 @@ class MeasureConfiguration:
     def __str__(self):
         return str(self.to_dict()) # pylint: disable=E1101
 
-class Measure:
-    @repo_object_init()
-    def __init__(self, value):
+class Measure(RepoObject):
+    def __init__(self, value, repo_info = RepoInfo()):
+        super(Measure, self).__init__(repo_info)
         self.value = value
     
     def __str__(self):
         return str(self.to_dict()) # pylint: disable=E1101
 
-class DataSet:
+class DataSet(RepoObject):
     """Class used to access training or test data.
 
     This class refers to some RawData object and a start- and endindex 
 
     """
-    @repo_object_init()
     def __init__(self, raw_data, start_index=0, 
-        end_index=None, raw_data_version='last'):
+        end_index=None, raw_data_version='last', repo_info = RepoInfo()):
         """Constructor
 
         Arguments:
@@ -518,6 +555,7 @@ class DataSet:
             :argument end_index: {integer} -- end_index of last entry of the raw data used in the dataset (if None, all including last element are used)
             :argument raw_data_version: {integer} -- version of RawData object the DataSet refers to (default is latest)
         """
+        super(DataSet, self).__init__(repo_info)
         self.raw_data = raw_data
         self.start_index = start_index
         self.end_index = end_index
