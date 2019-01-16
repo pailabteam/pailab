@@ -74,11 +74,11 @@ class MLObjectType(Enum):
         return category_name
 
 
-class Mapping:
+class Mapping(RepoObject):
     """Provides a mapping from MLObjectType to all objects in the repo belonging to this type
     """
-    @repo_object_init()
-    def __init__(self, **kwargs):
+    def __init__(self, repo_info = RepoInfo(), **kwargs):
+        super(Mapping, self).__init__(repo_info)
         logging.debug('Initializing map with kwargs: ' + str(kwargs))
         for key in MLObjectType:
             setattr(self, key.value, [])
@@ -494,7 +494,7 @@ class NamingConventions:
     @staticmethod
     def _get_object_name(name):
         if not isinstance(name, str):
-            return eval_data.repo_info[RepoInfoKey.NAME]
+            return name.repo_info[RepoInfoKey.NAME]
         return name
 
     @staticmethod
@@ -558,7 +558,7 @@ class RepoObjectItem:
                     self.obj = self._repo.get(self._name, version, full_object, modifier_versions)
                 except:
                     pass
-            for k, v in self.__dict__.items():
+            for v in self.__dict__.values():
                 if hasattr(v,'load'):
                     v.load(version, full_object, modifier_versions, containing_str)
 
@@ -580,7 +580,7 @@ class RepoObjectItem:
                         self.obj, message=commit_message)
                     self.obj = self._repo.get(self._name, version=version)
                 result = {self._name: diff}
-        for k, v in self.__dict__.items():
+        for v in self.__dict__.values():
             if hasattr(v, 'modifications'):
                 tmp = v.modifications(commit, commit_message)
                 if tmp is not None:
@@ -607,7 +607,7 @@ class RepoObjectItem:
             result = []
             if containing_str in self._name:
                 result.append(self._name)
-            for k, v in self.__dict__.items():
+            for v in self.__dict__.values():
                 if isinstance(v, RepoObjectItem):
                     d = v(containing_str)
                     if isinstance(d, str):
@@ -745,6 +745,7 @@ class TrainingDataCollection(RepoObjectItem):
         setattr(self, name, item)
 
 class TestDataCollection(RepoObjectItem):
+    @staticmethod
     def __get_name_from_path(path):
         return path.split('/')[-1]
     
@@ -1178,10 +1179,12 @@ class MLRepo:
             return tmp[0]
         return tmp
 
+    @staticmethod
     def get_calibrated_model_name(model_name):
         tmp = model_name.split('/')
         return tmp[0] + '/model'
-
+    
+    @staticmethod
     def get_eval_name( model, data ):
         """Return name of the object containing evaluation results
         
@@ -1256,7 +1259,7 @@ class MLRepo:
         logging.info('Training job ' + train_job.repo_info[RepoInfoKey.NAME]+ ', version: ' 
                 + str(train_job.repo_info[RepoInfoKey.VERSION]) + ' added to jobrunner.')
         if run_descendants:
-            eval_jobs = self.run_evaluation(model + '/model', 'evaluation triggered as descendant of run_training', 
+            self.run_evaluation(model + '/model', 'evaluation triggered as descendant of run_training', 
                 predecessors=[(train_job.repo_info[RepoInfoKey.NAME], train_job.repo_info[RepoInfoKey.VERSION])], run_descendants=True)
         
             
@@ -1351,7 +1354,7 @@ class MLRepo:
         if len(measures) == 0: # if no measures are specified, use all from configuration
             measures_to_run = measure_config.measures
         else:
-            for k, v in measure.items():
+            for k, v in measures.items():
                 measures_to_run[k] = v
         job_ids = []
         for n, v in datasets_.items():
