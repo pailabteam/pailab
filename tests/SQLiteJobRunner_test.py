@@ -4,6 +4,7 @@ import numpy as np
 import shutil
 import pailab.repo as repo
 import pailab.repo_objects as repo_objects
+from pailab.repo_objects import RepoInfo, RepoObject
 from pailab import RepoInfoKey, MeasureConfiguration, MLObjectType, RawData, DataSet, repo_object_init, JobState
 from pailab.repo_store import RepoStore
 
@@ -17,9 +18,10 @@ import logging
 # logging.basicConfig(level=logging.DEBUG)
 
 
-class TestClass:
+class TestClass(RepoObject):
     @repo_object_init()
-    def __init__(self, a, b):
+    def __init__(self, a, b, repo_info=RepoInfo()):
+        super(TestClass, self).__init__(repo_info)
         self.a = a
         self._b = b
 

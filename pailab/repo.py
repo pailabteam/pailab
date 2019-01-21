@@ -14,7 +14,7 @@ from deepdiff import DeepDiff
 import logging
 import pailab.repo_objects as repo_objects
 from pailab.repo_objects import RepoInfoKey, DataSet, MeasureConfiguration
-from pailab.repo_objects import repo_object_init  # pylint: disable=E0401
+from pailab.repo_objects import repo_object_init, RepoInfo, RepoObject  # pylint: disable=E0401
 import pailab.repo_store as repo_store
 from pailab.repo_store_factory import RepoStoreFactory
 logger = logging.getLogger(__name__)
@@ -74,11 +74,11 @@ class MLObjectType(Enum):
         return category_name
 
 
-class Mapping:
+class Mapping(RepoObject):
     """Provides a mapping from MLObjectType to all objects in the repo belonging to this type
     """
-    @repo_object_init()
-    def __init__(self, **kwargs):
+    def __init__(self, repo_info = RepoInfo(), **kwargs):
+        super(Mapping, self).__init__(repo_info)
         logging.debug('Initializing map with kwargs: ' + str(kwargs))
         for key in MLObjectType:
             setattr(self, key.value, [])
@@ -164,9 +164,10 @@ def _add_modification_info(repo_obj, *args):
     
 # region Jobs
 
-class Job(abc.ABC):
+class Job(RepoObject, abc.ABC):
 
-    def __init__(self):
+    def __init__(self, repo_info):
+        super(Job, self).__init__(repo_info)
         self.state = 'created'
         self.started = 'not yet started'
         self.finished = 'not yet finished'
@@ -269,10 +270,10 @@ class Job(abc.ABC):
 class EvalJob(Job):
     """definition of a model evaluation job
     """
-    @repo_object_init()
     def __init__(self, model, data, user, eval_function_version=repo_store.RepoStore.LAST_VERSION,
-                model_version=repo_store.RepoStore.LAST_VERSION, data_version=repo_store.RepoStore.LAST_VERSION):
-        super(EvalJob, self).__init__()
+                model_version=repo_store.RepoStore.LAST_VERSION, data_version=repo_store.RepoStore.LAST_VERSION,
+                repo_info = RepoInfo()):
+        super(EvalJob, self).__init__(repo_info)
         self.model = model
         self.data = data
         self.user = user
@@ -319,8 +320,8 @@ class TrainingJob(Job):
     @repo_object_init()
     def __init__(self, model, user, training_function_version=repo_store.RepoStore.LAST_VERSION, model_version=repo_store.RepoStore.LAST_VERSION,
                 training_data_version=repo_store.RepoStore.LAST_VERSION, training_param_version=repo_store.RepoStore.LAST_VERSION,
-                 model_param_version=repo_store.RepoStore.LAST_VERSION):
-        super(TrainingJob, self).__init__()
+                 model_param_version=repo_store.RepoStore.LAST_VERSION, repo_info = RepoInfo()):
+        super(TrainingJob, self).__init__(repo_info)
         self.model = model
         self.user = user
         self.training_function_version = training_function_version
@@ -377,7 +378,7 @@ class TrainingJob(Job):
 class MeasureJob(Job):
     @repo_object_init()
     def __init__(self, result_name, measure_type, coordinates, data_name, model_name, data_version=repo_store.RepoStore.LAST_VERSION,
-                model_version=repo_store.RepoStore.LAST_VERSION):
+                model_version=repo_store.RepoStore.LAST_VERSION, repo_info = RepoInfo()):
         """Constructor
 
         Arguments:
@@ -390,7 +391,7 @@ class MeasureJob(Job):
             data_version {versionnumber} -- version of data to be used (default: {repo_store.RepoStore.LAST_VERSION})
             model_version {versionnumber} -- version of model to be used (default: {repo_store.RepoStore.LAST_VERSION})
         """
-        super(MeasureJob, self).__init__()
+        super(MeasureJob, self).__init__(repo_info)
         self.measure_type = measure_type
         self.coordinates = coordinates
         self.model_name = model_name
@@ -493,7 +494,7 @@ class NamingConventions:
     @staticmethod
     def _get_object_name(name):
         if not isinstance(name, str):
-            return eval_data.repo_info[RepoInfoKey.NAME]
+            return name.repo_info[RepoInfoKey.NAME]
         return name
 
     @staticmethod
@@ -557,7 +558,7 @@ class RepoObjectItem:
                     self.obj = self._repo.get(self._name, version, full_object, modifier_versions)
                 except:
                     pass
-            for k, v in self.__dict__.items():
+            for v in self.__dict__.values():
                 if hasattr(v,'load'):
                     v.load(version, full_object, modifier_versions, containing_str)
 
@@ -579,7 +580,7 @@ class RepoObjectItem:
                         self.obj, message=commit_message)
                     self.obj = self._repo.get(self._name, version=version)
                 result = {self._name: diff}
-        for k, v in self.__dict__.items():
+        for v in self.__dict__.values():
             if hasattr(v, 'modifications'):
                 tmp = v.modifications(commit, commit_message)
                 if tmp is not None:
@@ -606,7 +607,7 @@ class RepoObjectItem:
             result = []
             if containing_str in self._name:
                 result.append(self._name)
-            for k, v in self.__dict__.items():
+            for v in self.__dict__.values():
                 if isinstance(v, RepoObjectItem):
                     d = v(containing_str)
                     if isinstance(d, str):
@@ -744,6 +745,7 @@ class TrainingDataCollection(RepoObjectItem):
         setattr(self, name, item)
 
 class TestDataCollection(RepoObjectItem):
+    @staticmethod
     def __get_name_from_path(path):
         return path.split('/')[-1]
     
@@ -1177,10 +1179,12 @@ class MLRepo:
             return tmp[0]
         return tmp
 
+    @staticmethod
     def get_calibrated_model_name(model_name):
         tmp = model_name.split('/')
         return tmp[0] + '/model'
-
+    
+    @staticmethod
     def get_eval_name( model, data ):
         """Return name of the object containing evaluation results
         
@@ -1255,7 +1259,7 @@ class MLRepo:
         logging.info('Training job ' + train_job.repo_info[RepoInfoKey.NAME]+ ', version: ' 
                 + str(train_job.repo_info[RepoInfoKey.VERSION]) + ' added to jobrunner.')
         if run_descendants:
-            eval_jobs = self.run_evaluation(model + '/model', 'evaluation triggered as descendant of run_training', 
+            self.run_evaluation(model + '/model', 'evaluation triggered as descendant of run_training', 
                 predecessors=[(train_job.repo_info[RepoInfoKey.NAME], train_job.repo_info[RepoInfoKey.VERSION])], run_descendants=True)
         
             
@@ -1350,7 +1354,7 @@ class MLRepo:
         if len(measures) == 0: # if no measures are specified, use all from configuration
             measures_to_run = measure_config.measures
         else:
-            for k, v in measure.items():
+            for k, v in measures.items():
                 measures_to_run[k] = v
         job_ids = []
         for n, v in datasets_.items():

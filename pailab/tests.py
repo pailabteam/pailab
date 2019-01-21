@@ -1,6 +1,7 @@
 import abc
 from collections import defaultdict
 import logging
+from pailab.repo_objects import RepoInfo, RepoObject
 from pailab import repo_object_init, MLRepo, RepoInfoKey, MLObjectType, MeasureConfiguration
 from pailab.repo_store import LAST_VERSION, FIRST_VERSION
 from pailab.repo import Job, NamingConventions, _add_modification_info
@@ -8,7 +9,7 @@ from pailab.repo import Job, NamingConventions, _add_modification_info
 logger = logging.getLogger(__name__)
 
 
-class TestDefinition(abc.ABC):
+class TestDefinition(RepoObject, abc.ABC):
     """Abstract base class for all test definitions.
 
     A test definition defines the framework such as models and data the tests are applied to. It also provides a create method
@@ -17,7 +18,7 @@ class TestDefinition(abc.ABC):
     """
 
     @repo_object_init()
-    def __init__(self, models=None, data=None, labels=[]):
+    def __init__(self, models=None, data=None, labels=[], repo_info=RepoInfo()):
         self.models = models
         self.data = data
         self.labels = None
@@ -95,8 +96,8 @@ class TestDefinition(abc.ABC):
 
 
 class Test(Job):
-    def __init__(self, model, data, test_definition_version=LAST_VERSION, model_version=LAST_VERSION, data_version=LAST_VERSION):
-        super(Test, self).__init__()
+    def __init__(self, model, data, test_definition_version=LAST_VERSION, model_version=LAST_VERSION, data_version=LAST_VERSION, repo_info=RepoInfo()):
+        super(Test, self).__init__(repo_info)
         self.test_definition = None
         self.test_definition_version = test_definition_version
         self.model_version = model_version
@@ -122,7 +123,7 @@ class Test(Job):
 
 class RegressionTestDefinition(TestDefinition):
     @repo_object_init()
-    def __init__(self, reference='prod', models=None, data=None, labels=None, measures=None,  tol=1e-3):
+    def __init__(self, reference='prod', models=None, data=None, labels=None, measures=None,  tol=1e-3, repo_info=RepoInfo()):
         """Regression test definition
 
         It defines a test where measures are compared against values from a reference model. The test fails if the new measure exceeds the reference measure
@@ -136,7 +137,8 @@ class RegressionTestDefinition(TestDefinition):
             tol ([type], optional): Defaults to 1e-3. Tolerance, if new_value-ref_value < tol, the test fails.
         """
 
-        super(RegressionTestDefinition, self).__init__(models, data, labels)
+        super(RegressionTestDefinition, self).__init__(
+            models, data, labels, repo_info=repo_info)
         self.measures = measures
         self.reference = reference
         self.tol = tol
@@ -147,9 +149,10 @@ class RegressionTestDefinition(TestDefinition):
 
 class RegressionTest(Test):
     @repo_object_init()
-    def __init__(self,  model, data, test_definition_version=LAST_VERSION, model_version=LAST_VERSION, data_version=LAST_VERSION):
+    def __init__(self,  model, data, test_definition_version=LAST_VERSION, model_version=LAST_VERSION, data_version=LAST_VERSION,
+                 repo_info=RepoInfo()):
         super(RegressionTest, self).__init__(
-            model, data, model_version, data_version)
+            model, data, model_version, data_version, repo_info=repo_info)
 
     def _run_test(self, ml_repo: MLRepo, jobid):
         regression_test = ml_repo.get(
