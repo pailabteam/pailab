@@ -423,15 +423,22 @@ class MeasureConfiguration:
             self.measures[MeasureConfiguration._create_name((measure,coords))] = (measure,coords)
         else:
             self.measures[MeasureConfiguration._create_name(measure)] = (measure,[MeasureConfiguration._ALL_COORDINATES])
+    
+    @staticmethod
+    def get_name(measure_def):
+        return MeasureConfiguration._create_name(measure_def)
+
     #region private
     @staticmethod
     def _create_name(measure_def):
         if isinstance(measure_def, tuple):
             name = measure_def[0]
             if isinstance(measure_def[1], list):
-                name = name +'(' + str(list) + ')'
+                separator = '_'
+                name = name +'_' + separator.join(measure_def[1])
             if isinstance(measure_def[1], str):
-                name = name + '(' + measure_def[1] + ')'
+                if not measure_def[1] == MeasureConfiguration._ALL_COORDINATES:
+                    name = name + '_' + measure_def[1]
             return name
         if isinstance(measure_def, str):
             return measure_def

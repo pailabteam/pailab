@@ -3,7 +3,9 @@ import os
 import numpy as np
 
 from pailab import RepoInfoKey, MLObjectType, repo_object_init, RepoInfoKey, DataSet, RawData, MLRepo  # pylint: disable=E0401
+from pailab.repo import NamingConventions
 from pailab.repo_objects import RepoInfo
+import pailab.tests as ml_tests
 import pailab.repo_objects as repo_objects
 import pailab.memory_handler as memory_handler
 import pailab.repo_store as repo_store
@@ -139,7 +141,7 @@ def eval_func_test(model, data):
         model {} -- dummy model, not used
         data {} -- dummy data, not used
     '''
-    return np.zeros([10,1])
+    return np.zeros([data.shape[0],1])
 
 def train_func_test(model_param, training_param, data):
     '''Dummy model training function for testing
@@ -166,9 +168,9 @@ class RepoTest(unittest.TestCase):
         self.repository.add(measure_config, category=MLObjectType.MEASURE_CONFIGURATION, message = 'adding measure configuration')
 
     def _add_calibrated_model(self):
-        dummy_model = TestClass(1,2, repo_info = {repo_objects.RepoInfoKey.NAME.value:'dummy_model'}) # pylint: disable=E1123
-        self.repository.add(dummy_model, message = 'add dummy model', category=MLObjectType.CALIBRATED_MODEL)
-
+        self.repository.run_training()
+        self.repository.set_label('prod')
+        
     def setUp(self):
         '''Setup a complete ML repo with two different test data objetcs, training data, model definition etc.
         '''
@@ -193,16 +195,17 @@ class RepoTest(unittest.TestCase):
                                     repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_2',  repo_objects.RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA})
         self.repository.add([training_data, test_data_1, test_data_2])
 
-        self.repository.add_eval_function(eval_func_test)
-        self.repository.add_training_function(train_func_test)
+        self.repository.add_eval_function(eval_func_test, 'eval_func')
+        self.repository.add_training_function(train_func_test, 'train_func')
         self.repository.add(TestClass(1,2, repo_info={repo_objects.RepoInfoKey.NAME.value: 'training_param', # pylint: disable=E1123
                                             repo_objects.RepoInfoKey.CATEGORY: MLObjectType.TRAINING_PARAM}))
         ## setup dummy model definition
-        self.repository.add_model('model')
+        self.repository.add_model('model', 'eval_func', 'train_func')
         # setup measure configuration
         self._setup_measure_config()
         # add dummy calibrated model
         self._add_calibrated_model()
+        
 
     def test_adding_training_data_exception(self):
         '''Tests if adding new training data leads to an exception
@@ -293,8 +296,8 @@ class RepoTest(unittest.TestCase):
         self.repository.add(training_param)
         self.repository.add_model('model1')
         model = self.repository.get('model1')
-        self.assertEqual(model.eval_function, 'repo_test.eval_func_test')
-        self.assertEqual(model.training_function, 'repo_test.train_func_test')
+        self.assertEqual(model.eval_function, 'eval_func')
+        self.assertEqual(model.training_function, 'train_func')
         self.assertEqual(model.training_param, 'training_param')
         self.assertEqual(model.model_param, 'model_param')
         
@@ -352,6 +355,16 @@ class RepoTest(unittest.TestCase):
         #self.assertEqual(commits[2].objects['repo_mapping'], 2)
         
         
+    def test_repo_RegressionTest(self):
+        regression_test_def = ml_tests.RegressionTestDefinition(repo_info = {RepoInfoKey.NAME: 'regression_test', RepoInfoKey.CATEGORY:MLObjectType.TEST_DEFINITION.name})
+        tests = regression_test_def.create(self.repository)
+        self.assertEqual(len(tests), 3)
+        self.repository.add(regression_test_def)
+        self.repository.run_evaluation()
+        self.repository.run_measures()
+        self.repository.run_tests()
+
+
 import shutil
 class NumpyHDFStorageTest(unittest.TestCase):
     def setUp(self):

@@ -13,7 +13,7 @@ from copy import deepcopy
 from deepdiff import DeepDiff
 import logging
 import pailab.repo_objects as repo_objects
-from pailab.repo_objects import RepoInfoKey, DataSet
+from pailab.repo_objects import RepoInfoKey, DataSet, MeasureConfiguration
 from pailab.repo_objects import repo_object_init  # pylint: disable=E0401
 import pailab.repo_store as repo_store
 from pailab.repo_store_factory import RepoStoreFactory
@@ -28,7 +28,8 @@ class MLObjectType(Enum):
     RAW_DATA = 'RAW_DATA'
     TRAINING_DATA = 'TRAINING_DATA'
     TEST_DATA = 'TEST_DATA'
-    TEST_RESULT = 'TEST_RESULT'
+    TEST = 'TEST'
+    TEST_DEFINITION = 'TEST_DEFINITION'
     MODEL_PARAM = 'MODEL_PARAM'
     TRAINING_PARAM = 'TRAINING_PARAM'
     TRAINING_FUNCTION = 'TRAINING_FUNCTION'
@@ -188,19 +189,19 @@ class Job(abc.ABC):
                 return self.versions[name]
             return orig_version
 
-        def get(self, obj_name, obj_version=None, full_object = False,
+        def get(self, name, version=None, full_object = False,
                 modifier_versions=None, obj_fields=None,  repo_info_fields=None):
-            new_v = self._get_version(obj_name, obj_version)
+            new_v = self._get_version(name, version)
             m_v = None
             if modifier_versions is not None:
                 m_v = deepcopy(modifier_versions)
                 for k,v in m_v.items():
                     m_v[k] = self._get_version(k,v)
-            obj = self.ml_repo.get(obj_name, version=new_v, full_object=full_object,
+            obj = self.ml_repo.get(name, version=new_v, full_object=full_object,
                 modifier_versions=m_v, obj_fields=obj_fields,  repo_info_fields=repo_info_fields)
             if isinstance(obj, list):
                 raise Exception("More than one object found meeting the conditions.")
-            self.modification_info[obj_name] = obj.repo_info[RepoInfoKey.VERSION]
+            self.modification_info[name] = obj.repo_info[RepoInfoKey.VERSION]
             return obj
 
         def add(self, obj, message , category = None):
@@ -214,6 +215,9 @@ class Job(abc.ABC):
         def get_training_data(self, obj_version, full_object):
             tmp = self.ml_repo.get_training_data(obj_version, full_object = False) # TODO: replace get_trainign data by get using the training data name
             return self.get(tmp.repo_info[RepoInfoKey.NAME], obj_version, full_object=full_object)    
+        
+        def get_names(self, ml_obj_type):
+            return self.ml_repo.get_names(ml_obj_type)
             
     """Abstract class defining the interfaces needed for a job to be used in the JobRunner
 
@@ -406,21 +410,21 @@ class MeasureJob(Job):
         #if len(self.coordinates) == 0 or repo_objects.MeasureConfiguration._ALL_COORDINATES in self.coordinates:
         #    return target.y_data, eval_data.x_data
         columns = []
+        measure_name = MeasureConfiguration.get_name(self.measure_type)
         if not repo_objects.MeasureConfiguration._ALL_COORDINATES in self.coordinates:
+            measure_name = MeasureConfiguration.get_name((self.measure_type, self.coordinates))
             for x in self.coordinates:
                 columns.append(target.y_coord_names.index(x))
         if len(columns) == 0:
             v = self._compute(target.y_data, eval_data.x_data)
         else:
             v = self._compute(target.y_data[:,columns], eval_data.x_data[:,columns])
-        result_name = str(NamingConventions.Measure(eval_data_name, measure_type = self.measure_type))
-        if not repo_objects.MeasureConfiguration._ALL_COORDINATES in self.coordinates:
-            for x in self.coordinates:
-                result_name = result_name + '_' + x
+        result_name = str(NamingConventions.Measure(eval_data_name, measure_type = measure_name))
         result = repo_objects.Measure( v, 
                                 repo_info = {RepoInfoKey.NAME : result_name, RepoInfoKey.CATEGORY: MLObjectType.MEASURE.value})
         _add_modification_info(result, eval_data, target)
         logging.debug('Add result ' + result_name)
+
         repo.add(result, 'computing  measure ' + self.measure_type + ' on data ' + self.data_name)
         logging.info('Finished measure job ' + self.repo_info.name)
         
@@ -521,6 +525,7 @@ class NamingConventions:
     Model = Name('model', '')
     ModelParam = Name('model/*', 'model_param')
     TrainingParam = Name('model/*', 'training_param')
+    Test = Name('model/*/test_name/data', 'test')
 
 #region collections and items
 
@@ -1361,17 +1366,25 @@ class MLRepo:
                     + str(measure_job.repo_info[RepoInfoKey.VERSION]) + ' added to jobrunner.')
         return job_ids
 
-    def run_tests(self, message='', model_version=repo_store.RepoStore.LAST_VERSION, tests={}, job_runner=None, predecessors = []):
+    def run_tests(self, test_definitions = None, predecessors = []):
         """ Run tests for a specific model version.
 
-            :param message: Commit message for this operation.
-            :param model_version: Version or label of model for which the tests are executed.
-            :param tests: Dictionary of tests (names and version numbers) run. Default is all tests on latest version. 
-            :param job_runner: job runner executing the tests. Default is single threaded local jobrunner.
-
+            :param test_definition (list/set): List or set of names of the test definitions which shall b executed. If None, all test definitions are executed.
+        
             :return ticket number of job
         """
-        pass
+        test_defs = test_definitions
+        if test_defs is None:
+            test_defs = self._ml_repo.get_names(MLObjectType.TEST_DEFINITION.value)
+        job_ids = []
+        for t in test_defs:
+            tmp = self.get(t)
+            tests = tmp.create(self)
+            for tt in tests:
+                self.add(tt, category = MLObjectType.TEST)
+                self._job_runner.add(tt.repo_info.name, tt.repo_info.version, self._user)
+                job_ids.append((tt.repo_info.name, tt.repo_info.version))
+        return job_ids
 
     def set_label(self, label_name, model = None, model_version = repo_store.RepoStore.LAST_VERSION, message=''):
         """ Label a certain model version.
