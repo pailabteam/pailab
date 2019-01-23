@@ -504,7 +504,7 @@ class MeasureConfiguration(RepoObject):
         if not coords is None:
             self.measures[MeasureConfiguration._create_name((measure,coords))] = (measure,coords)
         else:
-            self.measures[MeasureConfiguration._create_name(measure)] = (measure,[MeasureConfiguration._ALL_COORDINATES])
+            self.measures[MeasureConfiguration._create_name(measure)] = (measure, MeasureConfiguration._ALL_COORDINATES)
     
     @staticmethod
     def get_name(measure_def):
