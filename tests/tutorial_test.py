@@ -45,12 +45,15 @@ class TutorialTest(unittest.TestCase):
         ml_repo._job_runner = job_runner
         # end creating new repository
 
+        from pailab.tools import MLTree
+        MLTree.add_tree(ml_repo)
+
         # add RawData
         # A convenient way to add RawData is simply to use the method add on the raw_data collection.
         # This method just takes a pandas dataframe and the specification, which columns belong to the input
         # and which to the targets.
         data = pd.read_csv('./examples/boston_housing/housing.csv')
-        ml_repo.raw_data.add('boston_housing', data, input_variables=[
+        ml_repo.tree.raw_data.add('boston_housing', data, input_variables=[
             'RM', 'LSTAT', 'PTRATIO'], target_variables=['MEDV'])
         # end adding RawData
 
