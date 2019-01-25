@@ -200,8 +200,10 @@ class Job(RepoObject, abc.ABC):
             obj = self.ml_repo.get(name, version=new_v, full_object=full_object,
                 modifier_versions=m_v, obj_fields=obj_fields,  repo_info_fields=repo_info_fields)
             if isinstance(obj, list):
-                raise Exception("More than one object found meeting the conditions.")
+                raise Exception('More than one object with name ' + name + ' found meeting the conditions.')
             self.modification_info[name] = obj.repo_info[RepoInfoKey.VERSION]
+            for k,v in obj.repo_info.modification_info.items():
+                self.modification_info[k] = v
             return obj
 
         def add(self, obj, message , category = None):
@@ -525,7 +527,7 @@ class NamingConventions:
     Model = Name('model', '')
     ModelParam = Name('model/*', 'model_param')
     TrainingParam = Name('model/*', 'training_param')
-    Test = Name('model/*/test_name/data', 'test')
+    Test = Name('model/*/test_name/data', 'tests')
 
 
    

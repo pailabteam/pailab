@@ -76,7 +76,7 @@ class TestDefinition(RepoObject, abc.ABC):
                     tmp = self._create(model, d, version, version)
                     tmp.test_definition = self.repo_info.name
                     tmp.repo_info[RepoInfoKey.NAME] = str(
-                        NamingConventions.Test(model=model, test_name=self.repo_info[RepoInfoKey.NAME],
+                        NamingConventions.Test(model=NamingConventions.get_model_from_name(model), test_name=self.repo_info[RepoInfoKey.NAME],
                                                data=d))
                     result.append(tmp)
         return result
@@ -120,6 +120,18 @@ class Test(Job):
     def _run_test(self, ml_repo: MLRepo, jobid):
         pass
 
+    @abc.abstractmethod
+    def _check(self, ml_repo: MLRepo):
+        """Checks if current test is up-to-date and successfully finished in repo.
+
+        Args:
+            ml_repo (MLRepo): repository
+
+        Returns:
+            None or string with description. 
+        """
+        pass
+
 
 class RegressionTestDefinition(TestDefinition):
     @repo_object_init()
@@ -142,6 +154,7 @@ class RegressionTestDefinition(TestDefinition):
         self.measures = measures
         self.reference = reference
         self.tol = tol
+        self.repo_info.category = MLObjectType.TEST_DEFINITION
 
     def _create(self, model, data, model_version, data_version):
         return RegressionTest(model, data, self.repo_info[RepoInfoKey.VERSION], model_version, data_version, repo_info={})
@@ -157,7 +170,7 @@ class RegressionTest(Test):
     def _run_test(self, ml_repo: MLRepo, jobid):
         regression_test = ml_repo.get(
             self.test_definition, version=LAST_VERSION)
-        label = ml_repo.get(regression_test.reference)
+        label = ml_repo.get(regression_test.reference, version=LAST_VERSION)
         result = {}
         measure_types = regression_test.measures
         if measure_types is None:
@@ -165,7 +178,7 @@ class RegressionTest(Test):
             if len(tmp) == 0:
                 raise Exception(
                     'No regression test possible since no measure defined.')
-            m_config = ml_repo.get(tmp[0])
+            m_config = ml_repo.get(tmp[0], version=LAST_VERSION)
             measure_types = [MeasureConfiguration.get_name(
                 x) for k, x in m_config.measures.items()]
         for measure_type in measure_types:
@@ -187,3 +200,33 @@ class RegressionTest(Test):
                 result[measure_type] = {
                     'reference_value': reference_value.value, 'value': measure.value}
         return result
+
+    def _check(self, ml_repo: MLRepo):
+        # check if test is based on latest test definition
+        regression_test = ml_repo.get(
+            self.test_definition, version=LAST_VERSION)
+        if regression_test.repo_info.version != self.repo_info.modification_info[self.test_definition]:
+            return 'Test is not based on latest test definition, latest version: ' + regression_test.repo_info.version + ', version used for test: ' + self.modification_info[self.test_definition]
+        # check if measure config did not change
+        if regression_test.measures is None:
+            tmp = ml_repo.get_names(MLObjectType.MEASURE_CONFIGURATION)
+            if len(tmp) == 0:
+                raise Exception(
+                    'No check possible since no measure defined.')
+            m_config = ml_repo.get(tmp[0], version=LAST_VERSION)
+            if m_config.repo_info.version != self.repo_info.modification_info[m_config.repo_info.name]:
+                return 'Test is not based on latest measure configuration, latest version: ' + m_config.repo_info.version + ', version used for test: ' + self.modification_info[m_config.repo_info.name]
+        #  check if ref model did not change
+        label = ml_repo.get(regression_test.reference, version=LAST_VERSION)
+        ref_model = str(NamingConventions.CalibratedModel(label.name))
+        ref_model_version = label.version
+        if not ref_model in self.repo_info.modification_info.keys():
+            return 'Test on different reference model.'
+        if not ref_model_version == self.repo_info.modification_info[ref_model]:
+            return 'Test on old reference model.'
+        # check if test was on latest data version
+        if not self.data in self.repo_info.modification_info.keys():
+            return 'Data of test has changed since last test.'
+        if not self.data_version == self.repo_info.modification_info[self.data]:
+            return 'Data of test has changed since last test.'
+        return None
