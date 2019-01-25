@@ -11,6 +11,13 @@ logger = logging.getLogger(__name__)
 #region collections and items
 
    
+def get_test_summary(repo:MLRepo):
+    """Return test summary for all labeled models and all latest models
+    
+    Args:
+        repo (MLRepo): repo
+    """
+    pass
 
 class RepoObjectItem:
 
@@ -265,7 +272,19 @@ class MeasureCollection(RepoObjectItem):
             items[-1] = MeasureItem(n, ml_repo)
             self._set(path, items)
             #items[-2] = MeasuresOnDataItem
-            
+
+class TestCollection(RepoObjectItem):
+    def __init__(self, name, ml_repo, model_name):
+        super(TestCollection, self).__init__('tests', ml_repo)
+        names = ml_repo.get_names(MLObjectType.TEST)
+        for n in names:
+            path = n.split('/')[2:]
+            items = [None] * len(path)
+            for i in range(len(items)-1):
+                items[i] = RepoObjectItem(path[i], ml_repo)
+            items[-1] = RepoObjectItem(n, ml_repo)
+            self._set(path, items)
+
 class JobCollection(RepoObjectItem):
     def __init__(self, name, ml_repo, model_name):
         super(JobCollection, self).__init__('jobs', ml_repo)
@@ -286,6 +305,7 @@ class ModelItem(RepoObjectItem):
         self.model = RepoObjectItem(name + '/model', ml_repo)
         self.eval = RepoObjectItem(name + '/eval', ml_repo)
         self.model_param = RepoObjectItem(name + '/model_param', ml_repo)
+        self.tests = TestCollection(name + '/tests', ml_repo, name)
         self.measures = MeasureCollection(name+ '/measure', ml_repo, name)
         self.jobs = JobCollection(name+'/jobs', ml_repo, name)
         if ml_repo._object_exists(name+'/training_stat'):
