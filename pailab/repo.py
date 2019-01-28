@@ -836,7 +836,7 @@ class MLRepo:
         logging.debug('Getting ' + name + ', version ' + str(version))
         repo_dict = self._ml_repo.get(name, version, modifier_versions, obj_fields, repo_info_fields)
         if len(repo_dict) == 0:
-            logger.error('No object found with name ' +  name + ' and version ' + str(version) + 'modifier_versions: ' + str(modifier_versions))
+            logger.error('No object found with name ' +  name + ' and version ' + str(version) + ', modifier_versions: ' + str(modifier_versions))
             raise Exception('No object found with name ' +  name + ' and version ' + str(version))
         
         tmp = []
