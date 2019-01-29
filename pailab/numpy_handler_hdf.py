@@ -79,8 +79,16 @@ class NumpyHDFStorage(NumpyStore):
     @trace
     def append(self, name, version_old, version_new, numpy_dict):
         with h5py.File(self.main_dir + '/' + name + '.hdf5', 'a') as f:
-            ref_grp = f.create_group('/ref/' + str(version_new) + '/')
-            grp = f.create_group('/data/' + str(version_new) + '/')
+            logging.debug('Appending data ' + name +
+                          ' in hdf5 with version ' + str(version_new))
+
+            try:
+                ref_grp = f['/ref/' + str(version_new) + '/']
+                grp = f['/data/' + str(version_new) + '/']
+            except:
+                ref_grp = f.create_group('/ref/' + str(version_new) + '/')
+                grp = f.create_group('/data/' + str(version_new) + '/')
+
             grp_previous = f['/data/' + str(version_old) + '/']
             for k, v in numpy_dict.items():
                 data = grp_previous[k]
@@ -143,4 +151,3 @@ class NumpyHDFStorage(NumpyStore):
         except:
             pass
         return result
-
