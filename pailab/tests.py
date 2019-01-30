@@ -188,8 +188,10 @@ class RegressionTest(Test):
                                   modifier_versions={
                                       str(NamingConventions.CalibratedModel(self.model)): self.model_version,
                                       self.data: self.data_version
-                                  }
+                                  }, throw_error_not_exist=False, throw_error_not_unique=True
                                   )
+            if measure == []:
+                continue
             measure_name = str(NamingConventions.Measure(
                 {'model': label.name.split('/')[0], 'data': self.data, 'measure_type': measure_type}))
             reference_value = ml_repo.get(measure_name,
