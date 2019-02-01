@@ -188,10 +188,10 @@ class RawDataCollection(RepoObjectItem):
         path = 'raw_data/' + name
       
         if target_variables is not None:
-            raw_data = repo_objects.RawData(data.as_matrix(columns=input_variables), input_variables, data.as_matrix(columns=target_variables), 
+            raw_data = repo_objects.RawData(data.loc[:, input_variables].values, input_variables, data.loc[:, target_variables].values, 
                 target_variables, repo_info = {RepoInfoKey.NAME: path})
         else:
-            raw_data = repo_objects.RawData(data.as_matrix(), list(data), repo_info = {RepoInfoKey.NAME: path})
+            raw_data = repo_objects.RawData(data.values, list(data), repo_info = {RepoInfoKey.NAME: path})
         v = self._repo.add(raw_data, 'data ' + path + ' added to repository' , category = MLObjectType.RAW_DATA)
         obj = self._repo.get(path, version=v, full_object = False)
         setattr(self, name, RawDataItem(path, self._repo, obj))
