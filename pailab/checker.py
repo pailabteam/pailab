@@ -77,10 +77,10 @@ class Model:
             latest_data_version = repo_store.get_latest_version(data)
             eval_name = str(NamingConventions.EvalData(
                 data=data, model=model_main_name))
-            try:
-                repo.get(eval_name, version=None, modifier_versions={
-                    model_name: model_version, data: latest_data_version})
-            except:
+            tmp = repo.get(eval_name, version=None, modifier_versions={
+                model_name: model_version, data: latest_data_version}, 
+                throw_error_not_exist=False, throw_error_not_unique=False)
+            if tmp == []:
                 eval_check_result[data] = latest_data_version
                 if correct:
                     repo.run_evaluation(model_name, message='automatically corrected from _check_model',
@@ -99,10 +99,9 @@ class Model:
                     for data in data_names:
                         tmp = str(NamingConventions.Measure(
                             str(NamingConventions.EvalData(data=data, model=model_main_name)), measure_type=measure_name))
-                        try:
-                            obj = repo.get(tmp, version=None, modifier_versions={
-                                model_name: model_version})
-                        except:
+                        obj = repo.get(tmp, version=None, modifier_versions={
+                            model_name: model_version}, throw_error_not_exist=False, throw_error_not_unique=False)
+                        if obj == []:
                             measure_check_result.add(tmp)
                             # we do only have to correct if the underlying evaluation data has not been corrected (then predecessors are included)
                             if correct and not data in data_corrected:
@@ -279,7 +278,53 @@ class Repo:
         if integrity:
             return Repo.__integrity(repo)
 
-    
+class Tests:
+    @staticmethod
+    def __check_test(repo: MLRepo, model, model_version, test_definition):
+        # first create from definition the test for the given model to gt the test name
+        test_definition.labels = None
+        test_definition.models = {model: model_version}
+        tests = test_definition.create(repo) #create tests to get the names to search for them
+        results = {}
+        for t in tests:
+            test = repo.get(t.repo_info.name, version = None, modifier_versions={model: model_version},
+                            throw_error_not_exist=False, throw_error_not_unique=False)
+            if test == []:
+                results[t.repo_info.name] = 'Test missing'
+                continue             
+            if isinstance(test, list): # search test 
+                t = test[0]
+                for k in range(1, len(test)):
+                    if test[k].repo_info.commit_date > t.repo_info.commit_date:
+                        t = test[k] 
+                test = t
+            result = test._check(repo)
+            if not result is None:
+                results[t.repo_info.name] = result
+        return results
+
+    @staticmethod
+    def run(repo: MLRepo):
+        test_definitions = repo.get_names(MLObjectType.TEST_DEFINITION)
+        labels = repo.get_names(MLObjectType.LABEL)
+        results = {}
+        for l in labels:
+            label = repo.get(l)
+            for t in test_definitions:
+                test_definition = repo.get(t)
+                model = str(NamingConventions.CalibratedModel(label.name))
+                result = Tests.__check_test(repo, model, label.version, test_definition)
+                if len(result) > 0:
+                    results[label.repo_info.name] = result
+        models = repo.get_names(MLObjectType.CALIBRATED_MODEL)
+        for model in models: #check latest models
+            for t in test_definitions:
+                test_definition = repo.get(t)
+                result = Tests.__check_test(repo, model, RepoStore.LAST_VERSION, test_definition)
+                if len(result) > 0:
+                    results[model + ':latest'] = result
+        return results
+
 def run(repo: MLRepo, config : dict = None):
     
     if config is None:

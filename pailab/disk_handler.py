@@ -28,6 +28,7 @@ def execute(cursor, cmd):
     logger.info('Executing: ' + cmd)
     return cursor.execute(cmd)
 
+
 class RepoObjectDiskStorage(RepoStore):
 
     # region private
@@ -37,10 +38,6 @@ class RepoObjectDiskStorage(RepoStore):
         'MLObjectType': repo.MLObjectType,
         # ...
     }
-
- 
-    
-
 
     # endregion
 
@@ -80,7 +77,7 @@ class RepoObjectDiskStorage(RepoStore):
 
     # endregion
 
-    def __init__(self, folder, file_format = 'pickle'):
+    def __init__(self, folder, file_format='pickle'):
         """Constructor
 
         Args:
@@ -94,12 +91,11 @@ class RepoObjectDiskStorage(RepoStore):
         self._file_format = file_format
         if self._file_format == 'pickle':
             import pickle
-            
+
             def __pickle_save(file_prefix, obj):
                 with open(file_prefix + '.pck', 'wb') as f:
                     pickle.dump(obj, f)
 
-            
             def __pickle_load(file_prefix):
                 with open(file_prefix+'.pck', 'rb') as f:
                     return pickle.load(f)
@@ -108,6 +104,7 @@ class RepoObjectDiskStorage(RepoStore):
             self._load_function = __pickle_load
         elif self._file_format == 'json':
             import json
+
             class CustomEncoder(json.JSONEncoder):
                 def default(self, obj):
                     if type(obj) in RepoObjectDiskStorage.PUBLIC_ENUMS.values():
@@ -116,9 +113,11 @@ class RepoObjectDiskStorage(RepoStore):
                         if isinstance(obj, datetime):
                             return {"__datetime__": str(obj)}
                     return json.JSONEncoder.default(self, obj)
+
             class CustomDecoder(json.JSONDecoder):
                 def __init__(self, *args, **kwargs):
-                    json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
+                    json.JSONDecoder.__init__(
+                        self, object_hook=self.object_hook, *args, **kwargs)
 
                 def object_hook(self, obj):
                     if "__enum__" in obj:
@@ -126,17 +125,17 @@ class RepoObjectDiskStorage(RepoStore):
                         return getattr(RepoObjectDiskStorage.PUBLIC_ENUMS[name], member)
                     if "__datetime__" in obj:
                         return datetime.strptime(obj["__datetime__"], 'YYYY-MM-DD HH:MM:SS.mmmmmm ')
-                    return obj    
+                    return obj
 
             def __json_load(file_prefix):
                 with open(file_prefix+'.json', 'r') as f:
-                    return json.load(f, cls = CustomDecoder)
+                    return json.load(f, cls=CustomDecoder)
 
             def __json_save(file_prefix, obj):
                 with open(file_prefix + '.json', 'w') as f:
-                    json.dump(obj, f, cls = CustomEncoder, indent=4, separators=(',', ': '))
+                    json.dump(obj, f, cls=CustomEncoder,
+                              indent=4, separators=(',', ': '))
 
-            
             self._save_function = __json_save
             self._load_function = __json_load
         else:
@@ -144,7 +143,7 @@ class RepoObjectDiskStorage(RepoStore):
 
     def get_config(self):
         return {'folder': self._main_dir, 'file_format': self._file_format}
-        
+
     def get_names(self, ml_obj_type):
         """Return the names of all objects belonging to the given category.
 
@@ -191,7 +190,7 @@ class RepoObjectDiskStorage(RepoStore):
             os.makedirs(self._main_dir + '/' + file_sub_dir, exist_ok=True)
             filename = version
             execute(cursor, "insert into versions (name, version, path, file, uuid_time) VALUES('" +
-                    name + "', '" + version + "','" + file_sub_dir+ "','" + filename + "','" + str(uid_time) + "')")
+                    name + "', '" + version + "','" + file_sub_dir + "','" + filename + "','" + str(uid_time) + "')")
             # endregion
             # region write modification info
             if repo_objects.RepoInfoKey.MODIFICATION_INFO.value in obj['repo_info']:
@@ -205,7 +204,8 @@ class RepoObjectDiskStorage(RepoStore):
             logger.debug(
                 'Write object as json file with filename ' + filename)
 
-            self._save_function(self._main_dir + '/' + file_sub_dir + '/' + filename, obj)
+            self._save_function(self._main_dir + '/' +
+                                file_sub_dir + '/' + filename, obj)
             # endregion
         except Exception as e:
             logger.error('Error: ' + str(e) + ', rolling back changes.')
@@ -231,7 +231,8 @@ class RepoObjectDiskStorage(RepoStore):
                     version_condition += "'" + tmp + "')"
         return version_condition
 
-    def _get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None):
+    def _get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None,
+             throw_error_not_exist=True, throw_error_not_unique=True):
         """Get a dictionary/list of dictionaries fulffilling the conditions.
 
             Returns a list of objects matching the name and whose
@@ -256,8 +257,11 @@ class RepoObjectDiskStorage(RepoStore):
         for row in execute(cursor, 'select category from mapping where name = ' + "'" + name + "'"):
             category = repo.MLObjectType(row[0])
         if category is None:
-            logger.error('no object ' + name + ' in storage.')
-            raise Exception('no object ' + name + ' in storage.')
+            if throw_error_not_exist:
+                logger.error('no object ' + name + ' in storage.')
+                raise Exception('no object ' + name + ' in storage.')
+            else:
+                return []
 
         version_condition = self.get_version_condition(
             name, versions, 'version', 'uuid_time')
@@ -271,28 +275,35 @@ class RepoObjectDiskStorage(RepoStore):
                 if tmp != '':
                     select_statement += " and version in ( select version from modification_info where name ='" + \
                         name + "' and modifier = '" + k + "'" + tmp + ")"
-        files = [row[0] +'/' + row[1] for row in execute(cursor, select_statement)]
+        files = [row[0] + '/' + row[1]
+                 for row in execute(cursor, select_statement)]
         objects = []
         for filename in files:
             objects.append(self._load_function(
                 self._main_dir + '/' + filename))
         return objects
 
-    def get_latest_version(self, name):
+    def get_latest_version(self, name, throw_error_not_exist=True):
         cursor = self._conn.cursor()
         for row in execute(cursor, "select version from versions where name = '" + name + "' order by uuid_time DESC LIMIT 1"):
             return row[0]
-        logger.error('No object with name ' + name + ' exists.')
-        raise Exception('No object with name ' + name + ' exists.')
+        if throw_error_not_exist:
+            logger.error('No object with name ' + name + ' exists.')
+            raise Exception('No object with name ' + name + ' exists.')
+        else:
+            return []
 
-    def get_first_version(self, name):
+    def get_first_version(self, name, throw_error_not_exist=True):
         cursor = self._conn.cursor()
         for row in execute(cursor, "select version from versions where name = '" + name + "' order by uuid_time ASC LIMIT 1"):
             return row[0]
-        logger.error('No object with name ' + name + ' exists.')
-        raise Exception('No object with name ' + name + ' exists.')
+        if throw_error_not_exist:
+            logger.error('No object with name ' + name + ' exists.')
+            raise Exception('No object with name ' + name + ' exists.')
+        else:
+            return []
 
-    def get_version(self, name, offset):
+    def get_version(self, name, offset, throw_error_not_exist=True):
         cursor = self._conn.cursor()
         if offset > 0:
             inner_select = "(select version, uuid_time from versions where name = '" + \
@@ -308,8 +319,11 @@ class RepoObjectDiskStorage(RepoStore):
                 return row[0]
         if offset == 0:
             return self.get_first_version(name)
-        logger.error('No object with name ' + name + ' exists.')
-        raise Exception('No object with name ' + name + ' exists.')
+        if throw_error_not_exist:
+            logger.error('No object with name ' + name + ' exists.')
+            raise Exception('No object with name ' + name + ' exists.')
+        else:
+            return []
 
     def replace(self, obj):
         """Overwrite existing object without incrementing version
@@ -317,13 +331,15 @@ class RepoObjectDiskStorage(RepoStore):
         Args:
             obj (RepoObject): repo object to be overwritten
         """
-        logger.info('Replacing ' + obj["repo_info"][RepoInfoKey.NAME.value] + ', version ' +  str(obj["repo_info"][RepoInfoKey.VERSION.value]))
+        logger.info('Replacing ' + obj["repo_info"][RepoInfoKey.NAME.value] +
+                    ', version ' + str(obj["repo_info"][RepoInfoKey.VERSION.value]))
         select_statement = "select path, file from versions where name = '" +\
             obj["repo_info"][RepoInfoKey.NAME.value] + "' and version = '" +\
             str(obj["repo_info"][RepoInfoKey.VERSION.value]) + "'"
         cursor = self._conn.cursor()
         for row in execute(cursor, select_statement):
-            self._save_function(self._main_dir + '/' + str(row[0]) + '/' + str(row[1]), obj)
+            self._save_function(self._main_dir + '/' +
+                                str(row[0]) + '/' + str(row[1]), obj)
 
     def close_connection(self):
         """Closes the database connection
@@ -332,7 +348,7 @@ class RepoObjectDiskStorage(RepoStore):
 
     def _get_all_files(self):
         """Returns set of all files in directory
-        
+
         Returns:
             set: set with all filenames (including relative paths)
         """
@@ -351,7 +367,7 @@ class RepoObjectDiskStorage(RepoStore):
 
     def check_integrity(self):
         """Checks if files are missing or have not yet been added
-        
+
         Returns:
             dictionary: contains sets of missing files and/or set of files not yet added
         """
@@ -365,9 +381,9 @@ class RepoObjectDiskStorage(RepoStore):
         tmp = f.copy()
         files_not_added = tmp-repo_f
         result = {}
-        if(len(files_not_added)>0):
+        if(len(files_not_added) > 0):
             result = {'files not added to repo': files_not_added}
         files_missing = repo_f - f
-        if(len(files_missing)>0):
+        if(len(files_missing) > 0):
             result = {'files missing in repo': files_missing}
         return result

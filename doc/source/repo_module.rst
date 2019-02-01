@@ -39,9 +39,9 @@ plotting
     :members:
     :show-inheritance:
 
-externals
+pailab_externals
 ========================
-externals.sklearn_interface
+pailab_externals.sklearn_interface
 -------------------------
 .. automodule:: externals.sklearn_interface
     :members:
