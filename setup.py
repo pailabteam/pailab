@@ -36,7 +36,7 @@ setup(name='pailab',
       author='Pailab Inc',
       author_email='info@pailab.com',
       license='Comming',
-      packages=setuptools.find_packages(),
+      packages=setuptools.find_packages(exclude=['doc', 'examples', 'sandbox', 'tests']),
       install_requires=install_requirements,
 	  extras_require={
         'all': all_dependencies,
