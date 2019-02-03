@@ -163,14 +163,11 @@ class RegressionTest(Test):
         super(RegressionTest, self).__init__(
             model, data, test_definition_version, model_version, data_version, repo_info=repo_info)
 
-    def _run_test(self, ml_repo: MLRepo, jobid):
-        logger.debug('Running regression test ' + self.repo_info.name + ' on model ' +
-                     str(NamingConventions.CalibratedModel(self.model)) + ', version ' + self.model_version)
-        regression_test = ml_repo.get(
-            self.test_definition, version=LAST_VERSION)
-        label = ml_repo.get(regression_test.reference, version=LAST_VERSION)
-        result = {}
-        measure_types = regression_test.measures
+    def _get_measure_types(self, ml_repo: MLRepo, reg_test=None):
+        if reg_test is None:
+            reg_test = ml_repo.get(
+                self.test_definition, version=LAST_VERSION)
+        measure_types = reg_test.measures
         if measure_types is None:
             tmp = ml_repo.get_names(MLObjectType.MEASURE_CONFIGURATION)
             if len(tmp) == 0:
@@ -179,10 +176,20 @@ class RegressionTest(Test):
             m_config = ml_repo.get(tmp[0], version=LAST_VERSION)
             measure_types = [MeasureConfiguration.get_name(
                 x) for k, x in m_config.measures.items()]
+        return measure_types
+
+    def _run_test(self, ml_repo: MLRepo, jobid):
+        logger.debug('Running regression test ' + self.repo_info.name + ' on model ' +
+                     str(NamingConventions.CalibratedModel(self.model)) + ', version ' + self.model_version)
+        regression_test = ml_repo.get(
+            self.test_definition, version=LAST_VERSION)
+        label = ml_repo.get(regression_test.reference, version=LAST_VERSION)
+        result = {}
+        measure_types = self._get_measure_types(ml_repo, regression_test)
         for measure_type in measure_types:
             measure_name = str(NamingConventions.Measure(
                 {'model': self.model.split('/')[0], 'data': self.data, 'measure_type': measure_type}))
-            measure = ml_repo.get(measure_name,
+            measure = ml_repo.get(measure_name, version=None,
                                   modifier_versions={
                                       str(NamingConventions.CalibratedModel(self.model)): self.model_version,
                                       self.data: self.data_version
@@ -190,7 +197,7 @@ class RegressionTest(Test):
                                   )
             measure_name = str(NamingConventions.Measure(
                 {'model': label.name.split('/')[0], 'data': self.data, 'measure_type': measure_type}))
-            reference_value = ml_repo.get(measure_name,
+            reference_value = ml_repo.get(measure_name, version=None,
                                           modifier_versions={str(NamingConventions.CalibratedModel(
                                               label.name)): label.version,
                                               self.data: self.data_version}, adjust_modification_info=False)
@@ -198,6 +205,18 @@ class RegressionTest(Test):
                 result[measure_type] = {
                     'reference_value': reference_value.value, 'value': measure.value}
         return result
+
+    def get_modifier_versions(self, ml_repo):
+        modifiers = {}
+        modifiers[str(NamingConventions.CalibratedModel(
+            self.model))] = self.model_version
+        modifiers[self.test_definition] = self.test_definition_version
+        regression_test = ml_repo.get(
+            self.test_definition, version=LAST_VERSION)
+        label = ml_repo.get(regression_test.reference, version=LAST_VERSION)
+        modifiers[label.repo_info.name] = label.repo_info.version
+        modifiers[self.data] = self.data_version
+        return self.repo_info.name, modifiers
 
     def _check(self, ml_repo: MLRepo):
         # check if test is based on latest test definition
