@@ -201,16 +201,17 @@ class Job(RepoObject, abc.ABC):
             obj = self.ml_repo.get(name, version=new_v, full_object=full_object,
                 modifier_versions=m_v, obj_fields=obj_fields,  repo_info_fields=repo_info_fields,
                 throw_error_not_exist=throw_error_not_exist, throw_error_not_unique=throw_error_not_unique)
-            if len(obj) == 0:
-                if throw_error_not_exist:
-                    raise Exception('More than one object with name ' + name + ' found meeting the conditions.')
+            if isinstance(obj, list):
+                if len(obj) == 0:
+                    if throw_error_not_exist:
+                        raise Exception('More than one object with name ' + name + ' found meeting the conditions.')
+                    else:
+                        return []
                 else:
-                    return []
-            else:
-                if throw_error_not_unique:
-                    raise Exception('More than one object with name ' + name + ' found meeting the conditions.')
-                else:
-                    return []
+                    if throw_error_not_unique:
+                        raise Exception('More than one object with name ' + name + ' found meeting the conditions.')
+                    else:
+                        return []
             if adjust_modification_info:
                 self.modification_info[name] = obj.repo_info[RepoInfoKey.VERSION]
                 for k,v in obj.repo_info.modification_info.items():
@@ -484,7 +485,6 @@ class MeasureJob(Job):
                                 repo_info = {RepoInfoKey.NAME : result_name, RepoInfoKey.CATEGORY: MLObjectType.MEASURE.value})
         
         # create modification info
-        #_add_modification_info(result, eval_data, target)
         result.repo_info.modification_info[self.model_name] = eval_data.repo_info.modification_info[self.model_name]
         result.repo_info.modification_info[self.data_name] = eval_data.repo_info.modification_info[self.data_name]
         result.repo_info.modification_info[str(eval_data_name)] = eval_data.repo_info.version
