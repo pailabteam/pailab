@@ -354,9 +354,12 @@ class EvalJob(Job):
     
     def get_modifier_versions(self, repo):
         # get if evaluation with given inputs has already been computed
-        model = repo.get(self.model, self.model_version, full_object = False)
         model_definition_name = self.model.split('/')[0]
-        model_def_version = model.repo_info[RepoInfoKey.MODIFICATION_INFO][model_definition_name]
+        model = repo.get(self.model, self.model_version, full_object = False, throw_error_not_exist = False)
+        if model == []: #no model has been calibrated so far
+            model_def_version = repo_store.RepoStore.LAST_VERSION
+        else:
+            model_def_version = model.repo_info[RepoInfoKey.MODIFICATION_INFO][model_definition_name]
         model_definition = repo.get(model_definition_name, model_def_version)
         result_name = str(NamingConventions.EvalData(model = self.model, data = self.data))
         return result_name, {self.model: self.model_version, self.data: self.data_version, model_definition.eval_function: self.eval_function_version}
