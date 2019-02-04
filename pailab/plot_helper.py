@@ -101,10 +101,12 @@ def get_measure_by_parameter(ml_repo, measure_names, param_name, data_versions=L
             p = ml_repo.get(
                 p_name, version=x.repo_info[RepoInfoKey.MODIFICATION_INFO][p_name])
             param_value = _get_value_by_path(p.get_params(), param_name)
+            # get train data version
+            model = ml_repo.get(model_name, version = x.repo_info.modification_info[model_name])
             info = {'model_version': x.repo_info[RepoInfoKey.MODIFICATION_INFO][model_name],
                     param_name: param_value, 'param_version': p.repo_info[RepoInfoKey.VERSION],
                     'data_version': x.repo_info[RepoInfoKey.MODIFICATION_INFO][data],
-                    'train_data_version': x.repo_info[RepoInfoKey.MODIFICATION_INFO][train_data],
+                    'train_data_version': model.repo_info[RepoInfoKey.MODIFICATION_INFO][train_data],
                     'measure_version': x.repo_info[RepoInfoKey.VERSION], 'value': x.value}
             label = label_checker.get_label(
                 model_name, x.repo_info[RepoInfoKey.MODIFICATION_INFO][model_name])
