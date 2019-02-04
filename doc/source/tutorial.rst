@@ -71,8 +71,8 @@ The next step to do machine learning would be to define a model which will be us
 - a training parameter object defining training parameters (such as number of optimization steps etc.), if necessary for your algorithms (this oen is optional)
 
 To build and train models we use sklearn. In this case, we do not have to define the pieces defined above, since pailab provides a simple 
-interface to sklearn defined in the module :py:mod:`externals.sklearn_interface`. This interface provides a simple method 
-:py:meth:`externals.sklearn_interface.add_model`
+interface to sklearn defined in the module :py:mod:`pailab_externals.sklearn_interface`. This interface provides a simple method 
+:py:meth:`pailab_externals.sklearn_interface.add_model`
 to add an arbitrary sklearn model as a model which can be handled by the repository. This method adds a bunch of repo objects to the repository (according to the pieces described above):
 
 - An object defining the function to be called to evaluate the model

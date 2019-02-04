@@ -57,22 +57,23 @@ class RepoStore(abc.ABC):
 
     """
 
-    def _replace_version_placeholder(self, name, versions):
-        def replace_version(name, version):
+    def _replace_version_placeholder(self, name, versions, throw_error_not_exist=True):
+        def replace_version(name, version, throw_error_not_exist):
             if version == FIRST_VERSION:
-                return self.get_first_version(name)
+                return self.get_first_version(name, throw_error_not_exist)
             if version == LAST_VERSION:
-                return self.get_latest_version(name)
+                return self.get_latest_version(name, throw_error_not_exist)
             if isinstance(version, int):
-                return self.get_version(name, version)
+                return self.get_version(name, version, throw_error_not_exist)
             return version
         if isinstance(versions, str):
-            versions = replace_version(name, versions)
+            versions = replace_version(name, versions, throw_error_not_exist)
         if isinstance(versions, tuple):
-            versions = (replace_version(
-                name, versions[0]), replace_version(name, versions[1]))
+            versions = (replace_version(name, versions[0], throw_error_not_exist),
+                        replace_version(name, versions[1], throw_error_not_exist))
         if isinstance(versions, list):
-            versions = [replace_version(name, v) for v in versions]
+            versions = [replace_version(
+                name, v, throw_error_not_exist) for v in versions]
         return versions
 
     @abc.abstractmethod
@@ -113,16 +114,20 @@ class RepoStore(abc.ABC):
         """
         pass
 
-    def get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None):
-        versions = self._replace_version_placeholder(name, versions)
+    def get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None,
+            throw_error_not_exist=True, throw_error_not_unique=True):
+        versions = self._replace_version_placeholder(
+            name, versions, throw_error_not_exist)
         if modifier_versions is not None:
             for k, v in modifier_versions.items():
                 modifier_versions[k] = self._replace_version_placeholder(k, v)
         return self._get(name, versions, modifier_versions,
-                         obj_fields, repo_info_fields)
+                         obj_fields, repo_info_fields,
+                         throw_error_not_exist, throw_error_not_unique)
 
     @abc.abstractmethod
-    def _get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None):
+    def _get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None,
+             throw_error_not_exist=True, throw_error_not_unique=True):
         """Get a dictionary/list of dictionaries fulffilling the conditions.
 
             Returns a list of objects matching the name and whose
@@ -156,7 +161,7 @@ class RepoStore(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_version(self, name, offset):
+    def get_version(self, name, offset, throw_error_not_exist=True):
         """Return versionnumber for the given offset
 
         If offset >= 0 it returns the version number of the offset version, if <0 it returns according to the
@@ -169,7 +174,7 @@ class RepoStore(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_latest_version(self, name):
+    def get_latest_version(self, name, throw_error_not_exist=True):
         """Return latest version number of object in the storage
 
         Arguments:
@@ -181,7 +186,7 @@ class RepoStore(abc.ABC):
         return self.get(name, versions=RepoStore.LAST_VERSION, repo_info_fields=[RepoInfoKey.VERSION])[0]['repo_info'][RepoInfoKey.VERSION.value]
 
     @abc.abstractmethod
-    def get_first_version(self, name):
+    def get_first_version(self, name, throw_error_not_exist=True):
         """Return version number of first (in a temporal sense) object in storage
 
         Args:
@@ -200,7 +205,8 @@ class RepoStore(abc.ABC):
         """
         obj = []
         try:
-            obj = self.get(name, versions=[version])
+            obj = self.get(name, versions=[version],
+                           throw_error_not_exist=False, throw_error_not_unique=False)
         except:
             pass
         return len(obj) != 0

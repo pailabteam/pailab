@@ -77,10 +77,10 @@ class Model:
             latest_data_version = repo_store.get_latest_version(data)
             eval_name = str(NamingConventions.EvalData(
                 data=data, model=model_main_name))
-            try:
-                repo.get(eval_name, version=None, modifier_versions={
-                    model_name: model_version, data: latest_data_version})
-            except:
+            tmp = repo.get(eval_name, version=None, modifier_versions={
+                model_name: model_version, data: latest_data_version}, 
+                throw_error_not_exist=False, throw_error_not_unique=False)
+            if tmp == []:
                 eval_check_result[data] = latest_data_version
                 if correct:
                     repo.run_evaluation(model_name, message='automatically corrected from _check_model',
@@ -99,10 +99,9 @@ class Model:
                     for data in data_names:
                         tmp = str(NamingConventions.Measure(
                             str(NamingConventions.EvalData(data=data, model=model_main_name)), measure_type=measure_name))
-                        try:
-                            obj = repo.get(tmp, version=None, modifier_versions={
-                                model_name: model_version})
-                        except:
+                        obj = repo.get(tmp, version=None, modifier_versions={
+                            model_name: model_version}, throw_error_not_exist=False, throw_error_not_unique=False)
+                        if obj == []:
                             measure_check_result.add(tmp)
                             # we do only have to correct if the underlying evaluation data has not been corrected (then predecessors are included)
                             if correct and not data in data_corrected:
@@ -289,10 +288,9 @@ class Tests:
         for d in data:    
             # first create from definition the test for the given model to get the test name
             test_name = str(NamingConventions.Test(model=NamingConventions.get_model_from_name(model), test_name= test_definition.repo_info.name, data=d))
-            try:
-                logging.debug('Checking test ' + test_name + ' for ' + model +  ', version '+ model_version)
-                test = repo.get(test_name, version = None, modifier_versions={model: model_version})
-            except: 
+            logging.debug('Checking test ' + test_name + ' for ' + model +  ', version '+ model_version)
+            test = repo.get(test_name, version = None, modifier_versions={model: model_version}, throw_error_not_exist=False, throw_error_not_unique=False)
+            if test == []: 
                 results[test_name] = 'Test for model ' + model + ', version ' + model_version +' on latest data ' + d + ' missing.'
                 continue             
             if isinstance(test, list): # search latest test 

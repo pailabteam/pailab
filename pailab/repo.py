@@ -190,7 +190,8 @@ class Job(RepoObject, abc.ABC):
             return orig_version
 
         def get(self, name, version=None, full_object = False,
-                modifier_versions=None, obj_fields=None,  repo_info_fields=None, adjust_modification_info = True):
+                modifier_versions=None, obj_fields=None,  repo_info_fields=None,
+                throw_error_not_exist=True, throw_error_not_unique=True, adjust_modification_info = True):
             new_v = self._get_version(name, version)
             m_v = None
             if modifier_versions is not None:
@@ -198,9 +199,18 @@ class Job(RepoObject, abc.ABC):
                 for k,v in m_v.items():
                     m_v[k] = self._get_version(k,v)
             obj = self.ml_repo.get(name, version=new_v, full_object=full_object,
-                modifier_versions=m_v, obj_fields=obj_fields,  repo_info_fields=repo_info_fields)
-            if isinstance(obj, list):
-                raise Exception('More than one object with name ' + name + ' found meeting the conditions.')
+                modifier_versions=m_v, obj_fields=obj_fields,  repo_info_fields=repo_info_fields,
+                throw_error_not_exist=throw_error_not_exist, throw_error_not_unique=throw_error_not_unique)
+            if len(obj) == 0:
+                if throw_error_not_exist:
+                    raise Exception('More than one object with name ' + name + ' found meeting the conditions.')
+                else:
+                    return []
+            else:
+                if throw_error_not_unique:
+                    raise Exception('More than one object with name ' + name + ' found meeting the conditions.')
+                else:
+                    return []
             if adjust_modification_info:
                 self.modification_info[name] = obj.repo_info[RepoInfoKey.VERSION]
                 for k,v in obj.repo_info.modification_info.items():
@@ -656,9 +666,9 @@ class MLRepo:
         # check if the ml mapping is already contained in the repo, otherwise add it
         logging.info('Get mapping.')
         repo_dict = []
-        try:
+        if self._ml_repo.object_exists('repo_mapping', version=repo_store.RepoStore.LAST_VERSION):
             repo_dict = self._ml_repo.get('repo_mapping', versions=repo_store.RepoStore.LAST_VERSION)
-        except:
+        else:
             logging.info('No mapping found, creating new mapping.')
         if len(repo_dict) > 1:
             raise Exception('More than on mapping found.')
@@ -896,7 +906,8 @@ class MLRepo:
         return self._numpy_repo
         
     def get(self, name, version=repo_store.RepoStore.LAST_VERSION, full_object=False,
-             modifier_versions=None, obj_fields=None,  repo_info_fields=None):
+             modifier_versions=None, obj_fields=None,  repo_info_fields=None,
+             throw_error_not_exist=True, throw_error_not_unique=True):
         """ Get repo objects. It throws an exception, if an object with the name does not exist.
 
             :param name: Object name
@@ -905,10 +916,14 @@ class MLRepo:
             :param full_object: flag to determine whether the numpy objects are loaded (True->load)
         """
         logging.debug('Getting ' + name + ', version ' + str(version))
-        repo_dict = self._ml_repo.get(name, version, modifier_versions, obj_fields, repo_info_fields)
+        repo_dict = self._ml_repo.get(name, version, modifier_versions, obj_fields, repo_info_fields, 
+                                      throw_error_not_exist, throw_error_not_unique)
         if len(repo_dict) == 0:
-            logger.error('No object found with name ' +  name + ' and version ' + str(version) + ', modifier_versions: ' + str(modifier_versions))
-            raise Exception('No object found with name ' +  name + ' and version ' + str(version))
+            if throw_error_not_exist:
+                logger.error('No object found with name ' +  name + ' and version ' + str(version) + 'modifier_versions: ' + str(modifier_versions))
+                raise Exception('No object found with name ' +  name + ' and version ' + str(version))
+            else:
+                return []
         
         tmp = []
         for x in repo_dict:
@@ -1243,7 +1258,7 @@ class MLRepo:
         self.add(label)        
         
     def _object_exists(self, name):
-        """returns True if an object with this name exsts in repo
+        """returns True if an object with this name exists in repo
         
         Args:
             name (str): name of object

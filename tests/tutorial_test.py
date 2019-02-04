@@ -68,7 +68,7 @@ class TutorialTest(unittest.TestCase):
             [training_data, test_data], message='add training and test data')
         # end adding DataSet
         # add model
-        import externals.sklearn_interface as sklearn_interface
+        import pailab_externals.sklearn_interface as sklearn_interface
         from sklearn.tree import DecisionTreeRegressor
         sklearn_interface.add_model(
             ml_repo, DecisionTreeRegressor(), model_param={'max_depth': 5})
