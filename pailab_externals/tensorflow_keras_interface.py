@@ -96,8 +96,8 @@ def eval_keras_tensorflow(model, data):
     Returns:
         numpy-data: evaluated data
     """
+    backend.clear_session()
     with tf.Session() as sess:
-        backend.set_session(sess)
         result = model.get_model().predict(data)
         return result
 
