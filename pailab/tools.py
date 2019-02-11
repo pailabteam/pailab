@@ -1,5 +1,6 @@
 import logging
 import collections
+from numpy import load
 from deepdiff import DeepDiff
 from pailab.repo import MLObjectType, MLRepo, NamingConventions
 from pailab.repo_objects import RepoInfoKey, DataSet  # pylint: disable=E0401
