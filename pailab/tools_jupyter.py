@@ -192,22 +192,73 @@ class ConsistencyChecker:
 
 import pailab.plot_helper as plt_helper
 import pailab.plot as plot
+
 #import plotly.graph_objs as go
 #from plotly.offline import download_plotlyjs, init_notebook_mode, iplot
 
 
 class Plotter:
     def _get_measures(self):
-        return self._ml_repo.get_names(MLObjectType.MEASURE)
+        measures = self._ml_repo.get_names(MLObjectType.MEASURE)
+        result = []
+        for m in measures:
+            if self._model_selection.value in m:
+                result.append(m)
+        self._data_selection.options = result
+        
+
+    def _get_parameter(self, dummy=None):
+        obj_cat = MLObjectType.TRAINING_PARAM
+        if self._train_model_sel.value=='model':
+            obj_cat = MLObjectType.MODEL_PARAM
+        parameters = self._ml_repo.get_names(obj_cat)
+        parameter = None
+        for t in parameters:
+            if self._model_selection.value in t:
+                parameter = t
+                break
+        
+        if parameter is None:
+            self._param_sel.options = []
+            return
+        param = self._ml_repo.get(parameter)
+        self._param_sel.options = [x for x in param.get_params().keys()]
+
 
     def __init__(self, ml_repo):
         self._ml_repo = ml_repo
         self._output = widgets.Output(layout=Layout(width='100%', height='100%'))
+        self._model_selection = widgets.RadioButtons(
+            options=self._ml_repo.get_names(MLObjectType.MODEL),
+        #     value='pineapple',
+            description='model:',
+            disabled=False
+        )
+
+        self._train_model_sel = widgets.RadioButtons(
+            options=['training', 'model'],
+            value='model',
+            description='param type:',
+            disabled=False
+        )
+        self._param_sel = widgets.Select(
+            description='parameter',
+            disabled=False
+        )
+        self._get_parameter()
+
+        self._train_model_sel.observe(self._get_parameter, 'value')
+        self._data_selection = widgets.SelectMultiple(options=[])
+        self._get_measures()
         
-        self._data_selection = widgets.SelectMultiple(options=self._get_measures()) 
         self._plot_button = widgets.Button(description='plot')
         self._plot_button.on_click(self.plot)
-        self._widget_main = widgets.VBox(  children=[ widgets.HBox(children=[self._plot_button,self._data_selection]), self._output] )
+        self._widget_main = widgets.VBox(  children=[ 
+                widgets.HBox(
+                    children=[self._plot_button,self._data_selection, self._model_selection, self._train_model_sel, self._param_sel]
+                        ), 
+                self._output] 
+            )
         
 
     def get_widget(self):
@@ -216,6 +267,7 @@ class Plotter:
     def plot(self, d):
         with self._output:
             clear_output(wait=True)
-        
-            plot.measure_by_parameter(self._ml_repo,[ x for x in self._data_selection.value], 'max_depth', data_versions= LAST_VERSION)
+            data = [ x for x in self._data_selection.value]
+            if len(data) > 0 and self._param_sel.value is not None:
+                plot.measure_by_parameter(self._ml_repo, data, self._param_sel.value, data_versions= LAST_VERSION)
 
