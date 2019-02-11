@@ -340,6 +340,14 @@ class RepoObjectDiskStorage(RepoStore):
         for row in execute(cursor, select_statement):
             self._save_function(self._main_dir + '/' +
                                 str(row[0]) + '/' + str(row[1]), obj)
+        # delete all modification infos
+        execute(cursor, "delete from modification_info where name='" + obj["repo_info"][RepoInfoKey.NAME.value] + "' and version = '" +
+                str(obj["repo_info"][RepoInfoKey.VERSION.value]) + "'")
+        if repo_objects.RepoInfoKey.MODIFICATION_INFO.value in obj['repo_info']:
+            for k, v in obj['repo_info'][repo_objects.RepoInfoKey.MODIFICATION_INFO.value].items():
+                tmp = _time_from_version(v)
+                execute(cursor, "insert into modification_info (name, version, modifier, modifier_version, modifier_uuid_time) VALUES ('"
+                        + obj["repo_info"][RepoInfoKey.NAME.value] + "','" + str(obj["repo_info"][RepoInfoKey.VERSION.value]) + "','" + k + "','" + str(v) + "','" + str(tmp) + "')")
 
     def close_connection(self):
         """Closes the database connection
@@ -362,7 +370,6 @@ class RepoObjectDiskStorage(RepoStore):
                 files.remove('.version.sqlite')
             for name in files:
                 f.add(os.path.splitext(name)[0])
-        print(str(f))
         return f
 
     def check_integrity(self):
