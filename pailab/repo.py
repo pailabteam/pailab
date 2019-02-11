@@ -640,9 +640,10 @@ class MLRepo:
                     'config': {} }}
 
     def _save_config(self):
-        if self._config['workspace']  is not None:
-            with open(self._config['workspace']  + '/.config.json', 'w') as f:
-                json.dump(self._config, f, indent=4, separators=(',', ': '))
+        if 'workspace' in self._config.keys():
+            if self._config['workspace']  is not None:
+                with open(self._config['workspace']  + '/.config.json', 'w') as f:
+                    json.dump(self._config, f, indent=4, separators=(',', ': '))
 
     def __init__(self,  workspace = None, user=None, config = None, numpy_repo =None, job_runner=None, save_config = False):
         """ Constructor of MLRepo
@@ -658,6 +659,7 @@ class MLRepo:
                     self._config = json.load(f)
             else:
                 self._config = MLRepo.__create_default_config(user, workspace)
+        
         self._numpy_repo = numpy_repo
         self._ml_repo = RepoStoreFactory.get(self._config['repo_store']['type'], **self._config['repo_store']['config'])
         
@@ -1054,8 +1056,7 @@ class MLRepo:
             model_param_version=model_param_version, repo_info = {RepoInfoKey.NAME: model + '/jobs/training',
                 RepoInfoKey.CATEGORY: MLObjectType.JOB.value})
         # Only start training if input data has changed since last run 
-        tmp = self.__obj_latest(train_job.repo_info.name)
-        if tmp is None: # todo check not for latest but include the respective specified versions
+        if train_job.check_rerun(self):
             self.add(train_job)
             self._job_runner.add(train_job.repo_info[RepoInfoKey.NAME], train_job.repo_info[RepoInfoKey.VERSION], self._user)
             logging.info('Training job ' + train_job.repo_info[RepoInfoKey.NAME]+ ', version: ' 
@@ -1065,7 +1066,7 @@ class MLRepo:
                     predecessors=[(train_job.repo_info[RepoInfoKey.NAME], train_job.repo_info[RepoInfoKey.VERSION])], run_descendants=True)
             return train_job.repo_info[RepoInfoKey.NAME], str(train_job.repo_info[RepoInfoKey.VERSION])
         else:
-            return 'No new training started: A model has already been trained on the latest data, training job version: ' + tmp.repo_info.version
+            return 'No new training started: A model has already been trained on the latest data.'
 
     def _get_default_object_name(self, obj_name, obj_category):
         """Returns unique object name of given category if given object_name is None
