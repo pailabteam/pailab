@@ -42,9 +42,8 @@ class RepoObjectItem:
     def load(self, version=repo_store.LAST_VERSION, full_object=False,
             modifier_versions=None, containing_str=None):
             if containing_str is None or containing_str in self._name:
-                try:
-                    self.obj = self._repo.get(self._name, version, full_object, modifier_versions)
-                except:
+                self.obj = self._repo.get(self._name, version, full_object, modifier_versions, throw_error_not_exist = False)
+                if self.obj == []:
                     pass
             for v in self.__dict__.values():
                 if hasattr(v,'load'):
