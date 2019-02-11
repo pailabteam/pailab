@@ -78,9 +78,31 @@ def measure_by_parameter(ml_repo, measure_name, param_name, data_versions=None, 
     # IPython notebook
     # py.iplot(data, filename='pandas/basic-line-plot')
     fig = go.Figure(data=data, layout=layout)
-
+    #return fig
     iplot(fig)  # , filename='pandas/basic-line-plot')
 
+
+def projection(ml_repo, left, right, n_steps = 100, model = None, labels = None,  output_index = None, direction = None):
+    x = plot_helper.project(ml_repo, model, labels, left, right,output_index=output_index, n_steps= n_steps)
+    training = ml_repo.get_names(MLObjectType.TRAINING_DATA) #use training data to get output name
+    output_name = ml_repo.get(training[0]).y_coord_names[0]
+    data = []
+    x_data = [0.0 + float(x)/float(n_steps-1) for x in range(n_steps) ]
+    for k,v in x.items():
+        data.append(
+                    go.Scatter(
+                        x=x_data,
+                        y=v,
+                        name=k
+                    )
+        )
+    layout = go.Layout(
+        title='projection',
+        xaxis=dict(title='steps'),
+        yaxis=dict(title=output_name)
+    )
+    fig = go.Figure(data=data, layout=layout)
+    iplot(fig)
 
 def measure_history(ml_repo, measure_name):
 

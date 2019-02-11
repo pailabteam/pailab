@@ -283,3 +283,44 @@ def get_measure_history(ml_repo, measure_names):
 
         result_all[measure_name] = result
     return result_all
+
+import numpy as np
+def project(ml_repo, model = None, labels = None, left = None, right=None,
+         output_index = 0, n_steps = 100):
+    if left is None or right is None:
+        raise Exception('Please specify left and right points.')
+    steps = [0.0 + float(x)/float(n_steps-1) for x in range(n_steps) ]
+    # compute input for evaluation
+    shape = (len(steps),)
+    shape += left.shape
+    input = np.empty(shape=shape)
+    for i in range(len(steps)):
+        input[i] = steps[i]*left + (1.0-steps[i])*right
+        
+    result = {}
+    models = []
+    if labels is None:
+        labels = ml_repo.get_names(MLObjectType.LABEL)
+        for l in labels:
+            tmp = ml_repo.get(l)
+            models.append((tmp.name, tmp.version, l))
+    if model is None:
+        tmp = ml_repo.get_names(MLObjectType.CALIBRATED_MODEL)
+        if len(tmp) == 1:
+            m  = ml_repo.get(tmp[0])
+            models.append((tmp[0], m.repo_info.version, 'latest'))
+    else:
+        m  = ml_repo.get(model)
+        model.append((model, m.repo_info.version, 'latest'))
+        
+    for model in models:
+        tmp = ml_repo.get(model[0], version=model[1])
+        model_name = model[0].split('/')[0]
+        model_def = ml_repo.get(model_name, tmp.repo_info.modification_info[model_name])
+        eval_func = ml_repo.get(model_def.eval_function)
+        if len(model) > 2:
+            result[model[2]] = eval_func.create()(tmp, input)
+        else:
+            result[model[0]+':'+ model[1]]
+        
+    return result
