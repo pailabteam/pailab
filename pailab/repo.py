@@ -266,13 +266,16 @@ class Job(RepoObject, abc.ABC):
         ml_repo._update_job(self)
         try:
             self._run(wrapper,  jobid)
+            self.finished = str(datetime.now())
             self.state ='finished'
             self.repo_info[RepoInfoKey.MODIFICATION_INFO] = wrapper.modification_info
-            self.finished = str(datetime.now())
             ml_repo._update_job(self)
         except Exception as e:
             self.finished = str(datetime.now())
-            self.state = 'error' 
+            self.state = 'error'
+            self.repo_info[RepoInfoKey.MODIFICATION_INFO] = wrapper.modification_info
+            self.error_message = str(e)
+            ml_repo._update_job(self)
             raise e from None
 
     def check_rerun(self, ml_repo):
