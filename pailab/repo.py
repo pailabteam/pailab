@@ -280,11 +280,10 @@ class Job(RepoObject, abc.ABC):
 
     def check_rerun(self, ml_repo):
         name, modifier_versions = self.get_modifier_versions(ml_repo)
-        try:
-            job = ml_repo.get(self.repo_info.name, version = None, modifier_versions=modifier_versions)
-            if job.state == 'error':
-                return True
-        except:
+        job = ml_repo.get(self.repo_info.name, version = None, modifier_versions=modifier_versions,throw_error_not_exist=False)
+        if job == []:
+            return True
+        if job.state == 'error':
             return True
         return False
 
