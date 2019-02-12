@@ -83,11 +83,12 @@ def measure_by_parameter(ml_repo, measure_name, param_name, data_versions=None, 
 
 
 def projection(ml_repo, left, right, n_steps = 100, model = None, labels = None,  output_index = None, direction = None):
-    x = plot_helper.project(ml_repo, model, labels, left, right,output_index=output_index, n_steps= n_steps)
+    logger.info('Start projection with ' + str(n_steps) + ' steps.')
+    x = plot_helper.project(ml_repo, model, labels, left, right, output_index=output_index, n_steps= n_steps)
     training = ml_repo.get_names(MLObjectType.TRAINING_DATA) #use training data to get output name
     output_name = ml_repo.get(training[0]).y_coord_names[0]
     data = []
-    x_data = [0.0 + float(x)/float(n_steps-1) for x in range(n_steps) ]
+    x_data = [0.0 + float(i)/float(n_steps-1) for i in range(n_steps) ]
     for k,v in x.items():
         data.append(
                     go.Scatter(
