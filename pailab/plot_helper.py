@@ -293,10 +293,10 @@ def project(ml_repo, model = None, labels = None, left = None, right=None,
     # compute input for evaluation
     shape = (len(steps),)
     shape += left.shape
-    input = np.empty(shape=shape)
+    x_data = np.empty(shape=shape)
     for i in range(len(steps)):
-        input[i] = steps[i]*left + (1.0-steps[i])*right
-        
+        x_data[i] = (1.0-steps[i])*left + steps[i]*right
+    
     result = {}
     models = []
     if labels is None:
@@ -314,13 +314,14 @@ def project(ml_repo, model = None, labels = None, left = None, right=None,
         model.append((model, m.repo_info.version, 'latest'))
         
     for model in models:
-        tmp = ml_repo.get(model[0], version=model[1])
+        tmp = ml_repo.get(model[0], version=model[1], full_object=True)
         model_name = model[0].split('/')[0]
         model_def = ml_repo.get(model_name, tmp.repo_info.modification_info[model_name])
         eval_func = ml_repo.get(model_def.eval_function)
-        if len(model) > 2:
-            result[model[2]] = eval_func.create()(tmp, input)
-        else:
-            result[model[0]+':'+ model[1]]
+        tmp = eval_func.create()(tmp, x_data)
+        if len(tmp.shape) == 1:
+            result[model[2]] = tmp
+        elif len(tmp.shape) == 2:
+            result[model[2]] = tmp[:,output_index]
         
     return result
