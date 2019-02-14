@@ -281,18 +281,19 @@ class Repo:
 class Tests:
     @staticmethod
     def __check_test(repo: MLRepo, model, model_version, test_definition):
-        # first create from definition the test for the given model to gt the test name
-        test_definition.labels = None
-        test_definition.models = {model: model_version}
-        tests = test_definition.create(repo) #create tests to get the names to search for them
+        
+        # loop over all data
+        data = test_definition._get_data(repo)
         results = {}
-        for t in tests:
-            test = repo.get(t.repo_info.name, version = None, modifier_versions={model: model_version},
-                            throw_error_not_exist=False, throw_error_not_unique=False)
-            if test == []:
-                results[t.repo_info.name] = 'Test missing'
+        for d in data:    
+            # first create from definition the test for the given model to get the test name
+            test_name = str(NamingConventions.Test(model=NamingConventions.get_model_from_name(model), test_name= test_definition.repo_info.name, data=d))
+            logging.debug('Checking test ' + test_name + ' for ' + model +  ', version '+ model_version)
+            test = repo.get(test_name, version = None, modifier_versions={model: model_version}, throw_error_not_exist=False, throw_error_not_unique=False)
+            if test == []: 
+                results[test_name] = 'Test for model ' + model + ', version ' + model_version +' on latest data ' + d + ' missing.'
                 continue             
-            if isinstance(test, list): # search test 
+            if isinstance(test, list): # search latest test 
                 t = test[0]
                 for k in range(1, len(test)):
                     if test[k].repo_info.commit_date > t.repo_info.commit_date:
@@ -300,29 +301,29 @@ class Tests:
                 test = t
             result = test._check(repo)
             if not result is None:
-                results[t.repo_info.name] = result
+                results[test_name] = result
         return results
 
     @staticmethod
     def run(repo: MLRepo):
         test_definitions = repo.get_names(MLObjectType.TEST_DEFINITION)
-        labels = repo.get_names(MLObjectType.LABEL)
         results = {}
+        version_to_label = {}
+        labels = repo.get_names(MLObjectType.LABEL)
         for l in labels:
-            label = repo.get(l)
-            for t in test_definitions:
-                test_definition = repo.get(t)
-                model = str(NamingConventions.CalibratedModel(label.name))
-                result = Tests.__check_test(repo, model, label.version, test_definition)
-                if len(result) > 0:
-                    results[label.repo_info.name] = result
-        models = repo.get_names(MLObjectType.CALIBRATED_MODEL)
-        for model in models: #check latest models
-            for t in test_definitions:
-                test_definition = repo.get(t)
-                result = Tests.__check_test(repo, model, RepoStore.LAST_VERSION, test_definition)
-                if len(result) > 0:
-                    results[model + ':latest'] = result
+            tmp = repo.get(l)
+            version_to_label[tmp.version] = tmp.repo_info.name
+        for t in test_definitions:
+            test_definition = repo.get(t)
+            models =   test_definition._get_models(repo)
+            for m, v in models.items():
+                for version in v:
+                    result = Tests.__check_test(repo, m, version, test_definition)
+                    if len(result) > 0:
+                        if version in version_to_label:
+                            results[m+':'+version_to_label[version]] = result
+                        else:    
+                            results[m+':'+version] = result
         return results
 
 def run(repo: MLRepo, config : dict = None):
