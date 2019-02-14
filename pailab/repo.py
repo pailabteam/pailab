@@ -1045,6 +1045,15 @@ class MLRepo:
             return None
         return tmp
 
+    def run(self, job):
+        if job.check_rerun(self):
+            self.add(job)
+            self._job_runner.add(job.repo_info.name, job.repo_info.version, self._user)
+            return job.repo_info.name, job.repo_info.version
+        else:
+            return 'No input changed since last run, do not start job..'
+ 
+
     def run_training(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, 
                     training_function_version=repo_store.RepoStore.LAST_VERSION,
                     training_data_version=repo_store.RepoStore.LAST_VERSION, training_param_version = repo_store.RepoStore.LAST_VERSION, 
