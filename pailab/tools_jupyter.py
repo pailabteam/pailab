@@ -269,5 +269,8 @@ class Plotter:
             clear_output(wait=True)
             data = [ x for x in self._data_selection.value]
             if len(data) > 0 and self._param_sel.value is not None:
-                plot.measure_by_parameter(self._ml_repo, data, self._param_sel.value, data_versions= LAST_VERSION)
+                use_train_param = True
+                if self._train_model_sel == 'model':
+                    use_train_param = False
+                plot.measure_by_parameter(self._ml_repo, data, self._param_sel.value, data_versions= LAST_VERSION, training_param = use_train_param)
 
