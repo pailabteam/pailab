@@ -70,7 +70,17 @@ class TensorflowKerasTrainingParameter:
                                'patience': 500, 'verbose': 1, 'baseline': None}
 
     def get_params(self):
-        return self.__dict__
+        result = {
+        }
+        result['optimizer_parameter'] = self.optimizer_parameter
+        result['loss'] = self.loss
+
+        result['random_seed'] = self.random_seed
+        result['epochs'] = self.epochs
+        result['batch_size'] = self.batch_size
+        result['validation_split'] = self.validation_split
+        result['early_stopping'] = self.early_stopping
+        return result
 
     def get_optimizer(self):
         tmp = tf.keras.optimizers.get(self.optimizer)
@@ -83,7 +93,10 @@ class TensorflowKerasModelParameter:
         self.param = model.get_config()  # model.to_json()
 
     def get_params(self):
-        return self.param
+        result = {}
+        for i in range(len(self.param)):
+            result['layer:' + str(i)] = self.param[i]
+        return result
 
 
 def eval_keras_tensorflow(model, data):
