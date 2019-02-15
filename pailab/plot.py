@@ -163,7 +163,7 @@ def measure_history(ml_repo, measure_name):
     iplot(fig)  # , filename='pandas/basic-line-plot')
 
 
-def _histogram(plot_dict):
+def _histogram(plot_dict, n_bins = None):
     layout = go.Layout(
         title=plot_dict['title'],
         xaxis=dict(title=plot_dict['x0_name']),
@@ -179,16 +179,23 @@ def _histogram(plot_dict):
             text += l + ':' + str(w) + '<br>'
         if 'label' in x.keys():
             k = x['label'] + ', ' + k
-        plot_data.append(go.Histogram(x=x['x0'],
-                                      text=text,
-                                      name=k,
-                                      opacity=opacity))
+        if n_bins is None:
+            plot_data.append(go.Histogram(x=x['x0'],
+                                        text=text,
+                                        name=k,
+                                        opacity=opacity))
+        else:
+            plot_data.append(go.Histogram(x=x['x0'],
+                                        text=text,
+                                        name=k,
+                                        opacity=opacity, 
+                                        nbinsx = n_bins))
     fig = go.Figure(data=plot_data, layout=layout)
 
     iplot(fig)  # , filename='pandas/basic-line-plot')
 
 
-def histogram_model_error(ml_repo, models, data_name, y_coordinate=None, data_version=LAST_VERSION):
+def histogram_model_error(ml_repo, models, data_name, y_coordinate=None, data_version=LAST_VERSION, n_bins = None,  start_index = 0, end_index = -1):
     """Plot histogram of differences between predicted and real values.
 
     The method plots histograms between predicted and real values of a certain target variable for reference data and models. 
@@ -219,11 +226,11 @@ def histogram_model_error(ml_repo, models, data_name, y_coordinate=None, data_ve
     """
 
     plot_dict = plot_helper.get_pointwise_model_errors(
-        ml_repo, models, data_name, y_coordinate)
-    _histogram(plot_dict)
+        ml_repo, models, data_name, y_coordinate, start_index=start_index, end_index=end_index)
+    _histogram(plot_dict, n_bins)
 
 
-def scatter_model_error(ml_repo, models, data_name, x_coordinate, y_coordinate=None, data_version=LAST_VERSION):
+def scatter_model_error(ml_repo, models, data_name, x_coordinate, y_coordinate=None, data_version=LAST_VERSION,  start_index = 0, end_index = -1):
     '''[summary]
 
     Args:
@@ -236,7 +243,7 @@ def scatter_model_error(ml_repo, models, data_name, x_coordinate, y_coordinate=N
     '''
 
     plot_dict = plot_helper.get_pointwise_model_errors(
-        ml_repo, models, data_name, y_coordinate, x_coord_name=x_coordinate)
+        ml_repo, models, data_name, y_coordinate, x_coord_name=x_coordinate, start_index=start_index, end_index=end_index)
 
     layout = go.Layout(
         title=plot_dict['title'],

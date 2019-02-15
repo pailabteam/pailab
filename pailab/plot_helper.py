@@ -117,7 +117,7 @@ def get_measure_by_parameter(ml_repo, measure_names, param_name, data_versions=L
     return result_all
 
 
-def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_version=LAST_VERSION, x_coord_name=None):
+def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_version=LAST_VERSION, x_coord_name=None, start_index = 0, end_index = -1):
     label_checker = _LabelChecker(ml_repo)
 
     def get_model_dict(ml_repo, models, label_checker):
@@ -184,13 +184,16 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
                 eval_data = [eval_data]
             for eval_d in eval_data:
                 error = ref_data.y_data[:, coord] - eval_d.x_data[:, coord]
+                end = end_index
+                if end > 0:
+                    end = min(end, error.shape[0])
                 tmp = {}
                 if x_coord_name is None:
-                    tmp['x0'] = error
+                    tmp['x0'] = error[start_index:end]
                 else:
-                    tmp['x1'] = error
+                    tmp['x1'] = error[start_index:end]
                     tmp['x0_name'] = x_coord_name
-                    tmp['x0'] = ref_data.x_data[:,
+                    tmp['x0'] = ref_data.x_data[start_index:end,
                                                 ref_data.x_coord_names.index(x_coord_name)]
                 tmp['info'] = {d: str(data_version),
                                m_name: str(eval_d.repo_info[RepoInfoKey.MODIFICATION_INFO][m_name])}
