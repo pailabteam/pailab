@@ -382,3 +382,26 @@ class MLTree:
         result.update(self.test_data.modifications())
         # result.update(self.models.modifications())
         return result
+
+class ModelCompare:
+    @staticmethod
+    def get_model_differences(ml_repo:MLRepo, model1, version1, version2, data, model2 = None, n_points = 1, y_coordname = None):
+        if model2 is None:
+            model2 = model1
+        if isinstance(data,str):
+            data_sets = [data]
+        else:
+            data_sets = data
+        eval_data_model_1 = str(NamingConventions.EvalData(model=model1, data=data))
+        eval_data_1 = ml_repo.get(eval_data_model_1, version=None, modifier_versions={model1: version1}, full_object = True)
+        eval_data_model_2 = str(NamingConventions.EvalData(model=model2, data=data))
+        eval_data_2 = ml_repo.get(eval_data_model_2, version=None, modifier_versions={model2: version2}, full_object = True)
+        if y_coordname is None:
+            y_coord = 0
+        else:
+            y_coord = eval_data_1.y_coord_names.index(y_coordname)
+        diff = eval_data_1[:,y_coord] - eval_data_2[:,y_coord]
+        
+
+
+            

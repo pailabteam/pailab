@@ -3,6 +3,7 @@ added to the resuling figures from the information stored in the repository.
 """
 
 import logging
+import numpy as np
 import pandas as pd
 import pailab.plot_helper as plot_helper  # pylint: disable=E0611
 from pailab.repo_store import RepoStore, LAST_VERSION
@@ -183,13 +184,15 @@ def _histogram(plot_dict, n_bins = None):
             plot_data.append(go.Histogram(x=x['x0'],
                                         text=text,
                                         name=k,
-                                        opacity=opacity))
+                                        opacity=opacity,
+                                        histnorm='probability'))
         else:
             plot_data.append(go.Histogram(x=x['x0'],
                                         text=text,
                                         name=k,
                                         opacity=opacity, 
-                                        nbinsx = n_bins))
+                                        nbinsx = n_bins,
+                                        histnorm='probability'))
     fig = go.Figure(data=plot_data, layout=layout)
 
     iplot(fig)  # , filename='pandas/basic-line-plot')
@@ -230,7 +233,7 @@ def histogram_model_error(ml_repo, models, data_name, y_coordinate=None, data_ve
     _histogram(plot_dict, n_bins)
 
 
-def scatter_model_error(ml_repo, models, data_name, x_coordinate, y_coordinate=None, data_version=LAST_VERSION,  start_index = 0, end_index = -1):
+def scatter_model_error(ml_repo, models, data_name, x_coordinate, y_coordinate=None, start_index = 0, end_index = -1):
     '''[summary]
 
     Args:
@@ -270,7 +273,7 @@ def scatter_model_error(ml_repo, models, data_name, x_coordinate, y_coordinate=N
     iplot(fig)  # , filename='pandas/basic-line-plot')
 
 
-def histogram_data(ml_repo, data, x_coordinate, y_coordinate=None):
+def histogram_data(ml_repo, data, x_coordinate, y_coordinate=None, n_bins = None):
     '''[summary]
 
     Args:
@@ -283,4 +286,39 @@ def histogram_data(ml_repo, data, x_coordinate, y_coordinate=None):
         Exception: [description]
     '''
     plot_dict = plot_helper.get_data(ml_repo, data, x_coordinate)
-    _histogram(plot_dict)
+    _histogram(plot_dict, n_bins=n_bins)
+
+def histogram_data_conditional_error(ml_repo, models, data_name, x_coordinate, y_coordinate = None,  
+                                    start_index = 0, end_index = -1, percentile = 0.1, n_bins = None):
+    """Plots the distribution of input data along a given axis for the largest absolute pointwise errors in comparison to the distribution of all data.
+    
+    Args:
+        ml_repo (MLRepo): repository
+        models (str, list of str): definition of latest model/models used for plotting beneath the labeled models
+        data_name (str): name of dataset used for plotting
+        x_coordinate (str): name of x coordinate for which the distribution will be plotted
+        y_coordinate (str, optional): Name of y-coordinate for which the error is determined. Defaults to None (use first y-coordinate).
+        start_index (int, optional): Defaults to 0. Startindex of data.
+        end_index (int, optional): Defaults to -1. Endindex of data.
+        percentile (float, optional): Defaults to 0.1. Percentage of largest absolute errors used.
+        n_bins ([type], optional): Defaults to None. Number of bin of histogram.
+    """
+
+    tmp = plot_helper.get_pointwise_model_errors(
+        ml_repo, models, data_name, y_coordinate, x_coord_name=x_coordinate, start_index = 0, end_index = -1)
+    
+    plot_data = {}
+    for k,x in tmp['data'].items():
+        abs_err = np.abs(x['x1'])
+        sorted_indices = np.argsort(abs_err)
+        i_start = int( (1.0-percentile)*len(sorted_indices))
+        indices = sorted_indices[i_start:]
+        data = {'x0': x['x0'][indices], 'info': x['info']}
+        if 'label' in x.keys():
+            plot_data[x['label']+':'+str(percentile)] = data
+            plot_data[x['label']] = {'x0': x['x0'][start_index:end_index], 'info': x['info']}
+        else:
+            plot_data[k+':'+str(percentile)] = data
+            plot_data[k] = {'x0': x['x0'][start_index:end_index], 'info': x['info']}
+    plot_dict = {'data': plot_data, 'title': '', 'x0_name':x_coordinate}
+    _histogram(plot_dict, n_bins=n_bins)
