@@ -6,7 +6,8 @@ from pailab import MLObjectType, RepoInfoKey, FIRST_VERSION, LAST_VERSION
 import pailab.checker as checker
 import pandas as pd
 
-pd.set_option('display.max_colwidth', -1) #set option so that long lines have a linebreak
+# set option so that long lines have a linebreak
+pd.set_option('display.max_colwidth', -1)
 
 beakerX = False
 if beakerX:
@@ -22,56 +23,33 @@ class ObjectOverviewList:
         self._ml_repo = ml_repo
         self._categories = widgets.SelectMultiple(
             options=[k.value for k in MLObjectType])
-        self._repo_info = widgets.SelectMultiple(
-            options=[k.value for k in RepoInfoKey], value=['category', 'name']
+        self._repo_info=widgets.SelectMultiple(
+            options = [k.value for k in RepoInfoKey], value = ['category', 'name']
         )
-        self._button_update = widgets.Button(description='update')
+        self._button_update=widgets.Button(description = 'update')
         self._button_update.on_click(self.get_overview)
-        self._output = widgets.Output()
-        self._input_box = widgets.HBox(
-            children=[widgets.VBox(
+        self._output=widgets.Output()
+        self._input_box=widgets.HBox(
+            children = [widgets.VBox(
                 children=[self._categories, self._repo_info]), self._button_update, self._output]
         )
 
-        #
-
-        # self.select_category = widgets.RadioButtons(
-        #     options=['ALL', 'Model', 'Result', 'Job', 'RawData', 'DataSet', 'TrainingParameter', 'Test', 'Pipeline', 'ModelParameter'])
-        # self.cb_additional_fields = []
-        # for i in ['status', 'modification_info']:
-        #     self.cb_additional_fields.append(widgets.Checkbox(
-        #         description=i, value=False, width=1300))
-        # self.objects = widgets.VBox(children=self.cb_additional_fields)
-        # self.selection_overall = widgets.HBox(
-        #     children=[self.select_category, self.objects])
-        # self.button_show_objects = widgets.Button(description='update')
-        # self.selection = widgets.VBox(
-        #     children=[self.selection_overall, self.button_show_objects])
-
-        # self.out_objects_stored = widgets.Output()
-        # self.out_objects_overview = widgets.Tab(
-        #     children=[self.selection, self.out_objects_stored])
-        # self.out_objects_overview.set_title(0, 'settings')
-        # self.out_objects_overview.set_title(1, 'overview')
-        # self.final_widget = self.out_objects_overview
-        # self.button_show_objects.on_click(self.get_overview)
-
     def get_overview(self, d):
-        result = {}
+        result={}
         for info in self._repo_info.value:
-            result[info] = []
+            result[info]=[]
 
         for k in self._categories.value:
-            names = self._ml_repo.get_names(k)
+            names=self._ml_repo.get_names(k)
             for n in names:
-                obj = self._ml_repo.get(n)
+                obj=self._ml_repo.get(n)
                 for info in self._repo_info.value:
                     if isinstance(obj.repo_info[info], MLObjectType):
                         result[info].append(obj.repo_info[info].value)
                     else:
                         result[info].append(str(obj.repo_info[info]))
         with self._output:
-            clear_output(wait=True)
+            clear_output(wait = True)
             TableDisplay(pd.DataFrame.from_dict(result))  # , orient='index'))
 
         # _object_type = self.select_category.value
@@ -100,35 +78,35 @@ class ObjectOverviewList:
 
 class ObjectView:
 
-    def _setup_names(self, change=None):
-        names = []
+    def _setup_names(self, change = None):
+        names=[]
         for k in self._categories.value:
             names.extend(self._ml_repo.get_names(k))
-        self._names.options = names
+        self._names.options=names
 
-    def __init__(self, ml_repo, beakerX=False):
-        self._ml_repo = ml_repo
-        self._categories = widgets.SelectMultiple(
-            options=[k.value for k in MLObjectType], value=['CALIBRATED_MODEL'])
-        self._names = widgets.SelectMultiple(
-            options=[]
+    def __init__(self, ml_repo, beakerX = False):
+        self._ml_repo=ml_repo
+        self._categories=widgets.SelectMultiple(
+            options = [k.value for k in MLObjectType], value = ['CALIBRATED_MODEL'])
+        self._names=widgets.SelectMultiple(
+            options = []
         )
         self._setup_names()
         self._categories.observe(self._setup_names, 'value')
 
-        self._button_update = widgets.Button(description='show history')
+        self._button_update=widgets.Button(description = 'show history')
         self._button_update.on_click(self.show_history)
-        self._output = widgets.Output()
-        self._input_box = widgets.HBox(
-            children=[widgets.VBox(
+        self._output=widgets.Output()
+        self._input_box=widgets.HBox(
+            children = [widgets.VBox(
                 children=[self._categories, self._names]), self._button_update, self._output]
         )
 
     def show_history(self, d):
-        result={  RepoInfoKey.NAME.value : [],
-             RepoInfoKey.AUTHOR.value : [], 
-             RepoInfoKey.VERSION.value : [], 
-             RepoInfoKey.COMMIT_DATE.value : []}
+        result={RepoInfoKey.NAME.value: [],
+             RepoInfoKey.AUTHOR.value: [],
+             RepoInfoKey.VERSION.value: [],
+             RepoInfoKey.COMMIT_DATE.value: []}
         for k in self._names.value:
             history = self._ml_repo.get_history(k)
             for l in history:
@@ -146,7 +124,7 @@ class ConsistencyChecker:
     def _consistency_check(self):
         self._test_results = checker.Tests.run(self._ml_repo)
         self._model_results = checker.Model.run(self._ml_repo)
-        self._data_results =checker.Data.run(self._ml_repo)
+        self._data_results = checker.Data.run(self._ml_repo)
 
     def __init__(self, ml_repo, beakerX=False):
         self._ml_repo = ml_repo
@@ -193,8 +171,8 @@ class ConsistencyChecker:
 import pailab.plot_helper as plt_helper
 import pailab.plot as plot
 
-#import plotly.graph_objs as go
-#from plotly.offline import download_plotlyjs, init_notebook_mode, iplot
+# import plotly.graph_objs as go
+# from plotly.offline import download_plotlyjs, init_notebook_mode, iplot
 
 
 class Plotter:
@@ -270,7 +248,7 @@ class Plotter:
             data = [ x for x in self._data_selection.value]
             if len(data) > 0 and self._param_sel.value is not None:
                 use_train_param = True
-                if self._train_model_sel == 'model':
+                if self._train_model_sel.value == 'model':
                     use_train_param = False
                 plot.measure_by_parameter(self._ml_repo, data, self._param_sel.value, data_versions= LAST_VERSION, training_param = use_train_param)
 
