@@ -35,7 +35,6 @@ class MLObjectType(Enum):
     MODEL_EVAL_FUNCTION = 'MODEL_EVAL_FUNCTION'
     PREP_PARAM = 'PREP_PARAM'
     PREPROCESSOR = 'PREPROCESSOR'
-    MODEL_INFO = 'MODEL_INFO'
     LABEL = 'LABEL'
     MODEL = 'MODEL'
     CALIBRATED_MODEL = 'CALIBRATED_MODEL'
@@ -266,22 +265,24 @@ class Job(RepoObject, abc.ABC):
         ml_repo._update_job(self)
         try:
             self._run(wrapper,  jobid)
+            self.finished = str(datetime.now())
             self.state ='finished'
             self.repo_info[RepoInfoKey.MODIFICATION_INFO] = wrapper.modification_info
-            self.finished = str(datetime.now())
             ml_repo._update_job(self)
         except Exception as e:
             self.finished = str(datetime.now())
-            self.state = 'error' 
+            self.state = 'error'
+            self.repo_info[RepoInfoKey.MODIFICATION_INFO] = wrapper.modification_info
+            self.error_message = str(e)
+            ml_repo._update_job(self)
             raise e from None
 
     def check_rerun(self, ml_repo):
         name, modifier_versions = self.get_modifier_versions(ml_repo)
-        try:
-            job = ml_repo.get(self.repo_info.name, version = None, modifier_versions=modifier_versions)
-            if job.state == 'error':
-                return True
-        except:
+        job = ml_repo.get(self.repo_info.name, version = None, modifier_versions=modifier_versions,throw_error_not_exist=False)
+        if job == []:
+            return True
+        if job.state == 'error':
             return True
         return False
 
@@ -519,6 +520,8 @@ class MeasureJob(Job):
             return self._compute_max(target_data, eval_data)
         if self.measure_type == repo_objects.MeasureConfiguration.R2:
            return self._compute_r2(target_data, eval_data)
+        if self.measure_type == repo_objects.MeasureConfiguration.MSE:
+           return self._compute_mse(target_data, eval_data)
         else:
             raise NotImplementedError
         
@@ -529,6 +532,11 @@ class MeasureJob(Job):
     def _compute_r2(self, target_data, eval_data):
         from sklearn.metrics import r2_score
         return r2_score(target_data, eval_data)        
+
+    def _compute_mse(self, target_data, eval_data):
+        from sklearn.metrics import mean_squared_error
+        return mean_squared_error(target_data, eval_data) 
+
 # endregion
 class Name:
     def __init__(self, name_order, tag):
@@ -640,9 +648,10 @@ class MLRepo:
                     'config': {} }}
 
     def _save_config(self):
-        if self._config['workspace']  is not None:
-            with open(self._config['workspace']  + '/.config.json', 'w') as f:
-                json.dump(self._config, f, indent=4, separators=(',', ': '))
+        if 'workspace' in self._config.keys():
+            if self._config['workspace']  is not None:
+                with open(self._config['workspace']  + '/.config.json', 'w') as f:
+                    json.dump(self._config, f, indent=4, separators=(',', ': '))
 
     def __init__(self,  workspace = None, user=None, config = None, numpy_repo =None, job_runner=None, save_config = False):
         """ Constructor of MLRepo
@@ -658,6 +667,7 @@ class MLRepo:
                     self._config = json.load(f)
             else:
                 self._config = MLRepo.__create_default_config(user, workspace)
+        
         self._numpy_repo = numpy_repo
         self._ml_repo = RepoStoreFactory.get(self._config['repo_store']['type'], **self._config['repo_store']['config'])
         
@@ -1034,6 +1044,15 @@ class MLRepo:
             return None
         return tmp
 
+    def run(self, job):
+        if job.check_rerun(self):
+            self.add(job)
+            self._job_runner.add(job.repo_info.name, job.repo_info.version, self._user)
+            return job.repo_info.name, job.repo_info.version
+        else:
+            return 'No input changed since last run, do not start job..'
+ 
+
     def run_training(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, 
                     training_function_version=repo_store.RepoStore.LAST_VERSION,
                     training_data_version=repo_store.RepoStore.LAST_VERSION, training_param_version = repo_store.RepoStore.LAST_VERSION, 
@@ -1054,8 +1073,7 @@ class MLRepo:
             model_param_version=model_param_version, repo_info = {RepoInfoKey.NAME: model + '/jobs/training',
                 RepoInfoKey.CATEGORY: MLObjectType.JOB.value})
         # Only start training if input data has changed since last run 
-        tmp = self.__obj_latest(train_job.repo_info.name)
-        if tmp is None: # todo check not for latest but include the respective specified versions
+        if train_job.check_rerun(self):
             self.add(train_job)
             self._job_runner.add(train_job.repo_info[RepoInfoKey.NAME], train_job.repo_info[RepoInfoKey.VERSION], self._user)
             logging.info('Training job ' + train_job.repo_info[RepoInfoKey.NAME]+ ', version: ' 
@@ -1065,7 +1083,7 @@ class MLRepo:
                     predecessors=[(train_job.repo_info[RepoInfoKey.NAME], train_job.repo_info[RepoInfoKey.VERSION])], run_descendants=True)
             return train_job.repo_info[RepoInfoKey.NAME], str(train_job.repo_info[RepoInfoKey.VERSION])
         else:
-            return 'No new training started: A model has already been trained on the latest data, training job version: ' + tmp.repo_info.version
+            return 'No new training started: A model has already been trained on the latest data.'
 
     def _get_default_object_name(self, obj_name, obj_category):
         """Returns unique object name of given category if given object_name is None

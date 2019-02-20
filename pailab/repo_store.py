@@ -120,7 +120,7 @@ class RepoStore(abc.ABC):
             name, versions, throw_error_not_exist)
         if modifier_versions is not None:
             for k, v in modifier_versions.items():
-                modifier_versions[k] = self._replace_version_placeholder(k, v)
+                modifier_versions[k] = self._replace_version_placeholder(k, v, throw_error_not_exist)
         return self._get(name, versions, modifier_versions,
                          obj_fields, repo_info_fields,
                          throw_error_not_exist, throw_error_not_unique)

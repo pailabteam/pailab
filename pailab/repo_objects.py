@@ -55,7 +55,7 @@ class RepoInfo:
             self.modification_info = modification_info
         self.description = None
         self.category = category
-        self.big_objects = set()
+        self.big_objects = []
         self.commit_message = None
         self.author = None
         self.commit_date = None

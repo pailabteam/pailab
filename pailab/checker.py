@@ -132,9 +132,22 @@ class Model:
 
         logger.info('Start checking model.')
         result = {}
-        if model_name is None and model_label is None:
-            raise Exception('Please specify a model or a label.')
-        if model_label is not None:  # check the model defined by the label
+
+        model_labels = []
+        if model_label is None:
+            model_labels = repo.get_names(MLObjectType.LABEL)
+        elif isinstance(model_label, list):
+            model_labels=model_label
+        elif isinstance(model_label, str):
+            model_labels=[model_label]
+            
+        if model_name is None:
+            models = repo.get_names(MLObjectType.CALIBRATED_MODEL)
+            if len(models) == 1:
+                model_name = models[0]
+        
+
+        for model_label in model_labels:  # check the model defined by the label
             label = repo.get(model_label)
             tmp = Model.__check_model(repo, label.name, correct,
                                                 model_version=label.version)
@@ -167,15 +180,6 @@ class Model:
                 if len(tmp) > 0:
                     result[model_name+':' + str(version)] = tmp
 
-        # if no versions or a fixed model label is specified, check for all labels
-        if model_version is None and model_label is None:
-            labels = repo.get_names(MLObjectType.LABEL)
-            for l in labels:
-                label = repo.get(l)
-                tmp = Model.__check_model(
-                    repo, label.name, correct, label.version, check_for_latest=check_for_latest)
-                if len(tmp) > 0:
-                    result[label.repo_info.name] = tmp
         logger.info('Finished checking model.')
         return result
 
@@ -256,7 +260,7 @@ class Data:
         raise NotImplementedError()
 
     @staticmethod
-    def run(repo, overlapping = True, usage = True):
+    def run(repo, overlapping = True, usage = False):
         result = {}
         if overlapping:
             result = Data.__check_no_overlapping_training_test(repo)

@@ -3,6 +3,7 @@ added to the resuling figures from the information stored in the repository.
 """
 
 import logging
+import numpy as np
 import pandas as pd
 import pailab.plot_helper as plot_helper  # pylint: disable=E0611
 from pailab.repo_store import RepoStore, LAST_VERSION
@@ -78,9 +79,32 @@ def measure_by_parameter(ml_repo, measure_name, param_name, data_versions=None, 
     # IPython notebook
     # py.iplot(data, filename='pandas/basic-line-plot')
     fig = go.Figure(data=data, layout=layout)
-
+    #return fig
     iplot(fig)  # , filename='pandas/basic-line-plot')
 
+
+def projection(ml_repo, left, right, n_steps = 100, model = None, labels = None,  output_index = None, direction = None):
+    logger.info('Start projection with ' + str(n_steps) + ' steps.')
+    x = plot_helper.project(ml_repo, model, labels, left, right, output_index=output_index, n_steps= n_steps)
+    training = ml_repo.get_names(MLObjectType.TRAINING_DATA) #use training data to get output name
+    output_name = ml_repo.get(training[0]).y_coord_names[0]
+    data = []
+    x_data = [0.0 + float(i)/float(n_steps-1) for i in range(n_steps) ]
+    for k,v in x.items():
+        data.append(
+                    go.Scatter(
+                        x=x_data,
+                        y=v,
+                        name=k
+                    )
+        )
+    layout = go.Layout(
+        title='projection',
+        xaxis=dict(title='steps'),
+        yaxis=dict(title=output_name)
+    )
+    fig = go.Figure(data=data, layout=layout)
+    iplot(fig)
 
 def measure_history(ml_repo, measure_name):
 
@@ -140,7 +164,7 @@ def measure_history(ml_repo, measure_name):
     iplot(fig)  # , filename='pandas/basic-line-plot')
 
 
-def _histogram(plot_dict):
+def _histogram(plot_dict, n_bins = None):
     layout = go.Layout(
         title=plot_dict['title'],
         xaxis=dict(title=plot_dict['x0_name']),
@@ -156,16 +180,25 @@ def _histogram(plot_dict):
             text += l + ':' + str(w) + '<br>'
         if 'label' in x.keys():
             k = x['label'] + ', ' + k
-        plot_data.append(go.Histogram(x=x['x0'],
-                                      text=text,
-                                      name=k,
-                                      opacity=opacity))
+        if n_bins is None:
+            plot_data.append(go.Histogram(x=x['x0'],
+                                        text=text,
+                                        name=k,
+                                        opacity=opacity,
+                                        histnorm='probability'))
+        else:
+            plot_data.append(go.Histogram(x=x['x0'],
+                                        text=text,
+                                        name=k,
+                                        opacity=opacity, 
+                                        nbinsx = n_bins,
+                                        histnorm='probability'))
     fig = go.Figure(data=plot_data, layout=layout)
 
     iplot(fig)  # , filename='pandas/basic-line-plot')
 
 
-def histogram_model_error(ml_repo, models, data_name, y_coordinate=None, data_version=LAST_VERSION):
+def histogram_model_error(ml_repo, models, data_name, y_coordinate=None, data_version=LAST_VERSION, n_bins = None,  start_index = 0, end_index = -1):
     """Plot histogram of differences between predicted and real values.
 
     The method plots histograms between predicted and real values of a certain target variable for reference data and models. 
@@ -196,11 +229,11 @@ def histogram_model_error(ml_repo, models, data_name, y_coordinate=None, data_ve
     """
 
     plot_dict = plot_helper.get_pointwise_model_errors(
-        ml_repo, models, data_name, y_coordinate)
-    _histogram(plot_dict)
+        ml_repo, models, data_name, y_coordinate, start_index=start_index, end_index=end_index)
+    _histogram(plot_dict, n_bins)
 
 
-def scatter_model_error(ml_repo, models, data_name, x_coordinate, y_coordinate=None, data_version=LAST_VERSION):
+def scatter_model_error(ml_repo, models, data_name, x_coordinate, y_coordinate=None, start_index = 0, end_index = -1):
     '''[summary]
 
     Args:
@@ -213,7 +246,7 @@ def scatter_model_error(ml_repo, models, data_name, x_coordinate, y_coordinate=N
     '''
 
     plot_dict = plot_helper.get_pointwise_model_errors(
-        ml_repo, models, data_name, y_coordinate, x_coord_name=x_coordinate)
+        ml_repo, models, data_name, y_coordinate, x_coord_name=x_coordinate, start_index=start_index, end_index=end_index)
 
     layout = go.Layout(
         title=plot_dict['title'],
@@ -240,7 +273,7 @@ def scatter_model_error(ml_repo, models, data_name, x_coordinate, y_coordinate=N
     iplot(fig)  # , filename='pandas/basic-line-plot')
 
 
-def histogram_data(ml_repo, data, x_coordinate, y_coordinate=None):
+def histogram_data(ml_repo, data, x_coordinate, y_coordinate=None, n_bins = None):
     '''[summary]
 
     Args:
@@ -253,4 +286,39 @@ def histogram_data(ml_repo, data, x_coordinate, y_coordinate=None):
         Exception: [description]
     '''
     plot_dict = plot_helper.get_data(ml_repo, data, x_coordinate)
-    _histogram(plot_dict)
+    _histogram(plot_dict, n_bins=n_bins)
+
+def histogram_data_conditional_error(ml_repo, models, data_name, x_coordinate, y_coordinate = None,  
+                                    start_index = 0, end_index = -1, percentile = 0.1, n_bins = None):
+    """Plots the distribution of input data along a given axis for the largest absolute pointwise errors in comparison to the distribution of all data.
+    
+    Args:
+        ml_repo (MLRepo): repository
+        models (str, list of str): definition of latest model/models used for plotting beneath the labeled models
+        data_name (str): name of dataset used for plotting
+        x_coordinate (str): name of x coordinate for which the distribution will be plotted
+        y_coordinate (str, optional): Name of y-coordinate for which the error is determined. Defaults to None (use first y-coordinate).
+        start_index (int, optional): Defaults to 0. Startindex of data.
+        end_index (int, optional): Defaults to -1. Endindex of data.
+        percentile (float, optional): Defaults to 0.1. Percentage of largest absolute errors used.
+        n_bins ([type], optional): Defaults to None. Number of bin of histogram.
+    """
+
+    tmp = plot_helper.get_pointwise_model_errors(
+        ml_repo, models, data_name, y_coordinate, x_coord_name=x_coordinate, start_index = 0, end_index = -1)
+    
+    plot_data = {}
+    for k,x in tmp['data'].items():
+        abs_err = np.abs(x['x1'])
+        sorted_indices = np.argsort(abs_err)
+        i_start = int( (1.0-percentile)*len(sorted_indices))
+        indices = sorted_indices[i_start:]
+        data = {'x0': x['x0'][indices], 'info': x['info']}
+        if 'label' in x.keys():
+            plot_data[x['label']+':'+str(percentile)] = data
+            plot_data[x['label']] = {'x0': x['x0'][start_index:end_index], 'info': x['info']}
+        else:
+            plot_data[k+':'+str(percentile)] = data
+            plot_data[k] = {'x0': x['x0'][start_index:end_index], 'info': x['info']}
+    plot_dict = {'data': plot_data, 'title': '', 'x0_name':x_coordinate}
+    _histogram(plot_dict, n_bins=n_bins)
