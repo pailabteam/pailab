@@ -386,7 +386,7 @@ class RawData(RepoObject):
         return str(self.to_dict()) # pylint: disable=E1101
    
 class Model(RepoObject):
-    def __init__(self, preprocessing = None, preprocessing_param = None, 
+    def __init__(self, preprocessing_function = None, preprocessing_param = None, 
                 eval_function = None, train_function = None, train_param = None, 
                 model_param = None, repo_info = RepoInfo()):
         """Defines all model relevant information
@@ -401,12 +401,32 @@ class Model(RepoObject):
             model {object} -- the object defining the model
         """
         super(Model, self).__init__(repo_info)
-        self.preprocessing_function = preprocessing
+        self.preprocessing_function = preprocessing_function
         self.preprocessing_param = preprocessing_param
         self.eval_function = eval_function
         self.training_function = train_function
         self.training_param = train_param
         self.model_param = model_param
+
+class Preprocessor(RepoObject):
+    def __init__(self, preprocessor, transforming_function, fitting_function = None,
+                fitting_param = None, repo_info = RepoInfo()):
+        """Defines all relevant information for the preprocessor
+        
+        Keyword Arguments:
+            preprocessing {string} -- name of preprocessing used (default: {None})
+            preprocessing_param {string} -- name of preprocessing used (default: {None})
+            eval_function {string} -- name of function object for model evaluation (default: {None})
+            train_function {string} -- name of function object for model training (default: {None})
+            train_param {string} -- name of training parameer object used for model training (default: {None})
+            model_param {string} -- name of model parameter object used for creating the model, i.e. network architecture (default: {None})
+            model {object} -- the object defining the model
+        """
+        super(Preprocessor, self).__init__(repo_info)
+        self.preprocessor = preprocessor
+        self.fitting_function = fitting_function
+        self.transforming_function = transforming_function
+        self.fitting_param = fitting_param
     
 class Function(RepoObject):
     """Function
@@ -583,6 +603,18 @@ class DataSet(RepoObject):
         setattr(self, 'x_coord_names', raw_data.x_coord_names)
         setattr(self, 'y_coord_names', raw_data.y_coord_names)
         setattr(self, 'n_data', raw_data.n_data)
+
+    def get_pandas_data(self):
+        """ Returns a pandas data frame
+        
+        Arguments:
+        """
+
+        if self.y_data is None:
+            return pd.DataFrame(data = self.x_data, columns = self.x_coord_names)
+        else:
+            return pd.DataFrame(data = np.concatenate((self.x_data, self.y_data), axis=1), \
+                columns = self.x_coord_names + self.y_coord_names)
     
     def __str__(self):
         return str(self.to_dict())

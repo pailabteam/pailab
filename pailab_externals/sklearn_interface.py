@@ -7,6 +7,7 @@ __version__ = '0.0.1'
 
 from pailab.repo_objects import repo_object_init
 from pailab.repo_objects import RepoInfoKey
+from pailab.repo_objects import Preprocessor
 from pailab.repo import MLObjectType
 
 
@@ -69,7 +70,8 @@ def train_sklearn(model_param, data_x, data_y):
     return result
 
 
-def add_model(repo, skl_learner, model_name=None, model_param=None):
+def add_model(repo, skl_learner, model_name=None, model_param=None,
+              preprocessors=None):
     """Adds a new sklearn model to a pailab MLRepo
 
     Args:
@@ -96,4 +98,70 @@ def add_model(repo, skl_learner, model_name=None, model_param=None):
     repo.add(model_p, 'adding model and training parameter')
 
     repo.add_model(m_name, model_eval='eval_sklearn',
-                   model_training='train_sklearn', model_param=m_name + '/model_param', training_param='')
+                   model_training='train_sklearn', model_param=m_name + '/model_param', training_param='',
+                   preprocessing_function=preprocessing_function, preprocessing_param=preprocessing_param)
+
+# region Preprocessing
+
+
+class SKLearnFittingParam:
+    """Interfaces the parameters of the sklearn algorithms
+
+    """
+
+    @repo_object_init()
+    def __init__(self, model, sklearn_param):
+        self.sklearn_module_name = model.__class__.__module__
+        self.sklearn_class_name = model.__class__.__name__
+        self.sklearn_params = sklearn_param
+
+    def get_params(self):
+        return self.sklearn_params
+
+
+class SKLearnPreprocessor:
+    """Class to store all sklearn preprocessor
+    """
+
+    @repo_object_init()
+    def __init__(self, preprocessor):
+        self.preprocessor = preprocessor
+
+
+def create_preprocessor(preprocessor):
+    return Preprocessor(preprocessor, fitting_function='fit_sklearn', transforming_function='transform_sklearn',
+                        fitting_param=None)
+
+
+def transform_sklearn(fitting_param, data_x):
+    def get_class(full_class_name):
+        parts = full_class_name.split('.')
+        module = ".".join(parts[:-1])
+        m = __import__(module)
+        for comp in parts[1:]:
+            m = getattr(m, comp)
+        return m
+    m = get_class(fitting_param.sklearn_module_name +
+                  '.' + fitting_param.sklearn_class_name)
+
+    prepro = m(**fitting_param.sklearn_params)
+    return prepro.transform(data_x)
+
+
+def fit_sklearn(fitting_param, data_x):
+    def get_class(full_class_name):
+        parts = full_class_name.split('.')
+        module = ".".join(parts[:-1])
+        m = __import__(module)
+        for comp in parts[1:]:
+            m = getattr(m, comp)
+        return m
+    m = get_class(fitting_param.sklearn_module_name +
+                  '.' + fitting_param.sklearn_class_name)
+
+    prepro = m(**fitting_param.sklearn_params)
+    prepro.fit(data_x)
+    result = SKLearnPreprocessor(prepro, repo_info={})
+    return result
+
+# endregion
