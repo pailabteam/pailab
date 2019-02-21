@@ -386,14 +386,13 @@ class RawData(RepoObject):
         return str(self.to_dict()) # pylint: disable=E1101
    
 class Model(RepoObject):
-    def __init__(self, preprocessing_function = None, preprocessing_param = None, 
+    def __init__(self, preprocessors = None, 
                 eval_function = None, train_function = None, train_param = None, 
                 model_param = None, repo_info = RepoInfo()):
         """Defines all model relevant information
         
         Keyword Arguments:
-            preprocessing {string} -- name of preprocessing used (default: {None})
-            preprocessing_param {string} -- name of preprocessing used (default: {None})
+            preprocessors {string} -- list of preprocessor names (default: {None})
             eval_function {string} -- name of function object for model evaluation (default: {None})
             train_function {string} -- name of function object for model training (default: {None})
             train_param {string} -- name of training parameer object used for model training (default: {None})
@@ -401,8 +400,7 @@ class Model(RepoObject):
             model {object} -- the object defining the model
         """
         super(Model, self).__init__(repo_info)
-        self.preprocessing_function = preprocessing_function
-        self.preprocessing_param = preprocessing_param
+        self.preprocessors = preprocessors
         self.eval_function = eval_function
         self.training_function = train_function
         self.training_param = train_param
