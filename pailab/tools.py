@@ -174,7 +174,7 @@ class RawDataCollection(RepoObjectItem):
             setattr(self, RawDataCollection.__get_name_from_path(n), RawDataItem(n, repo))
         self._repo = repo
 
-    def add(self, name, data, input_variables, target_variables):
+    def add(self, name, data, input_variables = None, target_variables = None):
         """Add raw data to the repository
 
         Arguments:
@@ -186,12 +186,24 @@ class RawDataCollection(RepoObjectItem):
             target_variables {list of strings} -- list of column names defining the target variables for the machine learning (default: {None}). If None, no target data is added from the table.
         """
         path = 'raw_data/' + name
+
+        if input_variables is None:
+            input_variables = list(data)
+            if not target_variables is None:
+                [input_variables.remove(x) for x in target_variables]
+        else:
+            # check whether the input_variables are included in the data
+            if not [item for item in input_variables if item in list(data)] == input_variables:
+                raise Exception('RawData does not include at least one column included in input_variables')
       
         if target_variables is not None:
+            # check if target variables are in list
+            if not [item for item in target_variables if item in list(data)] == target_variables:
+                raise Exception('RawData does not include at least one column included in target_variables')
             raw_data = repo_objects.RawData(data.loc[:, input_variables].values, input_variables, data.loc[:, target_variables].values, 
                 target_variables, repo_info = {RepoInfoKey.NAME: path})
         else:
-            raw_data = repo_objects.RawData(data.values, list(data), repo_info = {RepoInfoKey.NAME: path})
+            raw_data = repo_objects.RawData(data.loc[:, input_variables].values, input_variables, repo_info = {RepoInfoKey.NAME: path})
         v = self._repo.add(raw_data, 'data ' + path + ' added to repository' , category = MLObjectType.RAW_DATA)
         obj = self._repo.get(path, version=v, full_object = False)
         setattr(self, name, RawDataItem(path, self._repo, obj))
