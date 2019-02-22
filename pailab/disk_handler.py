@@ -141,6 +141,24 @@ class RepoObjectDiskStorage(RepoStore):
         else:
             raise Exception("Unknown file format " + file_format)
 
+    def _delete(self, name, version):
+        condition = " where name='"+  name + "' and version='" + version + "'"
+        delete_statement = "delete from modification_info " + condition
+        cursor = self._conn.cursor()
+        execute(cursor, delete_statement)
+        select_statement = "select path, file from versions " + condition
+        files = [row[0] + '/' + row[1]
+                 for row in execute(cursor, select_statement)]
+        for filename in files:
+            os.remove(filename)
+        delete_statement = "delete from versions " + condition
+        execute(cursor, delete_statement)
+        #if there is no object with this name anymore, we have to remove it from mapping
+        select_statement = "select path, file from versions where name='"+  name + "'"
+        if len(execute(cursor, select_statement))==0:
+            delete_statement = "delete from mapping where name='" + name + "'"
+            execute(cursor, delete_statement)        
+        
     def get_config(self):
         return {'folder': self._main_dir, 'file_format': self._file_format}
 

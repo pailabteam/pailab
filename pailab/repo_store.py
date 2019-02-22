@@ -120,10 +120,22 @@ class RepoStore(abc.ABC):
             name, versions, throw_error_not_exist)
         if modifier_versions is not None:
             for k, v in modifier_versions.items():
-                modifier_versions[k] = self._replace_version_placeholder(k, v, throw_error_not_exist)
+                modifier_versions[k] = self._replace_version_placeholder(
+                    k, v, throw_error_not_exist)
         return self._get(name, versions, modifier_versions,
                          obj_fields, repo_info_fields,
                          throw_error_not_exist, throw_error_not_unique)
+
+    @abc.abstractmethod
+    def _delete(self, name, version):
+        """Delete an object with a predefined version
+
+        Args:
+            name (str): name of object
+            version (str): object version
+        """
+
+        pass
 
     @abc.abstractmethod
     def _get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None,
@@ -213,6 +225,17 @@ class RepoStore(abc.ABC):
 
 
 class NumpyStore(abc.ABC):
+    @abc.abstractmethod
+    def _delete(self, name, version):
+        """Delete an object with a predefined version
+
+        Args:
+            name (str): name of object
+            version (str): object version
+        """
+
+        pass
+
     @abc.abstractmethod
     def add(self, name, version, numpy_dict):
         """ Add numpy data from an object to the storage.
