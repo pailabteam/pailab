@@ -94,8 +94,14 @@ class TensorflowKerasModelParameter:
 
     def get_params(self):
         result = {}
+        n_overall_units = 0
+        counter = 0
         for i in range(len(self.param)):
-            result['layer:' + str(i)] = self.param[i]
+            if 'units' in  self.param[i]['config'].keys():
+                result['units layer_' + str(counter)] = self.param[i]['config']['units']
+                n_overall_units += self.param[i]['config']['units']
+                counter += 1
+        result['n_overall_units'] = n_overall_units
         return result
 
 

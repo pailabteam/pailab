@@ -458,6 +458,11 @@ class Function(RepoObject):
     def get_version(self):
        return self._module_version
 
+class Result(RepoObject):
+    def __init__(self, data, repo_info = RepoInfo()):
+        super(Result, self).__init__(repo_info)
+        self.repo_info.category = 'RESULT'
+        self.result = data
 
 class CommitInfo(RepoObject):
     def __init__(self, message, author, objects, repo_info = RepoInfo()):

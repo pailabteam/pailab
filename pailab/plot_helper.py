@@ -208,7 +208,7 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
     return result
 
 
-def get_data(ml_repo, data, x0_coord_name, x1_coord_name=None):
+def get_data(ml_repo, data, x0_coord_name, x1_coord_name=None, start_index = 0, end_index = -1):
 
     data_dict = data
     result = {'title': 'data distribution', 'data': {}}
@@ -233,7 +233,7 @@ def get_data(ml_repo, data, x0_coord_name, x1_coord_name=None):
             if x1_coord_name is not None:
                 y_coord = d.x_coord_names.index(x1_coord_name)
             tmp = {'info': {}}
-            tmp['x0'] = d.x_data[:, x_coord]
+            tmp['x0'] = d.x_data[start_index:end_index, x_coord]
             if y_coord is not None:
                 tmp['x1'] = d.x_data[:, y_coord]
             result['data'][d.repo_info[RepoInfoKey.NAME] + ': ' +
