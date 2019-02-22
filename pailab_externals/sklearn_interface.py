@@ -80,6 +80,7 @@ def add_model(repo, skl_learner, model_name=None, model_param=None,
         skl_learner ([type]): [description]
         model_name ([type], optional): Defaults to None. [description]
         model_param ([type], optional): Defaults to None. [description]
+        preprocessors (list of strings, optional): List of used preprocessors
     """
 
     # model name
@@ -87,19 +88,7 @@ def add_model(repo, skl_learner, model_name=None, model_param=None,
     if m_name is None:
         m_name = skl_learner.__class__.__name__
 
-    # add preprocessing
-    if preprocessors is not None:
-        for k in preprocessors:
-            repo.add_preprocessing_transforming_function(
-                transform_sklearn, repo_name='transform_sklearn')
-            if k.fitting_function is not None:
-                repo.add_preprocessing_fitting_function(
-                    fit_sklearn, repo_name='fit_sklearn')
-            fit_param = SKLearnFittingParam(k.preprocessor, k.fitting_param,
-                                            repo_info={RepoInfoKey.NAME.value: m_name + '/preprocessor_param',
-                                                       RepoInfoKey.CATEGORY: MLObjectType.PREPROCESSING_PARAM.value})
-            if k.fitting_param is not None:
-                repo.add(fit_param, 'adding preprocessor')
+    # check whether the preprocessors have been added
 
     # adding model functions
     repo.add_eval_function(eval_sklearn, repo_name='eval_sklearn')
@@ -122,7 +111,7 @@ def add_model(repo, skl_learner, model_name=None, model_param=None,
 # region Preprocessing
 
 
-class SKLearnFittingParam:
+class SKLearnPreprocessingParam:
     """Interfaces the parameters of the sklearn algorithms
 
     """
@@ -146,18 +135,7 @@ class SKLearnPreprocessor:
         self.preprocessor = preprocessor
 
 
-def create_preprocessor(preprocessor, name=None):
-    p_name = name
-    if p_name is None:
-        p_name = preprocessor.__class__.__name__
-    fitting_param = SKLearnFittingParam(preprocessor, sklearn_param=None,
-                                        repo_info={RepoInfoKey.NAME.value: p_name + '/preprocessor_param',
-                                                   RepoInfoKey.CATEGORY: MLObjectType.PREPROCESSING_PARAM.value})
-    return Preprocessor(preprocessor, fitting_function='fit_sklearn', transforming_function='transform_sklearn',
-                        fitting_param=fitting_param)
-
-
-def transform_sklearn(fitting_param, data_x, fitted_preprocessor=None):
+def transform_sklearn(preprocessor_param, data_x, fitted_preprocessor=None):
     if fitted_preprocessor is None:
         def get_class(full_class_name):
             parts = full_class_name.split('.')
@@ -166,16 +144,16 @@ def transform_sklearn(fitting_param, data_x, fitted_preprocessor=None):
             for comp in parts[1:]:
                 m = getattr(m, comp)
             return m
-        m = get_class(fitting_param.sklearn_module_name +
-                      '.' + fitting_param.sklearn_class_name)
+        m = get_class(preprocessor_param.sklearn_module_name +
+                      '.' + preprocessor_param.sklearn_class_name)
 
-        prepro = m(**fitting_param.sklearn_params)
+        prepro = m(**preprocessor_param.sklearn_params)
     else:
         prepro = fitted_preprocessor
     return prepro.preprocessor.transform(X=data_x)
 
 
-def fit_sklearn(fitting_param, data_x):
+def fit_sklearn(preprocessor_param, data_x):
     def get_class(full_class_name):
         parts = full_class_name.split('.')
         module = ".".join(parts[:-1])
@@ -183,14 +161,49 @@ def fit_sklearn(fitting_param, data_x):
         for comp in parts[1:]:
             m = getattr(m, comp)
         return m
-    m = get_class(fitting_param.sklearn_module_name +
-                  '.' + fitting_param.sklearn_class_name)
+    m = get_class(preprocessor_param.sklearn_module_name +
+                  '.' + preprocessor_param.sklearn_class_name)
 
-    if fitting_param.sklearn_params is not None:
-        prepro = m(**fitting_param.sklearn_params)
+    if preprocessor_param.sklearn_params is not None:
+        prepro = m(**preprocessor_param.sklearn_params)
     else:
         prepro = m()
     prepro.fit(X=data_x)
     return SKLearnPreprocessor(prepro, repo_info={})
+
+
+def add_preprocessor(repo, skl_preprocessor, preprocessor_name=None, preprocessor_param=None):
+    """Adds a new sklearn preprocessor to a pailab MLRepo
+
+    Args:
+        repo ([type]): [description]
+        preprocessor (Class): The sklearn preprocessor class
+        preprocessor_name ([type], optional): Defaults to None. [description]
+        preprocessor_param ([type], optional): Defaults to None. [description]
+    """
+
+    # preprocessor name
+    p_name = preprocessor_name
+    if p_name is None:
+        p_name = skl_preprocessor.__class__.__name__
+
+    # add preprocessing
+    repo.add_preprocessing_transforming_function(
+        transform_sklearn, repo_name='transform_sklearn')
+    repo.add_preprocessing_fitting_function(
+        fit_sklearn, repo_name='fit_sklearn')
+    param = skl_preprocessor.get_params(True)
+    if preprocessor_param is not None:
+        for k, v in preprocessor_param.items():
+            param[k] = v
+    skl_param = SKLearnPreprocessingParam(skl_preprocessor, param,
+                                          repo_info={RepoInfoKey.NAME.value: p_name + '/preprocessor_param',
+                                                     RepoInfoKey.CATEGORY: MLObjectType.PREPROCESSOR_PARAM.value})
+
+    if skl_param is not None:
+        repo.add(skl_param, 'adding preprocessor parameter')
+
+    repo.add_preprocessor(p_name, transforming_function='transform_sklearn', fitting_function='fit_sklearn',
+                          preprocessor_param=p_name + '/preprocessor_param')
 
 # endregion
