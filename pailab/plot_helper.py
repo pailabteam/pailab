@@ -101,10 +101,12 @@ def get_measure_by_parameter(ml_repo, measure_names, param_name, data_versions=L
             p = ml_repo.get(
                 p_name, version=x.repo_info[RepoInfoKey.MODIFICATION_INFO][p_name])
             param_value = _get_value_by_path(p.get_params(), param_name)
+            # get train data version
+            model = ml_repo.get(model_name, version = x.repo_info.modification_info[model_name])
             info = {'model_version': x.repo_info[RepoInfoKey.MODIFICATION_INFO][model_name],
                     param_name: param_value, 'param_version': p.repo_info[RepoInfoKey.VERSION],
                     'data_version': x.repo_info[RepoInfoKey.MODIFICATION_INFO][data],
-                    'train_data_version': x.repo_info[RepoInfoKey.MODIFICATION_INFO][train_data],
+                    'train_data_version': model.repo_info[RepoInfoKey.MODIFICATION_INFO][train_data],
                     'measure_version': x.repo_info[RepoInfoKey.VERSION], 'value': x.value}
             label = label_checker.get_label(
                 model_name, x.repo_info[RepoInfoKey.MODIFICATION_INFO][model_name])
@@ -115,7 +117,7 @@ def get_measure_by_parameter(ml_repo, measure_names, param_name, data_versions=L
     return result_all
 
 
-def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_version=LAST_VERSION, x_coord_name=None):
+def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_version=LAST_VERSION, x_coord_name=None, start_index = 0, end_index = -1):
     label_checker = _LabelChecker(ml_repo)
 
     def get_model_dict(ml_repo, models, label_checker):
@@ -182,13 +184,16 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
                 eval_data = [eval_data]
             for eval_d in eval_data:
                 error = ref_data.y_data[:, coord] - eval_d.x_data[:, coord]
+                end = end_index
+                if end > 0:
+                    end = min(end, error.shape[0])
                 tmp = {}
                 if x_coord_name is None:
-                    tmp['x0'] = error
+                    tmp['x0'] = error[start_index:end]
                 else:
-                    tmp['x1'] = error
+                    tmp['x1'] = error[start_index:end]
                     tmp['x0_name'] = x_coord_name
-                    tmp['x0'] = ref_data.x_data[:,
+                    tmp['x0'] = ref_data.x_data[start_index:end,
                                                 ref_data.x_coord_names.index(x_coord_name)]
                 tmp['info'] = {d: str(data_version),
                                m_name: str(eval_d.repo_info[RepoInfoKey.MODIFICATION_INFO][m_name])}
@@ -203,7 +208,7 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
     return result
 
 
-def get_data(ml_repo, data, x0_coord_name, x1_coord_name=None):
+def get_data(ml_repo, data, x0_coord_name, x1_coord_name=None, start_index = 0, end_index = -1):
 
     data_dict = data
     result = {'title': 'data distribution', 'data': {}}
@@ -228,7 +233,7 @@ def get_data(ml_repo, data, x0_coord_name, x1_coord_name=None):
             if x1_coord_name is not None:
                 y_coord = d.x_coord_names.index(x1_coord_name)
             tmp = {'info': {}}
-            tmp['x0'] = d.x_data[:, x_coord]
+            tmp['x0'] = d.x_data[start_index:end_index, x_coord]
             if y_coord is not None:
                 tmp['x1'] = d.x_data[:, y_coord]
             result['data'][d.repo_info[RepoInfoKey.NAME] + ': ' +
@@ -281,3 +286,45 @@ def get_measure_history(ml_repo, measure_names):
 
         result_all[measure_name] = result
     return result_all
+
+import numpy as np
+def project(ml_repo, model = None, labels = None, left = None, right=None,
+         output_index = 0, n_steps = 100):
+    if left is None or right is None:
+        raise Exception('Please specify left and right points.')
+    steps = [0.0 + float(x)/float(n_steps-1) for x in range(n_steps) ]
+    # compute input for evaluation
+    shape = (len(steps),)
+    shape += left.shape
+    x_data = np.empty(shape=shape)
+    for i in range(len(steps)):
+        x_data[i] = (1.0-steps[i])*left + steps[i]*right
+    
+    result = {}
+    models = []
+    if labels is None:
+        labels = ml_repo.get_names(MLObjectType.LABEL)
+        for l in labels:
+            tmp = ml_repo.get(l)
+            models.append((tmp.name, tmp.version, l))
+    if model is None:
+        tmp = ml_repo.get_names(MLObjectType.CALIBRATED_MODEL)
+        if len(tmp) == 1:
+            m  = ml_repo.get(tmp[0])
+            models.append((tmp[0], m.repo_info.version, 'latest'))
+    else:
+        m  = ml_repo.get(model)
+        model.append((model, m.repo_info.version, 'latest'))
+        
+    for model in models:
+        tmp = ml_repo.get(model[0], version=model[1], full_object=True)
+        model_name = model[0].split('/')[0]
+        model_def = ml_repo.get(model_name, tmp.repo_info.modification_info[model_name])
+        eval_func = ml_repo.get(model_def.eval_function)
+        tmp = eval_func.create()(tmp, x_data)
+        if len(tmp.shape) == 1:
+            result[model[2]] = tmp
+        elif len(tmp.shape) == 2:
+            result[model[2]] = tmp[:,output_index]
+        
+    return result

@@ -1,5 +1,6 @@
 import logging
 import collections
+from numpy import load
 from deepdiff import DeepDiff
 from pailab.repo import MLObjectType, MLRepo, NamingConventions
 from pailab.repo_objects import RepoInfoKey, DataSet  # pylint: disable=E0401
@@ -41,9 +42,8 @@ class RepoObjectItem:
     def load(self, version=repo_store.LAST_VERSION, full_object=False,
             modifier_versions=None, containing_str=None):
             if containing_str is None or containing_str in self._name:
-                try:
-                    self.obj = self._repo.get(self._name, version, full_object, modifier_versions)
-                except:
+                self.obj = self._repo.get(self._name, version, full_object, modifier_versions, throw_error_not_exist = False)
+                if self.obj == []:
                     pass
             for v in self.__dict__.values():
                 if hasattr(v,'load'):
@@ -174,7 +174,7 @@ class RawDataCollection(RepoObjectItem):
             setattr(self, RawDataCollection.__get_name_from_path(n), RawDataItem(n, repo))
         self._repo = repo
 
-    def add(self, name, data, input_variables, target_variables):
+    def add(self, name, data, input_variables = None, target_variables = None):
         """Add raw data to the repository
 
         Arguments:
@@ -186,12 +186,24 @@ class RawDataCollection(RepoObjectItem):
             target_variables {list of strings} -- list of column names defining the target variables for the machine learning (default: {None}). If None, no target data is added from the table.
         """
         path = 'raw_data/' + name
+
+        if input_variables is None:
+            input_variables = list(data)
+            if not target_variables is None:
+                [input_variables.remove(x) for x in target_variables]
+        else:
+            # check whether the input_variables are included in the data
+            if not [item for item in input_variables if item in list(data)] == input_variables:
+                raise Exception('RawData does not include at least one column included in input_variables')
       
         if target_variables is not None:
+            # check if target variables are in list
+            if not [item for item in target_variables if item in list(data)] == target_variables:
+                raise Exception('RawData does not include at least one column included in target_variables')
             raw_data = repo_objects.RawData(data.loc[:, input_variables].values, input_variables, data.loc[:, target_variables].values, 
                 target_variables, repo_info = {RepoInfoKey.NAME: path})
         else:
-            raw_data = repo_objects.RawData(data.values, list(data), repo_info = {RepoInfoKey.NAME: path})
+            raw_data = repo_objects.RawData(data.loc[:, input_variables].values, input_variables, repo_info = {RepoInfoKey.NAME: path})
         v = self._repo.add(raw_data, 'data ' + path + ' added to repository' , category = MLObjectType.RAW_DATA)
         obj = self._repo.get(path, version=v, full_object = False)
         setattr(self, name, RawDataItem(path, self._repo, obj))
@@ -382,3 +394,133 @@ class MLTree:
         result.update(self.test_data.modifications())
         # result.update(self.models.modifications())
         return result
+
+class ModelCompare:
+    @staticmethod
+    def get_model_differences(ml_repo:MLRepo, model1, version1, version2, data, model2 = None, n_points = 1, y_coordname = None):
+        if model2 is None:
+            model2 = model1
+        if isinstance(data,str):
+            data_sets = [data]
+        else:
+            data_sets = data
+        eval_data_model_1 = str(NamingConventions.EvalData(model=model1, data=data))
+        eval_data_1 = ml_repo.get(eval_data_model_1, version=None, modifier_versions={model1: version1}, full_object = True)
+        eval_data_model_2 = str(NamingConventions.EvalData(model=model2, data=data))
+        eval_data_2 = ml_repo.get(eval_data_model_2, version=None, modifier_versions={model2: version2}, full_object = True)
+        if y_coordname is None:
+            y_coord = 0
+        else:
+            y_coord = eval_data_1.y_coord_names.index(y_coordname)
+        diff = eval_data_1[:,y_coord] - eval_data_2[:,y_coord]
+        
+import numpy as np
+from sklearn.linear_model import LinearRegression
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.metrics import mean_squared_error
+class ModelAnalyzer:
+    def __init__(self, ml_repo, max_depth = 4, factor = 0.1, n_samples = None):
+        self._max_depth = max_depth
+        self._ml_repo = ml_repo
+        self._decision_tree = None
+        self._factor = factor
+        self._n_samples = n_samples
+        self._datapoint_to_leaf_node_idx = None
+        self.result = {}
+
+    @staticmethod        
+    def _compute_local_model_coeffs(x_data, model_eval_function, model, y_coordinate,  n_samples, factor):
+        rnd_shape = (n_samples,) + x_data.shape[1:]
+        np.random.seed(42)
+        rand_values = (2.0-2.0*factor)*np.random.random_sample(rnd_shape)+factor
+        y = model_eval_function.create()(model, x_data)
+        local_model_coeff = np.empty(x_data.shape)
+        mse = np.empty((x_data.shape[0],))
+        training_data_x = np.empty(rnd_shape)
+        for i in range(x_data.shape[0]):
+            for j in range(rand_values.shape[0]):
+                training_data_x[j,:] = np.multiply(rand_values[j,:], x_data[i,:])
+            training_data_y = model_eval_function.create()(model, training_data_x)[:,y_coordinate]
+            reg = LinearRegression().fit(rand_values, training_data_y)
+            prediction = reg.predict(rand_values)
+            mse[i] = mean_squared_error(training_data_y, prediction)
+            local_model_coeff[i,:] = reg.coef_
+
+        return local_model_coeff, mse
+
+    @staticmethod
+    def _get_tree_figures(decision_tree, data, mse):
+        #first extract tree leafs for statistics (statistics only on leafs)
+        leaf_nodes = {}
+        num_elements_per_node = [0]*decision_tree.tree_.node_count
+        for i in range(len(decision_tree.tree_.children_left)):
+            if decision_tree.tree_.children_left[i] == decision_tree.tree_.children_right[i]:
+                leaf_nodes[i] = {'mse_max':-1.0, 'mse_min': 20000000000.0, 'mse_mean': 0.0}
+        #depp = np.unique(decision_tree.tree_.apply(x.astype(np.float32)))
+        tmp = decision_tree.apply(data)
+
+        for i in tmp:
+            num_elements_per_node[i] += 1
+        for i in range(mse.shape[0]):
+            leaf_nodes[tmp[i]]['mse_max'] = max(leaf_nodes[tmp[i]]['mse_max'], mse[i])
+            leaf_nodes[tmp[i]]['mse_min'] = min(leaf_nodes[tmp[i]]['mse_min'], mse[i])
+            leaf_nodes[tmp[i]]['mse_mean'] +=  mse[i]
+        for k,v in leaf_nodes.items():
+            v['num_data_points'] = num_elements_per_node[k]
+            v['mse_mean'] /= float(num_elements_per_node[k])
+        return leaf_nodes, tmp
+    
+    @staticmethod
+    def _create_name(model, data):
+        return 'model_analyzer_' + model.repo_info.name + '_' + data.repo_info.name 
+    
+    @staticmethod
+    def _create_result(model, data, result_data):
+        result = repo_objects.Result(result_data)
+        result.repo_info.name = ModelAnalyzer._create_name(model, data)
+        result.repo_info.modification_info = {model.repo_info.name: model.repo_info.version, data.repo_info.name: data.repo_info.version}
+        return result
+
+    def analyze(self, model,  data, version = RepoStore.LAST_VERSION, data_version = RepoStore.LAST_VERSION, 
+                    y_coordinate=None, start_index = 0, end_index= 100, force_recalc = False):       
+        # check if results of analysis are already stored in the repo
+        if not force_recalc:
+            model_ = self._ml_repo.get(model, version, full_object = False)
+            data_ = self._ml_repo.get(data, data_version, full_object=False)
+            result_name = ModelAnalyzer._create_name(model_, data_)
+            result = self._ml_repo.get(result_name, 
+                    modifier_versions={model_.repo_info.name: model_.repo_info.version, data_.repo_info.name: data_.repo_info.version},
+                    throw_error_not_exist=False)
+            if result != []:
+                return result
+
+        model_definition_name = model.split('/')[0]
+        model = self._ml_repo.get(model, version, full_object = True)
+        model_def_version = model.repo_info[RepoInfoKey.MODIFICATION_INFO][model_definition_name]
+        model_definition = self._ml_repo.get(model_definition_name, model_def_version)
+        data = self._ml_repo.get(data, data_version, full_object=True)
+        eval_func = self._ml_repo.get(model_definition.eval_function, RepoStore.LAST_VERSION)
+        
+        n_samples = self._n_samples
+        if n_samples is None:
+            n_samples = 4*data.x_data.shape[1]
+
+        if y_coordinate is None:
+            y_coordinate = 0
+        if isinstance(y_coordinate, str):
+            raise NotImplementedError()
+            
+        data_ = data.x_data[start_index:end_index, :]
+        local_model_coeff, mse = ModelAnalyzer._compute_local_model_coeffs(data_, eval_func, model, y_coordinate, n_samples, self._factor)
+        self._decision_tree = DecisionTreeRegressor(max_depth=self._max_depth)
+        self._decision_tree.fit(data_, local_model_coeff)
+        
+        self.result['node_statistics'], self._datapoint_to_leaf_node_idx = ModelAnalyzer._get_tree_figures(self._decision_tree, data.x_data, mse)
+        # store result in repo
+        self.result['parameter'] = {'max_depth': self._max_depth, 'factor': self._factor, 'n_samples': n_samples, 'y_coordinate': y_coordinate}
+        
+        result = ModelAnalyzer._create_result(model, data, self.result)
+        self._ml_repo.add(result)
+        return result
+
+        

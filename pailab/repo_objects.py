@@ -55,7 +55,7 @@ class RepoInfo:
             self.modification_info = modification_info
         self.description = None
         self.category = category
-        self.big_objects = set()
+        self.big_objects = []
         self.commit_message = None
         self.author = None
         self.commit_date = None
@@ -386,10 +386,30 @@ class RawData(RepoObject):
         return str(self.to_dict()) # pylint: disable=E1101
    
 class Model(RepoObject):
-    def __init__(self, preprocessing = None, preprocessing_param = None, 
+    def __init__(self, preprocessors = None, 
                 eval_function = None, train_function = None, train_param = None, 
                 model_param = None, repo_info = RepoInfo()):
         """Defines all model relevant information
+        
+        Keyword Arguments:
+            preprocessors {string} -- list of preprocessor names (default: {None})
+            eval_function {string} -- name of function object for model evaluation (default: {None})
+            train_function {string} -- name of function object for model training (default: {None})
+            train_param {string} -- name of training parameer object used for model training (default: {None})
+            model_param {string} -- name of model parameter object used for creating the model, i.e. network architecture (default: {None})
+            model {object} -- the object defining the model
+        """
+        super(Model, self).__init__(repo_info)
+        self.preprocessors = preprocessors
+        self.eval_function = eval_function
+        self.training_function = train_function
+        self.training_param = train_param
+        self.model_param = model_param
+
+class Preprocessor(RepoObject):
+    def __init__(self, preprocessor, transforming_function, fitting_function = None,
+                fitting_param = None, repo_info = RepoInfo()):
+        """Defines all relevant information for the preprocessor
         
         Keyword Arguments:
             preprocessing {string} -- name of preprocessing used (default: {None})
@@ -400,13 +420,11 @@ class Model(RepoObject):
             model_param {string} -- name of model parameter object used for creating the model, i.e. network architecture (default: {None})
             model {object} -- the object defining the model
         """
-        super(Model, self).__init__(repo_info)
-        self.preprocessing_function = preprocessing
-        self.preprocessing_param = preprocessing_param
-        self.eval_function = eval_function
-        self.training_function = train_function
-        self.training_param = train_param
-        self.model_param = model_param
+        super(Preprocessor, self).__init__(repo_info)
+        self.preprocessor = preprocessor
+        self.fitting_function = fitting_function
+        self.transforming_function = transforming_function
+        self.fitting_param = fitting_param
     
 class Function(RepoObject):
     """Function
@@ -440,6 +458,11 @@ class Function(RepoObject):
     def get_version(self):
        return self._module_version
 
+class Result(RepoObject):
+    def __init__(self, data, repo_info = RepoInfo()):
+        super(Result, self).__init__(repo_info)
+        self.repo_info.category = 'RESULT'
+        self.result = data
 
 class CommitInfo(RepoObject):
     def __init__(self, message, author, objects, repo_info = RepoInfo()):
@@ -583,6 +606,18 @@ class DataSet(RepoObject):
         setattr(self, 'x_coord_names', raw_data.x_coord_names)
         setattr(self, 'y_coord_names', raw_data.y_coord_names)
         setattr(self, 'n_data', raw_data.n_data)
+
+    def get_pandas_data(self):
+        """ Returns a pandas data frame
+        
+        Arguments:
+        """
+
+        if self.y_data is None:
+            return pd.DataFrame(data = self.x_data, columns = self.x_coord_names)
+        else:
+            return pd.DataFrame(data = np.concatenate((self.x_data, self.y_data), axis=1), \
+                columns = self.x_coord_names + self.y_coord_names)
     
     def __str__(self):
         return str(self.to_dict())
