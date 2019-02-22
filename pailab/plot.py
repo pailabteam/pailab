@@ -204,7 +204,7 @@ def histogram_model_error(ml_repo, models, data_name, y_coordinate=None, data_ve
     The method plots histograms between predicted and real values of a certain target variable for reference data and models. 
     The reference data is described by the data name and the version of the data (as well as the targt variables name). The models can be described
     by 
-        - a dictionary of model names to versions (a single verion numbr, a range of versions or a list of versions)
+        - a dictionary of model names to versions (a single version number, a range of versions or a list of versions)
         - just a model name (in this case the latest version is used)
 
     Args:
@@ -273,7 +273,7 @@ def scatter_model_error(ml_repo, models, data_name, x_coordinate, y_coordinate=N
     iplot(fig)  # , filename='pandas/basic-line-plot')
 
 
-def histogram_data(ml_repo, data, x_coordinate, y_coordinate=None, n_bins = None):
+def histogram_data(ml_repo, data, x_coordinate, y_coordinate=None, n_bins = None,  start_index = 0, end_index = -1):
     '''[summary]
 
     Args:
@@ -285,17 +285,17 @@ def histogram_data(ml_repo, data, x_coordinate, y_coordinate=None, n_bins = None
     Raises:
         Exception: [description]
     '''
-    plot_dict = plot_helper.get_data(ml_repo, data, x_coordinate)
+    plot_dict = plot_helper.get_data(ml_repo, data, x_coordinate, start_index=start_index, end_index=end_index)
     _histogram(plot_dict, n_bins=n_bins)
 
-def histogram_data_conditional_error(ml_repo, models, data_name, x_coordinate, y_coordinate = None,  
+def histogram_data_conditional_error(ml_repo, models, data, x_coordinate, y_coordinate = None,  
                                     start_index = 0, end_index = -1, percentile = 0.1, n_bins = None):
     """Plots the distribution of input data along a given axis for the largest absolute pointwise errors in comparison to the distribution of all data.
     
     Args:
         ml_repo (MLRepo): repository
         models (str, list of str): definition of latest model/models used for plotting beneath the labeled models
-        data_name (str): name of dataset used for plotting
+        data (str): name of dataset used for plotting
         x_coordinate (str): name of x coordinate for which the distribution will be plotted
         y_coordinate (str, optional): Name of y-coordinate for which the error is determined. Defaults to None (use first y-coordinate).
         start_index (int, optional): Defaults to 0. Startindex of data.
@@ -305,7 +305,7 @@ def histogram_data_conditional_error(ml_repo, models, data_name, x_coordinate, y
     """
 
     tmp = plot_helper.get_pointwise_model_errors(
-        ml_repo, models, data_name, y_coordinate, x_coord_name=x_coordinate, start_index = 0, end_index = -1)
+        ml_repo, models, data, y_coordinate, x_coord_name=x_coordinate, start_index = 0, end_index = -1)
     
     plot_data = {}
     for k,x in tmp['data'].items():
@@ -322,3 +322,6 @@ def histogram_data_conditional_error(ml_repo, models, data_name, x_coordinate, y
             plot_data[k] = {'x0': x['x0'][start_index:end_index], 'info': x['info']}
     plot_dict = {'data': plot_data, 'title': '', 'x0_name':x_coordinate}
     _histogram(plot_dict, n_bins=n_bins)
+
+
+     
