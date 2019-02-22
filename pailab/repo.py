@@ -34,7 +34,9 @@ class MLObjectType(Enum):
     TRAINING_FUNCTION = 'TRAINING_FUNCTION'
     MODEL_EVAL_FUNCTION = 'MODEL_EVAL_FUNCTION'
     PREP_PARAM = 'PREP_PARAM'
-    PREPROCESSOR = 'PREPROCESSOR'
+    PREPROCESSING_PARAM = 'PREPROCESSING_PARAM'
+    PREPROCESSING_FITTING_FUNCTION = 'PREPROCESSING_FITTING_FUNCTION'
+    PREPROCESSING_TRANSFORMING_FUNCTION = 'PREPROCESSING_TRANSFORMING_FUNCTION'
     LABEL = 'LABEL'
     MODEL = 'MODEL'
     CALIBRATED_MODEL = 'CALIBRATED_MODEL'
@@ -334,7 +336,18 @@ class EvalJob(Job):
         data = repo.get(self.data, self.data_version, full_object=True)
         eval_func = repo.get(model_definition.eval_function, self.eval_function_version)
 
-        y = eval_func.create()(model, data.x_data)
+        x_data = data.x_data
+        # preprocessing
+        # todo include version
+        if model.preprocessors is not None:
+            for k in range(len(model.preprocessors)):
+                transforming_func = repo.get(model.preprocessors[k].transforming_function, repo_store.RepoStore.LAST_VERSION)
+                if model.preprocessors[k].fitting_function is not None:
+                    x_data = transforming_func.create()(model.preprocessors[k].fitting_param, x_data, model.fitted_preprocessors[k])
+                else:
+                    x_data = transforming_func.create()(model.preprocessors[k].fitting_param, x_data)
+
+        y = eval_func.create()(model, x_data)
         
         result = repo_objects.RawData(y, data.y_coord_names, repo_info={
                             RepoInfoKey.NAME: MLRepo.get_eval_name(model_definition, data),
@@ -401,13 +414,43 @@ class TrainingJob(Job):
         if not model.model_param is None:
             model_param = repo.get(
                 model.model_param, self.model_param_version)
+
+        # preprocessing
+        if model.preprocessors is None:
+            x_data = train_data.x_data
+            y_data = train_data.y_data
+            fitted_preprocessors = None
+        else:
+            x_data = train_data.x_data
+            y_data = train_data.y_data
+            fitted_preprocessors = []
+            # todo include the version in the function call
+            for k in model.preprocessors:
+                transforming_func = repo.get(k.transforming_function, repo_store.RepoStore.LAST_VERSION)
+                if k.fitting_function is not None:
+                    fitting_func = repo.get(k.fitting_function, repo_store.RepoStore.LAST_VERSION)
+                    fitted_preprocessor = fitting_func.create()(k.fitting_param, x_data)
+                    # todo add fitted_preprocessor to repo
+                    x_data = transforming_func.create()(k.fitting_param, x_data, fitted_preprocessor)
+                    fitted_preprocessors.append(fitted_preprocessor)
+                else:
+                    x_data = transforming_func.create()(k.fitting_param, x_data)
+                    fitted_preprocessors.append(None)
+                
+            # pandas_data = train_data.get_pandas_data()
+            # # creating the x and y data
+            # x_data = pandas_data.loc[:, train_data.x_coord_names].values
+            # y_data = pandas_data.loc[:, train_data.y_coord_names].values
+        
+        # calibration
         if model_param is None:
-            result = train_func.create()(train_param, train_data.x_data, train_data.y_data)
+            result = train_func.create()(train_param, x_data, y_data)
         else:
             if train_param is None:
-                result = train_func.create()(model_param, train_data.x_data, train_data.y_data)
+                result = train_func.create()(model_param, x_data, y_data)
             else:
-               result = train_func.create()(model_param, train_param, train_data.x_data, train_data.y_data)
+               result = train_func.create()(model_param, train_param, x_data, y_data)
+
         if isinstance(result, tuple):
             calibrated_model = result[0]
             training_stat = result[1]
@@ -417,6 +460,8 @@ class TrainingJob(Job):
         else:
             calibrated_model = result    
             training_stat=None
+        calibrated_model.preprocessors = model.preprocessors
+        calibrated_model.fitted_preprocessors=fitted_preprocessors
         calibrated_model.repo_info[RepoInfoKey.NAME] = self.model + '/model'
         calibrated_model.repo_info[RepoInfoKey.CATEGORY] = MLObjectType.CALIBRATED_MODEL.value
         # create modification info
@@ -622,9 +667,6 @@ class NamingConventions:
     Test = Name('model/*/test_name/data', 'tests')
 
 
-   
-
-
 
 class MLRepo:   
 
@@ -806,13 +848,7 @@ class MLRepo:
             function_name {string} -- function name
             repo_name {tring} -- identifier of the repo object used to store the information (default: None), if None, the name is set to module_name.function_name
         """
-        name = repo_name
-        if name is None:
-            name = f.__module__ + "." + f.__name__
-        func = repo_objects.Function(f, repo_info={
-                                     RepoInfoKey.NAME: name,
-                                     RepoInfoKey.CATEGORY: MLObjectType.MODEL_EVAL_FUNCTION.value})
-        self.add(func, 'add model evaluation function ' + name)
+        self._add_function(f, MLObjectType.MODEL_EVAL_FUNCTION, repo_name)
     
     def add_training_function(self, f, repo_name = None):
         """Add function to train a model
@@ -822,15 +858,48 @@ class MLRepo:
             function_name {string} -- function name
             repo_name {tring} -- identifier of the repo object used to store the information (default: None), if None, the name is set to module_name.function_name
         """
+        self._add_function(f, MLObjectType.TRAINING_FUNCTION, repo_name)
+
+    def add_preprocessing_fitting_function(self, f, repo_name = None):
+        """Add function to fit a preprocessor
+
+        Arguments:
+            module_name {string} -- module where function is located
+            function_name {string} -- function name
+            repo_name {tring} -- identifier of the repo object used to store the information (default: None), if None, the name is set to module_name.function_name
+        """
+        self._add_function(f, MLObjectType.PREPROCESSING_FITTING_FUNCTION, repo_name)
+
+    def add_preprocessing_transforming_function(self, f, repo_name = None):
+        """Add function to transform the data by a preprocessor
+
+        Arguments:
+            module_name {string} -- module where function is located
+            function_name {string} -- function name
+            repo_name {tring} -- identifier of the repo object used to store the information (default: None), if None, the name is set to module_name.function_name
+        """
+        self._add_function(f, MLObjectType.PREPROCESSING_TRANSFORMING_FUNCTION, repo_name)
+
+    def _add_function(self, f, category, repo_name = None):
+        """Add function to the repository
+        private function to reduce repeating code
+
+        Arguments:
+            module_name {string} -- module where function is located
+            function_name {string} -- function name
+            category{MLObjectType} -- the function category
+            repo_name {tring} -- identifier of the repo object used to store the information (default: None), if None, the name is set to module_name.function_name
+        """
         name = repo_name
         if name is None:
             name = f.__module__ + "." + f.__name__
         func = repo_objects.Function(f, repo_info={
                                      RepoInfoKey.NAME: name,
-                                     RepoInfoKey.CATEGORY: MLObjectType.TRAINING_FUNCTION.value})
-        self.add(func, 'add model training function ' + name)
+                                     RepoInfoKey.CATEGORY: category.value})
+        self.add(func, 'add function ' + name + ' of category ' + category.value + ' to the repo')
 
-    def add_model(self, model_name, model_eval = None, model_training = None, model_param = None, training_param = None):
+    def add_model(self, model_name, model_eval = None, model_training = None, model_param = None, training_param = None,
+                    preprocessors = None):
         """Add a new model to the repo
         
         Arguments:
@@ -845,8 +914,10 @@ class MLRepo:
                                     otherwise it is assumed that no model_params are needed
             training_param {string} -- identifier of the training parameter (default: {None}), if None and there is only one training_parameter object in the repo, 
                                         this will be used. If an empty string is given as training parameter, we assume that the algorithm does not need a training pram.
+            preprocessors {list} -- list of preprocessors to be executed
         """
-        model = repo_objects.Model(repo_info={RepoInfoKey.CATEGORY: MLObjectType.MODEL.value, 
+        model = repo_objects.Model(preprocessors = preprocessors, 
+                                    repo_info={RepoInfoKey.CATEGORY: MLObjectType.MODEL.value, 
                                                RepoInfoKey.NAME: model_name })
         model.eval_function = model_eval
         if model.eval_function is None:
