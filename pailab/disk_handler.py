@@ -89,6 +89,7 @@ class RepoObjectDiskStorage(RepoStore):
         self._main_dir = folder
         self._setup_new()
         self._file_format = file_format
+        self._extension = '.pck'
         if self._file_format == 'pickle':
             import pickle
 
@@ -138,6 +139,7 @@ class RepoObjectDiskStorage(RepoStore):
 
             self._save_function = __json_save
             self._load_function = __json_load
+            self._extension = '.json'
         else:
             raise Exception("Unknown file format " + file_format)
 
@@ -150,14 +152,16 @@ class RepoObjectDiskStorage(RepoStore):
         files = [row[0] + '/' + row[1]
                  for row in execute(cursor, select_statement)]
         for filename in files:
-            os.remove(filename)
+            os.remove(self._main_dir + '/' + filename + self._extension)
         delete_statement = "delete from versions " + condition
         execute(cursor, delete_statement)
         #if there is no object with this name anymore, we have to remove it from mapping
         select_statement = "select path, file from versions where name='"+  name + "'"
-        if len(execute(cursor, select_statement))==0:
+        depp = [0 for r in execute(cursor, select_statement)]
+        if len(depp) == 0:
             delete_statement = "delete from mapping where name='" + name + "'"
             execute(cursor, delete_statement)        
+        self._conn.commit()
         
     def get_config(self):
         return {'folder': self._main_dir, 'file_format': self._file_format}
@@ -382,12 +386,10 @@ class RepoObjectDiskStorage(RepoStore):
         for path, subdirs, files in os.walk(self._main_dir):
             if '.git' in subdirs:
                 subdirs.remove('.git')
-            if '.gitignore' in files:
-                files.remove('.gitignore')
-            if '.version.sqlite' in files:
-                files.remove('.version.sqlite')
+            ignored_files = [f_ for f_ in files if f_.startswith('.')]
             for name in files:
-                f.add(os.path.splitext(name)[0])
+                if not name in ignored_files:
+                    f.add(os.path.splitext(name)[0])
         return f
 
     def check_integrity(self):
