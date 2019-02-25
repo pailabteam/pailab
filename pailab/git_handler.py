@@ -47,13 +47,22 @@ class RepoObjectGitStorage(RepoObjectDiskStorage):
         super(RepoObjectGitStorage, self)._delete(name, version)
         self.commit('deleting ' + name + ', version ' + version)
 
+    def replace(self, obj):
+        """Overwrite existing object without incrementing version
+
+        Args:
+            obj (RepoObject): repo object to be overwritten
+        """
+        super(RepoObjectGitStorage, self).replace(obj)
+        self.commit('Replace object ' + obj.repo_info.name +
+                    ', version ' + obj.repo_info.version + '.')
+
     def commit(self, message):
         check = self.check_integrity()
         if len(check) > 0:
             raise Exception(
                 "Integrity check fails, cannot commit: " + str(check))
         try:
-            logger.fatal("self._git_repo.git.add('-A')")
             self._git_repo.git.add('-A')
             self._git_repo.git.commit('-m', message)
         except:
