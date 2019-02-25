@@ -157,7 +157,7 @@ class RepoStore(abc.ABC):
 
         pass
 
-    def pull(self)
+    def pull(self):
         """Pull changes from an external repo
         """
 
