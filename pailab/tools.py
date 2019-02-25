@@ -468,6 +468,7 @@ class ModelAnalyzer:
         for k,v in leaf_nodes.items():
             v['num_data_points'] = num_elements_per_node[k]
             v['mse_mean'] /= float(num_elements_per_node[k])
+            v['model_coefficients'] = decision_tree.tree_.value[k][:,0].tolist()
         return leaf_nodes, tmp
     
     @staticmethod
@@ -518,7 +519,7 @@ class ModelAnalyzer:
         self.result['node_statistics'], self._datapoint_to_leaf_node_idx = ModelAnalyzer._get_tree_figures(self._decision_tree, data.x_data, mse)
         # store result in repo
         self.result['parameter'] = {'max_depth': self._max_depth, 'factor': self._factor, 'n_samples': n_samples, 'y_coordinate': y_coordinate}
-        
+        self.result['x_coord_names'] = data.x_coord_names
         result = ModelAnalyzer._create_result(model, data, self.result)
         self._ml_repo.add(result)
         return result
