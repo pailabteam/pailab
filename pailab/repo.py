@@ -731,10 +731,12 @@ class MLRepo:
         if len(repo_dict) == 1:
            self._mapping = repo_objects.create_repo_obj(repo_dict[0])
         else:
+            version = repo_store._version_str()
             self._mapping = Mapping(  # pylint: disable=E1123
                 repo_info={RepoInfoKey.NAME: 'repo_mapping', 
-                RepoInfoKey.CATEGORY: MLObjectType.MAPPING.value})
-            self._ml_repo.add(self._mapping)
+                RepoInfoKey.CATEGORY: MLObjectType.MAPPING.value,  RepoInfoKey.VERSION: version})
+            repo_obj = repo_objects.create_repo_obj_dict(self._mapping)
+            self._ml_repo.add(repo_obj)
             
         self._add_triggers = []
 
@@ -819,7 +821,6 @@ class MLRepo:
                 result[obj.repo_info[RepoInfoKey.NAME]], mapping_changed_tmp = self._add(obj, message, category)
                 mapping_changed = mapping_changed or mapping_changed_tmp
         if mapping_changed:
-            self._mapping.repo_info.version = version
             obj_dict = repo_objects.create_repo_obj_dict(self._mapping)
             self._ml_repo.replace(obj_dict)
             
