@@ -1377,7 +1377,7 @@ class MLRepo:
         self._ml_repo.push()
         self._numpy_repo.push()
 
-    def pull(self)
+    def pull(self):
         """Pull changes from an external repo
         """
 
