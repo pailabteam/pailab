@@ -734,7 +734,8 @@ class MLRepo:
             self._mapping = Mapping(  # pylint: disable=E1123
                 repo_info={RepoInfoKey.NAME: 'repo_mapping', 
                 RepoInfoKey.CATEGORY: MLObjectType.MAPPING.value})
-        
+            self._ml_repo.add(self._mapping)
+            
         self._add_triggers = []
 
         if job_runner is None:
@@ -989,7 +990,7 @@ class MLRepo:
 
     def get_numpy_data_store(self):
         return self._numpy_repo
-        
+    
     def get(self, name, version=repo_store.RepoStore.LAST_VERSION, full_object=False,
              modifier_versions=None, obj_fields=None,  repo_info_fields=None,
              throw_error_not_exist=True, throw_error_not_unique=True):
@@ -1033,6 +1034,24 @@ class MLRepo:
         if len(tmp) == 1:
             return tmp[0]
         return tmp
+
+    def delete(self, name, version):
+        """Delete a specific object. 
+        
+        It deletes the object. If other objects were modified by thi object, it thros an exception
+        tht first the modified objects must be deleted.
+        
+        Args:
+            name (str): name of object
+            version (str): version string
+        """
+        dependent_objects = self._ml_repo._get_by_modification_info(name, version, [k.value for k in MLObjectType])
+        if len(dependent_objects) > 0:
+            obj_list = ';'
+            obj_list.join([k.repo_info.name + ': ' + k.repo_info.version for k in dependent_objects ])
+            raise Exception("Objects dependending on the object to be deleted, please delete these objects first, objects: "+ obj_list)
+        self._ml_repo._delete(name, version)
+        self._numpy_repo._delete(name, version)
 
     @staticmethod
     def get_calibrated_model_name(model_name):
