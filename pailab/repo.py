@@ -341,14 +341,13 @@ class EvalJob(Job):
         x_data = data.x_data        
         if model.preprocessors is not None:
             for k in range(len(model.preprocessors)):
-                preprocessor = repo.get(model.preprocessors[k], model.preprocessors_used_versions[k].preprocessor_version)
-
-                transforming_func = repo.get(preprocessor.transforming_function, model.preprocessors_used_versions[k].transforming_function_version)
+                prepro = model.preprocessors[k]
+                transforming_func = repo.get(prepro.transforming_function, prepro.repo_info.modification_info[prepro.transforming_function])
                 prepro_param = None
-                if not preprocessor.preprocessing_param == None:
-                    prepro_param = repo.get(preprocessor.preprocessing_param, model.preprocessors_used_versions[k].param_version)
+                if not prepro.preprocessing_param == None:
+                    prepro_param = repo.get(prepro.preprocessing_param, prepro.repo_info.modification_info[prepro.preprocessing_param])
             
-                if preprocessor.fitting_function is not None:
+                if prepro.fitting_function is not None:
                     x_data = transforming_func.create()(prepro_param, x_data, model.fitted_preprocessors[k])
                 else:
                     x_data = transforming_func.create()(prepro_param, x_data)
@@ -435,10 +434,10 @@ class TrainingJob(Job):
         y_data = train_data.y_data
         if model.preprocessors is None:
             fitted_preprocessors = None
-            preprocessors_used_versions = None
+            list_preprocessors = None
         else:
+            list_preprocessors = []
             fitted_preprocessors = []
-            preprocessors_used_versions = []
             num_preprocessors = len(model.preprocessors)
             # checking preprocessor versions
             if isinstance(self.preprocessor_versions, list):
@@ -469,16 +468,12 @@ class TrainingJob(Job):
 
             for k in range(num_preprocessors):
                 preprocessor = repo.get(model.preprocessors[k], preprocessor_versions[k])
-                used_versions = SimpleNamespace()
-                used_versions.preprocessor_version=preprocessor.repo_info.version
                 transforming_func = repo.get(preprocessor.transforming_function, preprocessor_transforming_function_versions[k])
-                used_versions.transforming_function_version=transforming_func.repo_info.version
                 prepro_param = None
                 if not preprocessor.preprocessing_param == None:
                     prepro_param = repo.get(preprocessor.preprocessing_param, preprocessor_param_versions[k])
-                    used_versions.param_version=prepro_param.repo_info.version
                 else:
-                    used_versions.param_version=None
+                    prepro_param = None
             
                 if preprocessor.fitting_function is not None:
                     fitting_func = repo.get(preprocessor.fitting_function, preprocessor_fitting_function_versions[k])
@@ -486,13 +481,12 @@ class TrainingJob(Job):
                     fitted_preprocessor = fitting_func.create()(prepro_param, x_data)
                     x_data = transforming_func.create()(prepro_param, x_data, fitted_preprocessor)
                     fitted_preprocessors.append(fitted_preprocessor)
-                    used_versions.fitting_function_version=fitting_func.repo_info.version
                 else:
+                    fitting_func = None
                     x_data = transforming_func.create()(prepro_param, x_data)
                     fitted_preprocessors.append(None)
-                    used_versions.fitting_function_version=None
-                
-                preprocessors_used_versions.append(used_versions)
+                _add_modification_info(preprocessor, transforming_func, prepro_param, fitting_func)
+                list_preprocessors.append(preprocessor)
         
         # calibration
         if model_param is None:
@@ -512,8 +506,7 @@ class TrainingJob(Job):
         else:
             calibrated_model = result    
             training_stat=None
-        calibrated_model.preprocessors = model.preprocessors
-        calibrated_model.preprocessors_used_versions = preprocessors_used_versions
+        calibrated_model.preprocessors = list_preprocessors
         calibrated_model.fitted_preprocessors=fitted_preprocessors
         calibrated_model.repo_info[RepoInfoKey.NAME] = self.model + '/model'
         calibrated_model.repo_info[RepoInfoKey.CATEGORY] = MLObjectType.CALIBRATED_MODEL.value
