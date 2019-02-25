@@ -820,8 +820,8 @@ class MLRepo:
                 mapping_changed = mapping_changed or mapping_changed_tmp
         if mapping_changed:
             self._mapping.repo_info.version = version
-            mapping_version, dummy = self._add(self._mapping)
-            result['repo_mapping'] = mapping_version
+            obj_dict = repo_objects.create_repo_obj_dict(self._mapping)
+            self._ml_repo.replace(obj_dict)
             
         commit_message = repo_objects.CommitInfo(message, self._user, result, repo_info = {RepoInfoKey.CATEGORY: MLObjectType.COMMIT_INFO.value,
                 RepoInfoKey.NAME: 'CommitInfo', RepoInfoKey.VERSION : version} )
