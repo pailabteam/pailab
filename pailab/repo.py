@@ -1370,6 +1370,20 @@ class MLRepo:
             RepoInfoKey.CATEGORY: MLObjectType.LABEL.value})
         self.add(label)        
         
+    def push(self):
+        """Push changes to an eternal repo.
+        """
+
+        self._ml_repo.push()
+        self._numpy_repo.push()
+
+    def pull(self)
+        """Pull changes from an external repo
+        """
+
+        self._ml_repo.pull()
+        self._numpy_repo.pull()
+
     def _object_exists(self, name):
         """returns True if an object with this name exists in repo
         

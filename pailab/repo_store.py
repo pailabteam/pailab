@@ -151,6 +151,18 @@ class RepoStore(abc.ABC):
                          obj_fields, repo_info_fields,
                          throw_error_not_exist, throw_error_not_unique)
 
+    def push(self):
+        """Push changes to an eternal repo.
+        """
+
+        pass
+
+    def pull(self)
+        """Pull changes from an external repo
+        """
+
+        pass
+
     @abc.abstractmethod
     def _delete(self, name, version):
         """Delete an object with a predefined version
@@ -293,3 +305,15 @@ class NumpyStore(abc.ABC):
             name ([type]): [description]
             version ([type]): [description]
         """
+
+    def push(self):
+        """Push changes to an eternal repo.
+        """
+
+        pass
+
+    def pull(self):
+        """Pull changes from an external repo
+        """
+
+        pass
