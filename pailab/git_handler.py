@@ -43,52 +43,49 @@ class RepoObjectGitStorage(RepoObjectDiskStorage):
         self.commit(obj['repo_info']
                     [repo_objects.RepoInfoKey.COMMIT_MESSAGE.value])
 
+    def _delete(self, name, version):
+        super(RepoObjectGitStorage, self)._delete(name, version)
+        self.commit('deleting ' + name + ', version ' + version)
+
     def commit(self, message):
         check = self.check_integrity()
         if len(check) > 0:
             raise Exception(
                 "Integrity check fails, cannot commit: " + str(check))
+        try:
+            logger.fatal("self._git_repo.git.add('-A')")
+            self._git_repo.git.add('-A')
+            self._git_repo.git.commit('-m', message)
+        except:
+            pass
 
-        untracked_files = self._git_repo.untracked_files
-
-        if len(untracked_files) > 0 or self._git_repo.is_dirty():
-            if len(untracked_files) > 0:
-                logger.info(
-                    'Adding ' + str(len(untracked_files)) + ' untracked files.')
-                self._git_repo.index.add(untracked_files)
-            logger.info('Committing changes.')
-            self._git_repo.index.commit(message)
-        else:
-            logging.info('No changes.')
-            return "No commit: No untracked or modified files."
-
-    def push(self, remote_name = 'origin'):
-        remote=None
+    def push(self, remote_name='origin'):
+        remote = None
         for r in self._git_repo.remotes:
             if r.name == remote_name:
-                remote=r
+                remote = r
                 break
         if remote is None:
             raise Exception('Remote ' + remote_name + ' does not exist.')
         remote.push()
 
     def _merge_from_db(self, sqlite_db_2):
-        c=self._conn.cursor()
+        c = self._conn.cursor()
         c.execute('ATTACH DATABASE "' + sqlite_db_2 + '" AS db_2')
-        statement='INSERT OR IGNORE INTO versions(name, version, file, uuid_time) SELECT name, version, file, uuid_time FROM db_2.versions;'
+        statement = 'INSERT OR IGNORE INTO versions(name, version, file, uuid_time) SELECT name, version, file, uuid_time FROM db_2.versions;'
         c.execute(statement)
-        statement='INSERT OR IGNORE INTO mapping(name, vcategory) SELECT name, category FROM db_2.mapping;'
+        statement = 'INSERT OR IGNORE INTO mapping(name, vcategory) SELECT name, category FROM db_2.mapping;'
         c.execute(statement)
-        statement='INSERT OR IGNORE INTO modification_info(name, version, modifier, modifier_version) SELECT name, version, modifier, modifier_version FROM db_2.modification_info;'
+        statement = 'INSERT OR IGNORE INTO modification_info(name, version, modifier, modifier_version) SELECT name, version, modifier, modifier_version FROM db_2.modification_info;'
         c.execute(statement)
         c.execute("DETACH DATABASE 'db_2';")
 
-    def pull(self, remote_name = 'origin'):
+    def pull(self, remote_name='origin'):
         self._conn.close()
-        remote=None
+        remote = None
         for r in self._git_repo.remotes:
             if r.name == remote_name:
-                remote=r
+                remote = r
                 break
         if remote is None:
             raise Exception('Remote ' + remote_name + ' does not exist.')
