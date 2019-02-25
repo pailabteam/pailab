@@ -114,6 +114,31 @@ class RepoStore(abc.ABC):
         """
         pass
 
+    def _get_by_modification_info(self, modifier_name, modifier_version, object_types = []):
+        """Return list of all objects which were modified by a given object.
+
+        This method may be overwritten by subclasses to enhance performance.
+        
+        Args:
+            modifier_name (str): name of object which modified th searched objects
+            modifier_version (str): version of object which modified th searched objects
+            object_types (list(str)): lit of strings defining the object types
+        Returns:
+            [list]: list of objects, empty if no such objects exist
+        """
+
+        result = []
+        modifier = {modifier_name: modifier_version}
+        for category in object_types:
+            names = self.get_names(category)
+            for n in names:
+                objs = self.get(n, modifier_versions=modifier, throw_error_not_exist=False, throw_error_not_unique=False)
+                if isinstance(objs, list):
+                    result.extend(objs)
+                else:
+                    result.append(objs)
+        return result
+
     def get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None,
             throw_error_not_exist=True, throw_error_not_unique=True):
         versions = self._replace_version_placeholder(
@@ -134,7 +159,7 @@ class RepoStore(abc.ABC):
             name (str): name of object
             version (str): object version
         """
-
+        
         pass
 
     @abc.abstractmethod
