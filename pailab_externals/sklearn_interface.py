@@ -189,9 +189,9 @@ def add_preprocessor(repo, skl_preprocessor, preprocessor_name=None, preprocesso
 
     # add preprocessing
     repo.add_preprocessing_transforming_function(
-        transform_sklearn, repo_name='transform_sklearn')
+        transform_sklearn, repo_name=p_name + '/transform_sklearn')
     repo.add_preprocessing_fitting_function(
-        fit_sklearn, repo_name='fit_sklearn')
+        fit_sklearn, repo_name=p_name + '/fit_sklearn')
     param = skl_preprocessor.get_params(True)
     if preprocessor_param is not None:
         for k, v in preprocessor_param.items():
@@ -203,7 +203,7 @@ def add_preprocessor(repo, skl_preprocessor, preprocessor_name=None, preprocesso
     if skl_param is not None:
         repo.add(skl_param, 'adding preprocessor parameter')
 
-    repo.add_preprocessor(p_name, transforming_function='transform_sklearn', fitting_function='fit_sklearn',
+    repo.add_preprocessor(p_name, transforming_function=p_name+'/transform_sklearn', fitting_function=p_name+'/fit_sklearn',
                           preprocessor_param=p_name + '/preprocessor_param')
 
 # endregion

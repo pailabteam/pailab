@@ -52,15 +52,6 @@ class Model:
             tmp = {}
             m = repo.get(MLRepo.get_calibrated_model_name(
                 model_name), version=model_version)
-            # check the preprocessors
-            if m.preprocessors is not None:
-                for prepro in m.preprocessors:
-                    for k, v in prepro.repo_info[RepoInfoKey.MODIFICATION_INFO].items():
-                        latest_version = repo_store.get_latest_version(k)
-                        if not str(v) == str(latest_version):
-                            tmp[k] = {'modifier version': v,
-                                        'latest version': latest_version}                    
-            # check the model
             for k, v in m.repo_info[RepoInfoKey.MODIFICATION_INFO].items():
                 latest_version = repo_store.get_latest_version(k)
                 if not str(v) == str(latest_version):
