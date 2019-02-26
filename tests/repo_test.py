@@ -285,7 +285,7 @@ class RepoTest(unittest.TestCase):
             raw_data.x_coord_names[0], raw_data_2.x_coord_names[0])
         commits = repository.get_commits()
         self.assertEqual(len(commits), 1)
-        self.assertEqual(len(commits[0].objects), 2)
+        self.assertEqual(len(commits[0].objects), 1)
         
     def test_add_model_defaults(self):
         """test add_model using defaults to check whether default logic applies correctly

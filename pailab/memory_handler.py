@@ -88,6 +88,20 @@ class RepoObjectMemoryStorage(RepoStore):
         self._name_to_category={}
         self._categories={}
 
+    def _delete(self, name, version):
+        category = self._name_to_category[name]
+        objs = self._store[category][name]
+        counter = -1
+        for i in range(len(objs)):
+            if objs[i]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] == version:
+                counter = i
+                break
+        if counter >-1:
+            del objs[counter]
+            if len(objs) == 0:
+                del self._store[category][name]
+                del self._name_to_category[name]
+        
     def _add(self, obj):
         """ Add an object of given category to the storage.
 
@@ -215,6 +229,19 @@ class RepoObjectMemoryStorage(RepoStore):
 class NumpyMemoryStorage(NumpyStore):
     def __init__(self):
         self._store = {}
+
+    def _delete(self, name, version):
+        """Delete an object with a predefined version
+
+        Args:
+            name (str): name of object
+            version (str): object version
+        """
+        if name in self._store.keys():
+            if version in self._store[name].keys():
+                del self._store[name][version]
+                if len(self._store[name]) == 0:
+                    del self._store[name]
 
     def add(self, name, version, numpy_dict):
         """ Add numpy data from an object to the storage.
