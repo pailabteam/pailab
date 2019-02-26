@@ -804,10 +804,13 @@ class MLRepo:
         if len(repo_dict) == 1:
            self._mapping = repo_objects.create_repo_obj(repo_dict[0])
         else:
+            version = repo_store._version_str()
             self._mapping = Mapping(  # pylint: disable=E1123
                 repo_info={RepoInfoKey.NAME: 'repo_mapping', 
-                RepoInfoKey.CATEGORY: MLObjectType.MAPPING.value})
-        
+                RepoInfoKey.CATEGORY: MLObjectType.MAPPING.value,  RepoInfoKey.VERSION: version})
+            repo_obj = repo_objects.create_repo_obj_dict(self._mapping)
+            self._ml_repo.add(repo_obj)
+            
         self._add_triggers = []
 
         if job_runner is None:
@@ -891,9 +894,8 @@ class MLRepo:
                 result[obj.repo_info[RepoInfoKey.NAME]], mapping_changed_tmp = self._add(obj, message, category)
                 mapping_changed = mapping_changed or mapping_changed_tmp
         if mapping_changed:
-            self._mapping.repo_info.version = version
-            mapping_version, dummy = self._add(self._mapping)
-            result['repo_mapping'] = mapping_version
+            obj_dict = repo_objects.create_repo_obj_dict(self._mapping)
+            self._ml_repo.replace(obj_dict)
             
         commit_message = repo_objects.CommitInfo(message, self._user, result, repo_info = {RepoInfoKey.CATEGORY: MLObjectType.COMMIT_INFO.value,
                 RepoInfoKey.NAME: 'CommitInfo', RepoInfoKey.VERSION : version} )
@@ -1094,7 +1096,7 @@ class MLRepo:
 
     def get_numpy_data_store(self):
         return self._numpy_repo
-        
+    
     def get(self, name, version=repo_store.RepoStore.LAST_VERSION, full_object=False,
              modifier_versions=None, obj_fields=None,  repo_info_fields=None,
              throw_error_not_exist=True, throw_error_not_unique=True):
@@ -1138,6 +1140,24 @@ class MLRepo:
         if len(tmp) == 1:
             return tmp[0]
         return tmp
+
+    def delete(self, name, version):
+        """Delete a specific object. 
+        
+        It deletes the object. If other objects were modified by thi object, it thros an exception
+        tht first the modified objects must be deleted.
+        
+        Args:
+            name (str): name of object
+            version (str): version string
+        """
+        dependent_objects = self._ml_repo._get_by_modification_info(name, version, [k.value for k in MLObjectType])
+        if len(dependent_objects) > 0:
+            obj_list = ';'
+            obj_list.join([k.repo_info.name + ': ' + k.repo_info.version for k in dependent_objects ])
+            raise Exception("Objects dependending on the object to be deleted, please delete these objects first, objects: "+ obj_list)
+        self._ml_repo._delete(name, version)
+        self._numpy_repo._delete(name, version)
 
     @staticmethod
     def get_calibrated_model_name(model_name):
@@ -1455,6 +1475,20 @@ class MLRepo:
             RepoInfoKey.CATEGORY: MLObjectType.LABEL.value})
         self.add(label)        
         
+    def push(self):
+        """Push changes to an eternal repo.
+        """
+
+        self._ml_repo.push()
+        self._numpy_repo.push()
+
+    def pull(self):
+        """Pull changes from an external repo
+        """
+
+        self._ml_repo.pull()
+        self._numpy_repo.pull()
+
     def _object_exists(self, name):
         """returns True if an object with this name exists in repo
         

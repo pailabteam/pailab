@@ -29,6 +29,16 @@ class NumpyHDFStorage(NumpyStore):
         if not os.path.exists(self.main_dir):
             os.makedirs(self.main_dir)
 
+    @trace
+    def _delete(self, name, version):
+        """Delete an object with a predefined version
+
+        Args:
+            name (str): name of object
+            version (str): object version
+        """
+        pass
+
     @staticmethod
     @trace
     def _save(data_grp, ref_grp, numpy_dict):
