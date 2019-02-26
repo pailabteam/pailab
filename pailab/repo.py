@@ -338,7 +338,8 @@ class EvalJob(Job):
         data = repo.get(self.data, self.data_version, full_object=True)
         eval_func = repo.get(model_definition.eval_function, self.eval_function_version)
 
-        x_data = data.x_data        
+        x_data = data.x_data  
+        x_coord_names = data.x_coord_names      
         if model.preprocessors is not None:
             for k in range(len(model.preprocessors)):
                 prepro = model.preprocessors[k]
@@ -347,9 +348,9 @@ class EvalJob(Job):
                 if not prepro.preprocessing_param == None:
                     prepro_param = repo.get(prepro.preprocessing_param, model.repo_info.modification_info[prepro.preprocessing_param])
                 if prepro.fitting_function is not None:
-                    x_data = transforming_func.create()(prepro_param, x_data, model.fitted_preprocessors[k])
+                    x_data, x_coord_names = transforming_func.create()(prepro_param, x_data, x_coord_names, model.fitted_preprocessors[k])
                 else:
-                    x_data = transforming_func.create()(prepro_param, x_data)
+                    x_data, x_coord_names = transforming_func.create()(prepro_param, x_data, x_coord_names)
 
         y = eval_func.create()(model, x_data)
         
@@ -430,6 +431,7 @@ class TrainingJob(Job):
 
         # preprocessing
         x_data = train_data.x_data
+        x_coord_names = train_data.x_coord_names
         y_data = train_data.y_data
         preprocessors_modification_info = {}
         if model.preprocessors is None:
@@ -481,12 +483,12 @@ class TrainingJob(Job):
                 if preprocessor.fitting_function is not None:
                     fitting_func = repo.get(preprocessor.fitting_function, preprocessor_fitting_function_versions[k])
                     preprocessors_modification_info[fitting_func.repo_info.name] = fitting_func.repo_info.version
-                    fitted_preprocessor = fitting_func.create()(prepro_param, x_data)
-                    x_data = transforming_func.create()(prepro_param, x_data, fitted_preprocessor)
+                    fitted_preprocessor = fitting_func.create()(prepro_param, x_data, x_coord_names)
+                    x_data, x_coord_names = transforming_func.create()(prepro_param, x_data, x_coord_names, fitted_preprocessor)
                     fitted_preprocessors.append(fitted_preprocessor)
                 else:
                     fitting_func = None
-                    x_data = transforming_func.create()(prepro_param, x_data)
+                    x_data, x_coord_names = transforming_func.create()(prepro_param, x_data, x_coord_names)
                     fitted_preprocessors.append(None)
                 #_add_modification_info(preprocessor, transforming_func, prepro_param, fitting_func)
                 list_preprocessors.append(preprocessor)

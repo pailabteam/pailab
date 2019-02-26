@@ -135,7 +135,7 @@ class SKLearnPreprocessor:
         self.preprocessor = preprocessor
 
 
-def transform_sklearn(preprocessor_param, data_x, fitted_preprocessor=None):
+def transform_sklearn(preprocessor_param, data_x, x_coord_names, fitted_preprocessor=None):
     if fitted_preprocessor is None:
         def get_class(full_class_name):
             parts = full_class_name.split('.')
@@ -150,10 +150,10 @@ def transform_sklearn(preprocessor_param, data_x, fitted_preprocessor=None):
         prepro = m(**preprocessor_param.sklearn_params)
     else:
         prepro = fitted_preprocessor
-    return prepro.preprocessor.transform(X=data_x)
+    return prepro.preprocessor.transform(X=data_x), x_coord_names
 
 
-def fit_sklearn(preprocessor_param, data_x):
+def fit_sklearn(preprocessor_param, data_x, x_coord_names):
     def get_class(full_class_name):
         parts = full_class_name.split('.')
         module = ".".join(parts[:-1])
