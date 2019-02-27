@@ -418,14 +418,13 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.metrics import mean_squared_error
+# the followng imports are needed to hash parameters
+import hashlib
+import json
 class ModelAnalyzer:
-    def __init__(self, ml_repo, max_depth = 4, factor = 0.1, n_samples = None):
-        self._max_depth = max_depth
+    def __init__(self, ml_repo):
         self._ml_repo = ml_repo
         self._decision_tree = None
-        self._factor = factor
-        self._n_samples = n_samples
-        self._datapoint_to_leaf_node_idx = None
         self.result = {}
 
     @staticmethod        
@@ -476,24 +475,35 @@ class ModelAnalyzer:
         return 'model_analyzer_' + model.repo_info.name + '_' + data.repo_info.name 
     
     @staticmethod
-    def _create_result(model, data, result_data):
-        result = repo_objects.Result(result_data)
+    def _create_result(model, data, result_data, big_data = None):
+        result = repo_objects.Result(result_data, big_data)
         result.repo_info.name = ModelAnalyzer._create_name(model, data)
         result.repo_info.modification_info = {model.repo_info.name: model.repo_info.version, data.repo_info.name: data.repo_info.version}
         return result
 
-    def analyze(self, model,  data, version = RepoStore.LAST_VERSION, data_version = RepoStore.LAST_VERSION, 
-                    y_coordinate=None, start_index = 0, end_index= 100, force_recalc = False):       
+    def analyze(self, model,  data, n_samples, version = RepoStore.LAST_VERSION, data_version = RepoStore.LAST_VERSION, 
+                    y_coordinate=None, start_index = 0, end_index= 100, force_recalc = False, full_object = True, factor=0.1, 
+                    max_depth = 4):
+        if y_coordinate is None:
+            y_coordinate = 0
+        if isinstance(y_coordinate, str):
+            raise NotImplementedError()
+        param = {'max_depth': max_depth, 'factor': factor, 'n_samples': n_samples, 'y_coordinate': y_coordinate}
+        param_hash = hashlib.md5(json.dumps(param, sort_keys=True).encode('utf-8')).hexdigest()
+
         # check if results of analysis are already stored in the repo
         if not force_recalc:
             model_ = self._ml_repo.get(model, version, full_object = False)
             data_ = self._ml_repo.get(data, data_version, full_object=False)
             result_name = ModelAnalyzer._create_name(model_, data_)
-            result = self._ml_repo.get(result_name, 
-                    modifier_versions={model_.repo_info.name: model_.repo_info.version, data_.repo_info.name: data_.repo_info.version},
-                    throw_error_not_exist=False)
+            result = self._ml_repo.get(result_name, None, 
+                    modifier_versions={model_.repo_info.name: model_.repo_info.version, data_.repo_info.name: data_.repo_info.version, 'param_hash': param_hash},
+                    throw_error_not_exist=False, full_object= full_object)
             if result != []:
-                return result
+                if isinstance(result,list):
+                    return result[0]
+                else:
+                    return result
 
         model_definition_name = model.split('/')[0]
         model = self._ml_repo.get(model, version, full_object = True)
@@ -502,25 +512,18 @@ class ModelAnalyzer:
         data = self._ml_repo.get(data, data_version, full_object=True)
         eval_func = self._ml_repo.get(model_definition.eval_function, RepoStore.LAST_VERSION)
         
-        n_samples = self._n_samples
-        if n_samples is None:
-            n_samples = 4*data.x_data.shape[1]
-
-        if y_coordinate is None:
-            y_coordinate = 0
-        if isinstance(y_coordinate, str):
-            raise NotImplementedError()
             
         data_ = data.x_data[start_index:end_index, :]
-        local_model_coeff, mse = ModelAnalyzer._compute_local_model_coeffs(data_, eval_func, model, y_coordinate, n_samples, self._factor)
-        self._decision_tree = DecisionTreeRegressor(max_depth=self._max_depth)
+        local_model_coeff, mse = ModelAnalyzer._compute_local_model_coeffs(data_, eval_func, model, y_coordinate, n_samples, factor)
+        self._decision_tree = DecisionTreeRegressor(max_depth=max_depth)
         self._decision_tree.fit(data_, local_model_coeff)
         
-        self.result['node_statistics'], self._datapoint_to_leaf_node_idx = ModelAnalyzer._get_tree_figures(self._decision_tree, data.x_data, mse)
+        self.result['node_statistics'], datapoint_to_leaf_node_idx = ModelAnalyzer._get_tree_figures(self._decision_tree, data.x_data, mse)
         # store result in repo
-        self.result['parameter'] = {'max_depth': self._max_depth, 'factor': self._factor, 'n_samples': n_samples, 'y_coordinate': y_coordinate}
+        self.result['parameter'] = param
         self.result['x_coord_names'] = data.x_coord_names
-        result = ModelAnalyzer._create_result(model, data, self.result)
+        result = ModelAnalyzer._create_result(model, data, self.result, {'local_model_coeff':local_model_coeff, 'data_to_leaf_index':datapoint_to_leaf_node_idx })
+        result.repo_info.modification_info['param_hash'] = param_hash
         self._ml_repo.add(result)
         return result
 
