@@ -440,6 +440,7 @@ class TrainingJob(Job):
         else:
             list_preprocessors = []
             fitted_preprocessors = []
+            preprocessor_output_columns = []
             num_preprocessors = len(model.preprocessors)
             # checking preprocessor versions
             if isinstance(self.preprocessor_versions, list):
@@ -484,12 +485,17 @@ class TrainingJob(Job):
                     fitting_func = repo.get(preprocessor.fitting_function, preprocessor_fitting_function_versions[k])
                     preprocessors_modification_info[fitting_func.repo_info.name] = fitting_func.repo_info.version
                     fitted_preprocessor = fitting_func.create()(prepro_param, x_data, x_coord_names)
-                    x_data, x_coord_names = transforming_func.create()(prepro_param, x_data, x_coord_names, fitted_preprocessor)
+                    x_data, x_coord_names_new = transforming_func.create()(prepro_param, x_data, x_coord_names, fitted_preprocessor)
                     fitted_preprocessors.append(fitted_preprocessor)
                 else:
                     fitting_func = None
-                    x_data, x_coord_names = transforming_func.create()(prepro_param, x_data, x_coord_names)
+                    x_data, x_coord_names_new = transforming_func.create()(prepro_param, x_data, x_coord_names)
                     fitted_preprocessors.append(None)
+                if set(x_coord_names_new) == set(x_coord_names):
+                    preprocessor_output_columns.append(None)
+                else:
+                    preprocessor_output_columns.append(x_coord_names_new)
+                    x_coord_names = x_coord_names_new
                 #_add_modification_info(preprocessor, transforming_func, prepro_param, fitting_func)
                 list_preprocessors.append(preprocessor)
         
