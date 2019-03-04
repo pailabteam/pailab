@@ -458,8 +458,8 @@ class ModelAnalyzer:
         #depp = np.unique(decision_tree.tree_.apply(x.astype(np.float32)))
         tmp = decision_tree.apply(data)
 
-        for i in tmp:
-            num_elements_per_node[i] += 1
+        for i in range(len(tmp)):
+            num_elements_per_node[tmp[i]] += 1
         for i in range(mse.shape[0]):
             leaf_nodes[tmp[i]]['mse_max'] = max(leaf_nodes[tmp[i]]['mse_max'], mse[i])
             leaf_nodes[tmp[i]]['mse_min'] = min(leaf_nodes[tmp[i]]['mse_min'], mse[i])
@@ -469,7 +469,26 @@ class ModelAnalyzer:
             v['mse_mean'] /= float(num_elements_per_node[k])
             v['model_coefficients'] = decision_tree.tree_.value[k][:,0].tolist()
         return leaf_nodes, tmp
-    
+
+    @staticmethod
+    def _compute_ice(x_data, model_eval_function, model, y_coordinate,  n_samples, factor,
+                        direction, n_steps = 100):
+        steps = [-0.5 + float(x)/float(n_steps-1) for x in range(n_steps) ]
+        # compute input for evaluation
+        shape = (len(steps),)
+        shape += x_data.shape[1:]
+        for i in x_data.shape[0]:
+            _x_data = np.empty(shape=shape)
+            for i in range(len(steps)):
+                _x_data[i] = x_data[i] + steps[i]*direction
+            
+            result = {}
+            tmp = model_eval_function.create()(model, _x_data)
+            if result is None:
+                result = np.empty((x_data.shape[0], ) + tmp.shape)
+            result[i] = tmp
+        return result
+
     @staticmethod
     def _create_name(model, data):
         return 'model_analyzer_' + model.repo_info.name + '_' + data.repo_info.name 
@@ -482,28 +501,28 @@ class ModelAnalyzer:
         return result
 
     def analyze(self, model,  data, n_samples, version = RepoStore.LAST_VERSION, data_version = RepoStore.LAST_VERSION, 
-                    y_coordinate=None, start_index = 0, end_index= 100, force_recalc = False, full_object = True, factor=0.1, 
+                    y_coordinate=None, start_index = 0, end_index= 100, full_object = True, factor=0.1, 
                     max_depth = 4):
         if y_coordinate is None:
             y_coordinate = 0
         if isinstance(y_coordinate, str):
             raise NotImplementedError()
-        param = {'max_depth': max_depth, 'factor': factor, 'n_samples': n_samples, 'y_coordinate': y_coordinate}
+        param = {'max_depth': max_depth, 'factor': factor, 'n_samples': n_samples, 
+            'y_coordinate': y_coordinate, 'start_index': start_index, 'end_index': end_index}
         param_hash = hashlib.md5(json.dumps(param, sort_keys=True).encode('utf-8')).hexdigest()
 
         # check if results of analysis are already stored in the repo
-        if not force_recalc:
-            model_ = self._ml_repo.get(model, version, full_object = False)
-            data_ = self._ml_repo.get(data, data_version, full_object=False)
-            result_name = ModelAnalyzer._create_name(model_, data_)
-            result = self._ml_repo.get(result_name, None, 
-                    modifier_versions={model_.repo_info.name: model_.repo_info.version, data_.repo_info.name: data_.repo_info.version, 'param_hash': param_hash},
-                    throw_error_not_exist=False, full_object= full_object)
-            if result != []:
-                if isinstance(result,list):
-                    return result[0]
-                else:
-                    return result
+        model_ = self._ml_repo.get(model, version, full_object = False)
+        data_ = self._ml_repo.get(data, data_version, full_object=False)
+        result_name = ModelAnalyzer._create_name(model_, data_)
+        result = self._ml_repo.get(result_name, None, 
+                modifier_versions={model_.repo_info.name: model_.repo_info.version, data_.repo_info.name: data_.repo_info.version, 'param_hash': param_hash},
+                throw_error_not_exist=False, full_object= full_object)
+        if result != []:
+            if isinstance(result,list):
+                return result[0]
+            else:
+                return result
 
         model_definition_name = model.split('/')[0]
         model = self._ml_repo.get(model, version, full_object = True)
@@ -518,13 +537,12 @@ class ModelAnalyzer:
         self._decision_tree = DecisionTreeRegressor(max_depth=max_depth)
         self._decision_tree.fit(data_, local_model_coeff)
         
-        self.result['node_statistics'], datapoint_to_leaf_node_idx = ModelAnalyzer._get_tree_figures(self._decision_tree, data.x_data, mse)
+        self.result['node_statistics'], datapoint_to_leaf_node_idx = ModelAnalyzer._get_tree_figures(self._decision_tree, data_, mse)
         # store result in repo
         self.result['parameter'] = param
+        self.result['data'] = data
         self.result['x_coord_names'] = data.x_coord_names
-        result = ModelAnalyzer._create_result(model, data, self.result, {'local_model_coeff':local_model_coeff, 'data_to_leaf_index':datapoint_to_leaf_node_idx })
+        result = ModelAnalyzer._create_result(model, data, self.result, {'local_model_coeff':local_model_coeff, 'data_to_leaf_index':datapoint_to_leaf_node_idx, 'mse': mse })
         result.repo_info.modification_info['param_hash'] = param_hash
         self._ml_repo.add(result)
         return result
-
-        
