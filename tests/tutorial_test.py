@@ -35,12 +35,27 @@ class TutorialTest(unittest.TestCase):
             pass
 
         # creating new repository
-        from pailab.disk_handler import RepoObjectDiskStorage
-        from pailab.numpy_handler_hdf import NumpyHDFStorage
-        handler = RepoObjectDiskStorage(repo_path)
-        numpy_handler = NumpyHDFStorage(repo_path)
         job_runner = SimpleJobRunner(None)
-        ml_repo = MLRepo(user='test_user', numpy_repo=numpy_handler)
+        config = {'user': 'test_user',
+                  'workspace': repo_path,
+                  'repo_store':
+                  {
+                      'type': 'disk_handler',
+                      'config': {
+                          'folder': repo_path,
+                          'file_format': 'pickle'
+                      }
+                  },
+                  'numpy_store':
+                  {
+                      'type': 'hdf_handler',
+                      'config': {
+                          'folder': repo_path,
+                          'version_files': True
+                      }
+                  }
+                  }
+        ml_repo = MLRepo(user='test_user', config=config)
         job_runner.set_repo(ml_repo)
         ml_repo._job_runner = job_runner
         # end creating new repository
@@ -101,7 +116,7 @@ class TutorialTest(unittest.TestCase):
 
         # cleanup after running
         # job_runner.close_connection()
-        handler.close_connection()
+        ml_repo._ml_repo.close_connection()
         try:
             shutil.rmtree(repo_path)
             # os.path.
