@@ -16,7 +16,8 @@ import pailab.repo_objects as repo_objects
 from pailab.repo_objects import RepoInfoKey, DataSet, MeasureConfiguration
 from pailab.repo_objects import repo_object_init, RepoInfo, RepoObject  # pylint: disable=E0401
 import pailab.repo_store as repo_store
-from pailab.repo_store_factory import RepoStoreFactory
+from pailab.repo_store_factory import RepoStoreFactory, NumpyStoreFactory
+
 logger = logging.getLogger(__name__)
 
 
@@ -769,7 +770,8 @@ class MLRepo:
             raise Exception('Please specify a user.')
         return {'user': user, 'workspace': workspace, 'repo_store': 
                     {'type': 'memory_handler', 
-                    'config': {} }}
+                    'config': {} }, 
+                    'numpy_store': { 'type':'memory_handler', 'config': {}} }
 
     def _save_config(self):
         if 'workspace' in self._config.keys():
@@ -777,7 +779,7 @@ class MLRepo:
                 with open(self._config['workspace']  + '/.config.json', 'w') as f:
                     json.dump(self._config, f, indent=4, separators=(',', ': '))
 
-    def __init__(self,  workspace = None, user=None, config = None, numpy_repo =None, job_runner=None, save_config = False):
+    def __init__(self,  workspace = None, user=None, config = None, job_runner=None, save_config = False):
         """ Constructor of MLRepo
 
             :param numpy_repo: repository where the numpy data is stored in versions. If None, a NumpyHDFHandler will be used with directory equal to repo_dir.
@@ -792,12 +794,9 @@ class MLRepo:
             else:
                 self._config = MLRepo.__create_default_config(user, workspace)
         
-        self._numpy_repo = numpy_repo
+        self._numpy_repo = NumpyStoreFactory.get(self._config['numpy_store']['type'], **self._config['numpy_store']['config'])
         self._ml_repo = RepoStoreFactory.get(self._config['repo_store']['type'], **self._config['repo_store']['config'])
         
-        if numpy_repo is None:
-            from pailab.numpy_handler_hdf import NumpyHDFStorage
-            self._numpy_repo = NumpyHDFStorage(self._config['workspace'] + '/hdf') 
         self._user = self._config['user']
         self._job_runner = job_runner
         # check if the ml mapping is already contained in the repo, otherwise add it

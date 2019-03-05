@@ -18,3 +18,21 @@ class RepoStoreFactory:
             return RepoObjectMemoryStorage()
         raise Exception('Cannot create RepoStore: Unknown repo type ' + repo_store_type +
                         '. Use only types from the list returned by RepoStoreFactory.get_repo_stores().')
+
+
+class NumpyStoreFactory:
+
+    @staticmethod
+    def get_numpy_stores():
+        return ['memory_handler', 'hdf_handler']
+
+    @staticmethod
+    def get(numpy_store_type, **kwargs):
+        if numpy_store_type == 'memory_handler':
+            from pailab.memory_handler import NumpyMemoryStorage
+            return NumpyMemoryStorage(**kwargs)
+        elif numpy_store_type == 'hdf_handler':
+            from pailab.numpy_handler_hdf import NumpyHDFStorage
+            return NumpyHDFStorage(**kwargs)
+        raise Exception('Cannot create NumpyStore: Unknown  type ' + numpy_store_type +
+                        '. Use only types from the list returned by NumpyStoreFactory.get_numpy_stores().')
