@@ -24,11 +24,32 @@ def trace(aFunc):
 
 class NumpyHDFStorage(NumpyStore):
 
-    def __init__(self, main_dir):
-        self.main_dir = main_dir
+    def __init__(self, folder, version_files=False):
+        """Constructor
+
+        Constructs the NumpyHDFStorage which stores numpy dictionaries in hdf5 files using h5py.
+        
+        Args:
+            main_dir (str): main directory where the files will be stored
+            version_files (bool, optional): Defaults to False. If True, each version is contained in a separate file, otherwise all versions are in one file.
+                If you like to work in a distributed environmnt (e.g. multiple users working in parallel) you should set this parameter to True so that no file merge is necessary.
+        """
+
+        self.main_dir = folder
+        self._version_files = version_files
         if not os.path.exists(self.main_dir):
             os.makedirs(self.main_dir)
 
+    def _create_file_name(self, name, version, change_if_not_exist=False):
+
+        if self._version_files:
+            filename = name + '_' + version + '.hdf5'
+            if change_if_not_exist:
+                if not os.path.exists(self.main_dir + '/' + filename):
+                    return name + '.hdf5'
+            return filename
+        else:
+            return name + '.hdf5'
     @trace
     def _delete(self, name, version):
         """Delete an object with a predefined version
@@ -73,12 +94,11 @@ class NumpyHDFStorage(NumpyStore):
         :param numpy_dict: numpy dictionary
 
         """
-        # dir_name = os.path.dirname(self.main_dir + '/' + name )
         tmp = pathlib.Path(self.main_dir + '/' + name + 'hdf')
         save_dir = tmp.parent
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
-        with h5py.File(self.main_dir + '/' + name + '.hdf5', 'a') as f:
+        with h5py.File(self.main_dir + '/' + self._create_file_name(name, version), 'a') as f:
             grp_name = '/data/' + version + '/'
             logging.debug('Saving data ' + name +
                           ' in hdf5 to group ' + grp_name)
@@ -87,8 +107,8 @@ class NumpyHDFStorage(NumpyStore):
             NumpyHDFStorage._save(grp, ref_grp, numpy_dict)
 
     @trace
-    def append(self, name, version_old, version_new, numpy_dict):
-        with h5py.File(self.main_dir + '/' + name + '.hdf5', 'a') as f:
+    def _append_same_file(self, name, version_old, version_new, numpy_dict):
+         with h5py.File(self.main_dir + '/' + self._create_file_name(name, version_new), 'a') as f:
             logging.debug('Appending data ' + name +
                           ' in hdf5 with version ' + str(version_new))
 
@@ -123,10 +143,42 @@ class NumpyHDFStorage(NumpyStore):
                             ref_grp.create_dataset(
                                 k, data=data.regionref[0:new_shape[0], :, :])
 
+    def _append_different_file(self, name, version_old, version_new, numpy_dict):
+        self.add(name + '_append', version_new, numpy_dict ) #save data to append in separate file
+        # get shape 
+        grp_name_old = '/data/' + str(version_old) + '/'
+        grp_name_new = '/data/' + str(version_new) + '/'
+        old_filename = self._create_file_name(name, version_old)
+        new_filename = self._create_file_name(name, version_new)
+        tmp_filename = self._create_file_name(name+ '_append', version_new)
+        with h5py.File(self.main_dir + '/' + old_filename, 'r') as f_old:
+            with h5py.File(self.main_dir + '/' + tmp_filename, 'r') as f_tmp:
+                with h5py.File(self.main_dir + '/' + new_filename, 'w') as f_new:
+                    ref_grp = f_new.create_group('/ref/' + str(version_new) + '/')
+                    grp = f_new.create_group('/data/' + str(version_new) + '/')
+                        
+                    for k,v in numpy_dict.items():
+                        grp_old_k = f_old[grp_name_old][k]
+                        grp_new_k = f_tmp[grp_name_new][k]
+                        shape = (grp_old_k.shape[0]+grp_new_k.shape[0], ) + grp_old_k.shape[1:]
+                        layout = h5py.VirtualLayout(shape=shape)
+                        layout[0:grp_old_k.shape[0]] = h5py.VirtualSource(grp_old_k)
+                        layout[grp_old_k.shape[0]:] = h5py.VirtualSource(grp_new_k)
+                        tmp = grp.create_virtual_dataset(k, layout)
+                        ref_grp.create_dataset(k, data=tmp.regionref[:])
+                        #ref_grp.create_virtual_dataset(k, layout)
+                        
+    @trace
+    def append(self, name, version_old, version_new, numpy_dict):
+        if not self._version_files:
+            self._append_same_file(name, version_old, version_new, numpy_dict)
+        else:
+            self._append_different_file(name, version_old, version_new, numpy_dict)
+
     @trace
     def get(self, name, version, from_index=0, to_index=None):
         # \todo auch hier muss die referenz einschl. Namen verwendet werden
-        with h5py.File(self.main_dir + '/' + name + '.hdf5', 'a') as f:
+        with h5py.File(self.main_dir + '/' + self._create_file_name(name, version, change_if_not_exist=True), 'r') as f:
             grp_name = '/data/' + str(version) + '/'
             ref_grp = '/ref/' + str(version) + '/'
             logging.debug('Reading object ' + name +
@@ -155,7 +207,7 @@ class NumpyHDFStorage(NumpyStore):
     def object_exists(self, name, version):
         result = False
         try:
-            with h5py.File(self.main_dir + '/' + name + '.hdf5', 'a') as f:
+            with h5py.File(self.main_dir + '/' + self._create_file_name(name, version, change_if_not_exist=True), 'a') as f:
                 grp_name = '/data/' + str(version) + '/'
                 result = grp_name in f
         except:

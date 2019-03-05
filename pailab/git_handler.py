@@ -54,8 +54,8 @@ class RepoObjectGitStorage(RepoObjectDiskStorage):
             obj (RepoObject): repo object to be overwritten
         """
         super(RepoObjectGitStorage, self).replace(obj)
-        self.commit('Replace object ' + obj.repo_info.name +
-                    ', version ' + obj.repo_info.version + '.')
+        self.commit('Replace object ' + obj['repo_info']['name'] +
+                    ', version ' + obj['repo_info']['version'] + '.')
 
     def commit(self, message):
         check = self.check_integrity()
