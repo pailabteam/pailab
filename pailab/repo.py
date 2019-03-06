@@ -996,8 +996,9 @@ class MLRepo:
             model_param {string} -- identifier of the model parameter in the repo (default: {None}), if None and there is exactly one ModelParameter in teh repo, this will be used,
                                     otherwise it is assumed that no model_params are needed
             training_param {string} -- identifier of the training parameter (default: {None}), if None and there is only one training_parameter object in the repo, 
-                                        this will be used. If an empty string is given as training parameter, we assume that the algorithm does not need a training pram.
-            preprocessors {list} -- list of preprocessors to be executed
+                                    this will be used. If an empty string is given as training parameter, we assume that the algorithm does not need a training pram.
+            preprocessors {list} -- list of preprocessors to be execute (default: {None})
+                                    this is a list of strings
         """
         model = repo_objects.Model(preprocessors = preprocessors, 
                                     repo_info={RepoInfoKey.CATEGORY: MLObjectType.MODEL.value, 
