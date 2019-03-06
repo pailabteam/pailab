@@ -418,6 +418,8 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.metrics import mean_squared_error
+from sklearn.cluster import KMeans
+
 # the followng imports are needed to hash parameters
 import hashlib
 import json
@@ -470,37 +472,18 @@ class ModelAnalyzer:
             v['model_coefficients'] = decision_tree.tree_.value[k][:,0].tolist()
         return leaf_nodes, tmp
 
-    @staticmethod
-    def _compute_ice(x_data, model_eval_function, model, y_coordinate,  n_samples, factor,
-                        direction, n_steps = 100):
-        steps = [-0.5 + float(x)/float(n_steps-1) for x in range(n_steps) ]
-        # compute input for evaluation
-        shape = (len(steps),)
-        shape += x_data.shape[1:]
-        for i in x_data.shape[0]:
-            _x_data = np.empty(shape=shape)
-            for i in range(len(steps)):
-                _x_data[i] = x_data[i] + steps[i]*direction
-            
-            result = {}
-            tmp = model_eval_function.create()(model, _x_data)
-            if result is None:
-                result = np.empty((x_data.shape[0], ) + tmp.shape)
-            result[i] = tmp
-        return result
-
-    @staticmethod
-    def _create_name(model, data):
-        return 'model_analyzer_' + model.repo_info.name + '_' + data.repo_info.name 
     
     @staticmethod
-    def _create_result(model, data, result_data, big_data = None):
+    def _create_result(name, model, data, param, result_data, big_data = None):
         result = repo_objects.Result(result_data, big_data)
-        result.repo_info.name = ModelAnalyzer._create_name(model, data)
-        result.repo_info.modification_info = {model.repo_info.name: model.repo_info.version, data.repo_info.name: data.repo_info.version}
+        result.repo_info.name = name
+        param_hash = hashlib.md5(json.dumps(param, sort_keys=True).encode('utf-8')).hexdigest()
+        result.repo_info.modification_info = {model.repo_info.name: model.repo_info.version, 
+                    data.repo_info.name: data.repo_info.version, 'param_hash': param_hash}
         return result
 
-    def analyze(self, model,  data, n_samples, version = RepoStore.LAST_VERSION, data_version = RepoStore.LAST_VERSION, 
+
+    def analyze_local_model(self, model, data_str, n_samples, version = RepoStore.LAST_VERSION, data_version = RepoStore.LAST_VERSION, 
                     y_coordinate=None, start_index = 0, end_index= 100, full_object = True, factor=0.1, 
                     max_depth = 4):
         if y_coordinate is None:
@@ -513,8 +496,8 @@ class ModelAnalyzer:
 
         # check if results of analysis are already stored in the repo
         model_ = self._ml_repo.get(model, version, full_object = False)
-        data_ = self._ml_repo.get(data, data_version, full_object=False)
-        result_name = ModelAnalyzer._create_name(model_, data_)
+        data_ = self._ml_repo.get(data_str, data_version, full_object=False)
+        result_name = 'analyzer_local_model_' + model_.repo_info.name + '_' + data_.repo_info.name
         result = self._ml_repo.get(result_name, None, 
                 modifier_versions={model_.repo_info.name: model_.repo_info.version, data_.repo_info.name: data_.repo_info.version, 'param_hash': param_hash},
                 throw_error_not_exist=False, full_object= full_object)
@@ -528,7 +511,7 @@ class ModelAnalyzer:
         model = self._ml_repo.get(model, version, full_object = True)
         model_def_version = model.repo_info[RepoInfoKey.MODIFICATION_INFO][model_definition_name]
         model_definition = self._ml_repo.get(model_definition_name, model_def_version)
-        data = self._ml_repo.get(data, data_version, full_object=True)
+        data = self._ml_repo.get(data_str, data_version, full_object=True)
         eval_func = self._ml_repo.get(model_definition.eval_function, RepoStore.LAST_VERSION)
         
             
@@ -540,9 +523,98 @@ class ModelAnalyzer:
         self.result['node_statistics'], datapoint_to_leaf_node_idx = ModelAnalyzer._get_tree_figures(self._decision_tree, data_, mse)
         # store result in repo
         self.result['parameter'] = param
-        self.result['data'] = data
+        self.result['data'] = data_str
         self.result['x_coord_names'] = data.x_coord_names
-        result = ModelAnalyzer._create_result(model, data, self.result, {'local_model_coeff':local_model_coeff, 'data_to_leaf_index':datapoint_to_leaf_node_idx, 'mse': mse })
-        result.repo_info.modification_info['param_hash'] = param_hash
+        result = ModelAnalyzer._create_result(result_name, 
+            model, data, param, self.result, {'local_model_coeff':local_model_coeff, 'data_to_leaf_index':datapoint_to_leaf_node_idx, 'mse': mse })
         self._ml_repo.add(result)
         return result
+
+    @staticmethod
+    def _compute_ice(x_data, model_eval_function, model, 
+                        direction, y_coordinate, n_steps = 100, scale = True):
+        """Independent conditional expectation plot
+        
+        Args:
+            x_data ([type]): [description]
+            model_eval_function ([type]): [description]
+            model ([type]): [description]
+            direction ([type]): [description]
+            n_steps (int, optional): Defaults to 100. [description]
+        
+        Returns:
+            [type]: [description]
+        """
+
+        steps = [-1.0 + 2.0*float(x)/float(n_steps-1) for x in range(n_steps) ]
+        # compute input for evaluation
+        shape = (x_data.shape[0], len(steps),) #x_data.shape[1:]
+        _x_data = np.empty(shape= (len(steps), ) +  x_data.shape[1:]) 
+        result = np.empty(shape)
+        eval_f = model_eval_function.create()
+        for i in range(x_data.shape[0]):
+            for j in range(len(steps)):
+                _x_data[j] = x_data[i] + steps[j]*direction
+            y = eval_f(model, _x_data)[:,y_coordinate]
+            if scale:
+                denom = max(np.linalg.norm(y),1e-10)
+                result[i] = y / denom
+            else:
+                result[i] = y
+        return result, steps
+    
+    def analyze_ice(self, model,  data, direction, version = RepoStore.LAST_VERSION, data_version = RepoStore.LAST_VERSION, 
+                    y_coordinate=None, start_index = 0, end_index= 100, full_object = True, n_steps = 20, n_clusters=20, scale=True):
+        if y_coordinate is None:
+            y_coordinate = 0
+        if isinstance(y_coordinate, str):
+            raise NotImplementedError()
+        
+        direction_tmp = [x for x in direction] # transform numpy array to list to make it json serializable
+        param = {
+            'y_coordinate': y_coordinate, 'start_index': start_index, 'end_index': end_index, 
+            'n_steps': n_steps,
+            'direction': direction_tmp,
+            'n_clusters': n_clusters, 
+            'scale' : scale}
+        param_hash = hashlib.md5(json.dumps(param, sort_keys=True).encode('utf-8')).hexdigest()
+        
+        # check if results of analysis are already stored in the repo
+        model_ = self._ml_repo.get(model, version, full_object = False)
+        data_ = self._ml_repo.get(data, data_version, full_object=False)
+        result_name = 'analyzer_ice_' + model_.repo_info.name + '_' + data_.repo_info.name
+        result = self._ml_repo.get(result_name, None, 
+                modifier_versions={model_.repo_info.name: model_.repo_info.version, 
+                                data_.repo_info.name: data_.repo_info.version, 
+                                'param_hash': param_hash},
+                throw_error_not_exist=False, full_object= full_object)
+        if result != []:
+            if isinstance(result,list):
+                return result[0]
+            else:
+                return result
+
+        model_definition_name = model.split('/')[0]
+        model = self._ml_repo.get(model, version, full_object = True)
+        model_def_version = model.repo_info[RepoInfoKey.MODIFICATION_INFO][model_definition_name]
+        model_definition = self._ml_repo.get(model_definition_name, model_def_version)
+        data = self._ml_repo.get(data, data_version, full_object=True)
+        
+        eval_func = self._ml_repo.get(model_definition.eval_function, RepoStore.LAST_VERSION)
+                    
+        data_ = data.x_data[start_index:end_index, :]
+        
+        big_obj = {}
+        big_obj['ice'], steps = ModelAnalyzer._compute_ice(data_, eval_func, model, direction, y_coordinate, n_steps)
+        big_obj['steps'] = np.array(steps)
+        # now apply a clustering algorithm to search for good representations of all ice results
+        k_means = KMeans(init='k-means++', n_clusters=n_clusters, n_init=10)
+        big_obj['labels'] = k_means.fit_predict(big_obj['ice'])
+        big_obj['cluster_centers'] = k_means.cluster_centers_
+        
+        result = ModelAnalyzer._create_result(result_name, model, data, param, {'param': param}, big_obj)
+        self._ml_repo.add(result)
+        return result
+
+    
+
