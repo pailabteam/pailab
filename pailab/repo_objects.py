@@ -407,8 +407,8 @@ class Model(RepoObject):
         self.model_param = model_param
 
 class Preprocessor(RepoObject):
-    def __init__(self, preprocessor, transforming_function, fitting_function = None,
-                fitting_param = None, repo_info = RepoInfo()):
+    def __init__(self, transforming_function, fitting_function = None,
+                preprocessing_param = None, repo_info = RepoInfo()):
         """Defines all relevant information for the preprocessor
         
         Keyword Arguments:
@@ -421,10 +421,9 @@ class Preprocessor(RepoObject):
             model {object} -- the object defining the model
         """
         super(Preprocessor, self).__init__(repo_info)
-        self.preprocessor = preprocessor
         self.fitting_function = fitting_function
         self.transforming_function = transforming_function
-        self.fitting_param = fitting_param
+        self.preprocessing_param = preprocessing_param
     
 class Function(RepoObject):
     """Function

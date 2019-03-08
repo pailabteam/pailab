@@ -2,18 +2,18 @@ Machine Learning Repository
 ===========================================
 
 repo
-------------------------
+-----------------------------------
 .. automodule:: pailab.repo
    :members:
    
 repo objects
-------------------
+-----------------------------------
 .. automodule:: pailab.repo_objects
    :members:
    
 
 repo stores
--------------------
+-----------------------------------
 
 .. automodule:: pailab.repo_store
    :members:
@@ -28,13 +28,13 @@ repo stores
    
 
 job runner
--------------------------
+-----------------------------------
 .. automodule:: pailab.job_runner.job_runner
     :members:
     :show-inheritance:
 
 plotting
---------------------------
+-----------------------------------
 .. automodule:: pailab.plot
     :members:
     :show-inheritance:
@@ -42,6 +42,6 @@ plotting
 pailab_externals
 ========================
 pailab_externals.sklearn_interface
--------------------------
-.. automodule:: externals.sklearn_interface
+-----------------------------------
+.. automodule:: pailab_externals.sklearn_interface
     :members:
