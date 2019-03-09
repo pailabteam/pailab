@@ -524,6 +524,7 @@ class ModelAnalyzer:
         # store result in repo
         self.result['parameter'] = param
         self.result['data'] = data_str
+        self.result['model'] = model
         self.result['x_coord_names'] = data.x_coord_names
         result = ModelAnalyzer._create_result(result_name, 
             model, data, param, self.result, {'local_model_coeff':local_model_coeff, 'data_to_leaf_index':datapoint_to_leaf_node_idx, 'mse': mse })
@@ -564,7 +565,8 @@ class ModelAnalyzer:
         return result, steps
     
     def analyze_ice(self, model,  data, direction, version = RepoStore.LAST_VERSION, data_version = RepoStore.LAST_VERSION, 
-                    y_coordinate=None, start_index = 0, end_index= 100, full_object = True, n_steps = 20, n_clusters=20, scale=True):
+                    y_coordinate=None, start_index = 0, end_index= 100, full_object = True, n_steps = 20, 
+                    n_clusters=20, scale=True, random_state=42, percentile = 90):
         if y_coordinate is None:
             y_coordinate = 0
         if isinstance(y_coordinate, str):
@@ -576,7 +578,8 @@ class ModelAnalyzer:
             'n_steps': n_steps,
             'direction': direction_tmp,
             'n_clusters': n_clusters, 
-            'scale' : scale}
+            'scale' : scale, 'random_state': random_state,
+            'percentile': percentile}
         param_hash = hashlib.md5(json.dumps(param, sort_keys=True).encode('utf-8')).hexdigest()
         
         # check if results of analysis are already stored in the repo
@@ -604,15 +607,29 @@ class ModelAnalyzer:
                     
         data_ = data.x_data[start_index:end_index, :]
         
+        x, steps =  ModelAnalyzer._compute_ice(data_, eval_func, model, direction, y_coordinate, n_steps)
         big_obj = {}
-        big_obj['ice'], steps = ModelAnalyzer._compute_ice(data_, eval_func, model, direction, y_coordinate, n_steps)
+        big_obj['ice'] = x
         big_obj['steps'] = np.array(steps)
         # now apply a clustering algorithm to search for good representations of all ice results
-        k_means = KMeans(init='k-means++', n_clusters=n_clusters, n_init=10)
-        big_obj['labels'] = k_means.fit_predict(big_obj['ice'])
+        k_means = KMeans(init='k-means++', n_clusters=n_clusters, n_init=10, random_state=42)
+        labels =  k_means.fit_predict(x)
+        big_obj['labels'] = labels
         big_obj['cluster_centers'] = k_means.cluster_centers_
-        
-        result = ModelAnalyzer._create_result(result_name, model, data, param, {'param': param}, big_obj)
+        # now store for each data point the distance to the respectiv cluster center
+        tmp = k_means.transform(x)
+        distance_to_center = np.empty((x.shape[0],))
+
+        for i in range(x.shape[0]):
+            distance_to_center[i] = tmp[i,labels[i]]
+        big_obj['distance_to_center'] = distance_to_center
+        #perc = np.percentile(distance_to_center, percentile)
+        #percentile_ice = np.extract(distance_to_center > perc, )
+        #for i in range(distance_to_center.shape[0]):
+        #    if distance_to_center[i] > perc:
+        #        percentile_ice.append(distance_to_center[i])
+        #big_obj['percentiles'] = percentile_ice
+        result = ModelAnalyzer._create_result(result_name, model, data, param, {'param': param, 'data': data.repo_info.name, 'model': model.repo_info.name}, big_obj)
         self._ml_repo.add(result)
         return result
 
