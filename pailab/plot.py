@@ -204,8 +204,8 @@ def histogram_model_error(ml_repo, models, data_name, y_coordinate=None, data_ve
     The method plots histograms between predicted and real values of a certain target variable for reference data and models. 
     The reference data is described by the data name and the version of the data (as well as the targt variables name). The models can be described
     by 
-        - a dictionary of model names to versions (a single version number, a range of versions or a list of versions)
-        - just a model name (in this case the latest version is used)
+    - a dictionary of model names to versions (a single version number, a range of versions or a list of versions)
+    - just a model name (in this case the latest version is used)
 
     Args:
         :param ml_repo ([type]): [description]

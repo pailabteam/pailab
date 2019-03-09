@@ -407,8 +407,8 @@ class Model(RepoObject):
         self.model_param = model_param
 
 class Preprocessor(RepoObject):
-    def __init__(self, preprocessor, transforming_function, fitting_function = None,
-                fitting_param = None, repo_info = RepoInfo()):
+    def __init__(self, transforming_function, fitting_function = None,
+                preprocessing_param = None, repo_info = RepoInfo()):
         """Defines all relevant information for the preprocessor
         
         Keyword Arguments:
@@ -421,10 +421,9 @@ class Preprocessor(RepoObject):
             model {object} -- the object defining the model
         """
         super(Preprocessor, self).__init__(repo_info)
-        self.preprocessor = preprocessor
         self.fitting_function = fitting_function
         self.transforming_function = transforming_function
-        self.fitting_param = fitting_param
+        self.preprocessing_param = preprocessing_param
     
 class Function(RepoObject):
     """Function
@@ -459,10 +458,19 @@ class Function(RepoObject):
        return self._module_version
 
 class Result(RepoObject):
-    def __init__(self, data, repo_info = RepoInfo()):
+    def __init__(self, data, big_data = None, repo_info = RepoInfo()):
         super(Result, self).__init__(repo_info)
         self.repo_info.category = 'RESULT'
         self.result = data
+        self.big_data = big_data
+        if self.big_data is not None:
+            self.repo_info.big_objects = 'big_data'
+        
+    def numpy_to_dict(self):  # pylint: disable=E0213
+        return self.big_data
+
+    def numpy_from_dict(self, repo_numpy_dict):  # pylint: disable=E0213
+        self.big_data = repo_numpy_dict
 
 class CommitInfo(RepoObject):
     def __init__(self, message, author, objects, repo_info = RepoInfo()):

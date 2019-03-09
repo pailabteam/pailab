@@ -12,6 +12,7 @@ Welcome to pailab's documentation!
    :maxdepth: 2
    :caption: Contents:
    
+   basics
    tutorial
    repo_module
 

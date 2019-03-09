@@ -80,10 +80,27 @@ class SQLiteJobRunner_Test(unittest.TestCase):
             # os.path.
         except OSError:
             pass
-        self.handler = RepoObjectDiskStorage('tmp')
-        numpy_handler = NumpyHDFStorage('tmp/numpy')
-
-        self.repository = repo.MLRepo(user='doeltz', numpy_repo=numpy_handler)
+        config = {'user': 'test_user',
+                  'workspace': 'tmp',
+                  'repo_store':
+                  {
+                      'type': 'disk_handler',
+                      'config': {
+                          'folder': 'tmp',
+                          'file_format': 'pickle'
+                      }
+                  },
+                  'numpy_store':
+                  {
+                      'type': 'hdf_handler',
+                      'config': {
+                          'folder': 'tmp/numpy',
+                          'version_files': True
+                      }
+                  }
+                  }
+        self.repository = repo.MLRepo(user='doeltz', config=config)
+        self.handler = self.repository._ml_repo
         self.job_runner = SQLiteJobRunner(
             'tmp/job_runner.sqlite', self.repository)
         self.repository._job_runner = self.job_runner

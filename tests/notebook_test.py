@@ -42,5 +42,10 @@ class Test_notebooks(unittest.TestCase):
             'boston_housing\\boston_housing.ipynb'))
 
 
+    def test_adult_census_income(self):
+        self.assertTrue(test_ipynb(
+            'adult-census-income\\adult-census-income.ipynb'))
+
+
 if __name__ == '__main__':
     unittest.main()
