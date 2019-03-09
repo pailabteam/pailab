@@ -60,7 +60,7 @@ class TutorialTest(unittest.TestCase):
         ml_repo._job_runner = job_runner
         # end creating new repository
 
-        from pailab.tools import MLTree
+        from pailab.tools.tools import MLTree
         MLTree.add_tree(ml_repo)
 
         # add RawData

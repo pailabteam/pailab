@@ -5,7 +5,7 @@ import numpy as np
 from pailab import RepoInfoKey, MLObjectType, repo_object_init, RepoInfoKey, DataSet, RawData, MLRepo  # pylint: disable=E0401
 from pailab.repo import NamingConventions
 from pailab.repo_objects import RepoInfo
-import pailab.tests as ml_tests
+import pailab.tools.tests as ml_tests
 import pailab.repo_objects as repo_objects
 import pailab.memory_handler as memory_handler
 import pailab.repo_store as repo_store
