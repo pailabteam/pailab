@@ -1,9 +1,9 @@
 import datetime
 from copy import deepcopy
 from numpy import concatenate
-import pailab.repo_objects as repo_objects
+import pailab.ml_repo.repo_objects as repo_objects
 import pailab.ml_repo.repo as repo
-from pailab.repo_store import RepoStore, NumpyStore, _time_from_version
+from pailab.ml_repo.repo_store import RepoStore, NumpyStore, _time_from_version
 import logging
 logger = logging.getLogger(__name__)
 

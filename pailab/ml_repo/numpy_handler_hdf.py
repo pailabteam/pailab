@@ -2,7 +2,7 @@ import h5py
 import os
 import pathlib
 import logging
-from pailab.repo_store import NumpyStore
+from pailab.ml_repo.repo_store import NumpyStore
 logger = logging.getLogger(__name__)
 
 

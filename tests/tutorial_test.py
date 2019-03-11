@@ -3,9 +3,9 @@ import os
 import numpy as np
 import shutil
 import pailab.ml_repo.repo as repo
-import pailab.repo_objects as repo_objects
+import pailab.ml_repo.repo_objects as repo_objects
 from pailab import RepoInfoKey, MeasureConfiguration, MLObjectType, RawData, DataSet, repo_object_init, JobState
-from pailab.repo_store import RepoStore
+from pailab.ml_repo.repo_store import RepoStore
 
 from pailab.ml_repo.numpy_handler_hdf import NumpyHDFStorage
 from pailab.ml_repo.disk_handler import RepoObjectDiskStorage

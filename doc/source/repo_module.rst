@@ -8,14 +8,14 @@ repo
    
 repo objects
 -----------------------------------
-.. automodule:: pailab.repo_objects
+.. automodule:: pailab.ml_repo.repo_objects
    :members:
    
 
 repo stores
 -----------------------------------
 
-.. automodule:: pailab.repo_store
+.. automodule:: pailab.ml_repo.repo_store
    :members:
    
    

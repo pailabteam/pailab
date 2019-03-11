@@ -6,7 +6,7 @@ import logging
 import numpy as np
 import pandas as pd
 import pailab.analysis.plot_helper as plot_helper  # pylint: disable=E0611
-from pailab.repo_store import RepoStore, LAST_VERSION
+from pailab.ml_repo.repo_store import RepoStore, LAST_VERSION
 from pailab.ml_repo.repo import NamingConventions, MLObjectType  # pylint: disable=E0611,E0401
 from pailab import RepoInfoKey
 from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot

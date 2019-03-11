@@ -7,7 +7,7 @@ import abc
 
 import uuid
 from enum import Enum
-from pailab.repo_objects import repo_object_init, RawData, RepoInfoKey  # pylint: disable=E0401
+from pailab.ml_repo.repo_objects import repo_object_init, RawData, RepoInfoKey  # pylint: disable=E0401
 from pailab.ml_repo.repo import MLObjectType  # pylint: disable=E0401
 
 import logging

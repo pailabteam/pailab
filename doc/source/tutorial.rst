@@ -29,7 +29,7 @@ Adding training and testdata
 ------------------------------
 The data in the repository is handled by two different data objects:
 
-- :py:class:`pailab.repo_objects.RawData` is the object containing real data.
+- :py:class:`pailab.ml_repo.repo_objects.RawData` is the object containing real data.
 - :py:class:`pailab.ml_repo.repo.DataSet` is the object conaining the logical data, i.e. a reference to a RawData object together with a specification, which data from the RawData will be used. Here, one can specify a fixed version of the underlying RawData object (then changes to the RawData will not affect the derived DataSet) or a fixed or floating subset of the RawData by defininga start and endindex cutting the derived data just out of the original data.
 
 Normally one will add RawData and then define DataSets which are used to train or test a model which is exactly the way shown in the following.
@@ -117,7 +117,7 @@ Based on the evaluations one can specify different kinds of error measures.
 
 Retrieving measures
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-The measurement values are also stored as a repository object in the repository (see :py:class:`pailab.repo_objects.measure`). One can simply retrieve them by calling the repositories
+The measurement values are also stored as a repository object in the repository (see :py:class:`pailab.ml_repo.repo_objects.measure`). One can simply retrieve them by calling the repositories
 :py:meth:`pailab.ml_repo.repo.MLRepo.get` method which can be used to retrieve all objects stored in the repository.
 
 .. literalinclude:: ../../tests/tutorial_test.py

@@ -5,9 +5,9 @@
 
 __version__ = '0.0.1'
 
-from pailab.repo_objects import repo_object_init
-from pailab.repo_objects import RepoInfoKey
-from pailab.repo_objects import Preprocessor
+from pailab.ml_repo.repo_objects import repo_object_init
+from pailab.ml_repo.repo_objects import RepoInfoKey
+from pailab.ml_repo.repo_objects import Preprocessor
 from pailab.ml_repo.repo import MLObjectType
 
 

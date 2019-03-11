@@ -3,8 +3,8 @@ import sqlite3
 import pickle
 from datetime import datetime, timedelta
 import json
-import pailab.repo_objects as repo_objects
-from pailab.repo_store import RepoInfoKey, _time_from_version
+import pailab.ml_repo.repo_objects as repo_objects
+from pailab.ml_repo.repo_store import RepoInfoKey, _time_from_version
 import pailab.ml_repo.repo as repo
 from pailab.ml_repo.repo.disk_handler import RepoObjectDiskStorage
 from git import Repo

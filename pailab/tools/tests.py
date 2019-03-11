@@ -1,9 +1,9 @@
 import abc
 from collections import defaultdict
 import logging
-from pailab.repo_objects import RepoInfo, RepoObject
+from pailab.ml_repo.repo_objects import RepoInfo, RepoObject
 from pailab import repo_object_init, MLRepo, RepoInfoKey, MLObjectType, MeasureConfiguration
-from pailab.repo_store import LAST_VERSION, FIRST_VERSION
+from pailab.ml_repo.repo_store import LAST_VERSION, FIRST_VERSION
 from pailab.ml_repo.repo import Job, NamingConventions, _add_modification_info
 
 logger = logging.getLogger(__name__)

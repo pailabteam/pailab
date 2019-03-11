@@ -12,11 +12,11 @@ from enum import Enum
 from copy import deepcopy
 from types import SimpleNamespace
 import logging
-import pailab.repo_objects as repo_objects
-from pailab.repo_objects import RepoInfoKey, DataSet, MeasureConfiguration
-from pailab.repo_objects import repo_object_init, RepoInfo, RepoObject  # pylint: disable=E0401
-import pailab.repo_store as repo_store
-from pailab.repo_store_factory import RepoStoreFactory, NumpyStoreFactory
+import pailab.ml_repo.repo_objects as repo_objects
+from pailab.ml_repo.repo_objects import RepoInfoKey, DataSet, MeasureConfiguration
+from pailab.ml_repo.repo_objects import repo_object_init, RepoInfo, RepoObject  # pylint: disable=E0401
+import pailab.ml_repo.repo_store as repo_store
+from pailab.ml_repo.repo_store_factory import RepoStoreFactory, NumpyStoreFactory
 
 logger = logging.getLogger(__name__)
 

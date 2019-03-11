@@ -3,10 +3,10 @@ import collections
 from numpy import load
 from deepdiff import DeepDiff
 from pailab.ml_repo.repo import MLObjectType, MLRepo, NamingConventions
-from pailab.repo_objects import RepoInfoKey, DataSet  # pylint: disable=E0401
-from pailab.repo_store import RepoStore  # pylint: disable=E0401
-import pailab.repo_store as repo_store
-import pailab.repo_objects as repo_objects
+from pailab.ml_repo.repo_objects import RepoInfoKey, DataSet  # pylint: disable=E0401
+from pailab.ml_repo.repo_store import RepoStore  # pylint: disable=E0401
+import pailab.ml_repo.repo_store as repo_store
+import pailab.ml_repo.repo_objects as repo_objects
 logger = logging.getLogger(__name__)
 
 #region collections and items

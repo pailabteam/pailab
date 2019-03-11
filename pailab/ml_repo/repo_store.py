@@ -2,7 +2,7 @@ import uuid
 import datetime
 
 import abc
-from pailab.repo_objects import RepoInfoKey  # pylint: disable=E0401
+from pailab.ml_repo.repo_objects import RepoInfoKey  # pylint: disable=E0401
 
 
 def _version_str():
