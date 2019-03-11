@@ -168,8 +168,8 @@ class ConsistencyChecker:
         return self._widget_main
 
 
-import pailab.plot_helper as plt_helper
-import pailab.plot as plot
+import pailab.analysis.plot_helper as plt_helper
+import pailab.analysis.plot as plot
 
 # import plotly.graph_objs as go
 # from plotly.offline import download_plotlyjs, init_notebook_mode, iplot

@@ -5,7 +5,7 @@ added to the resuling figures from the information stored in the repository.
 import logging
 import numpy as np
 import pandas as pd
-import pailab.plot_helper as plot_helper  # pylint: disable=E0611
+import pailab.analysis.plot_helper as plot_helper  # pylint: disable=E0611
 from pailab.repo_store import RepoStore, LAST_VERSION
 from pailab.repo import NamingConventions, MLObjectType  # pylint: disable=E0611,E0401
 from pailab import RepoInfoKey
