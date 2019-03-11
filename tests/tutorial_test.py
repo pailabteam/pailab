@@ -2,13 +2,13 @@ import unittest
 import os
 import numpy as np
 import shutil
-import pailab.repo as repo
-import pailab.repo_objects as repo_objects
+import pailab.ml_repo.repo as repo
+import pailab.ml_repo.repo_objects as repo_objects
 from pailab import RepoInfoKey, MeasureConfiguration, MLObjectType, RawData, DataSet, repo_object_init, JobState
-from pailab.repo_store import RepoStore
+from pailab.ml_repo.repo_store import RepoStore
 
-from pailab.numpy_handler_hdf import NumpyHDFStorage
-from pailab.disk_handler import RepoObjectDiskStorage
+from pailab.ml_repo.numpy_handler_hdf import NumpyHDFStorage
+from pailab.ml_repo.disk_handler import RepoObjectDiskStorage
 from pailab.job_runner.job_runner import SQLiteJobRunner
 
 # import all things you need to get startes
@@ -17,8 +17,8 @@ import pandas as pd
 import logging as logging
 
 # Here start the repository specific imports
-# import pailab.repo as repo
-import pailab.memory_handler as memory_handler
+# import pailab.ml_repo.repo as repo
+import pailab.ml_repo.memory_handler as memory_handler
 from pailab import RepoInfoKey, MeasureConfiguration, MLRepo, DataSet, MLObjectType
 from pailab.job_runner.job_runner import SimpleJobRunner, JobState, SQLiteJobRunner
 
@@ -60,7 +60,7 @@ class TutorialTest(unittest.TestCase):
         ml_repo._job_runner = job_runner
         # end creating new repository
 
-        from pailab.tools import MLTree
+        from pailab.tools.tools import MLTree
         MLTree.add_tree(ml_repo)
 
         # add RawData
@@ -83,7 +83,7 @@ class TutorialTest(unittest.TestCase):
             [training_data, test_data], message='add training and test data')
         # end adding DataSet
         # add model
-        import pailab_externals.sklearn_interface as sklearn_interface
+        import pailab.externals.sklearn_interface as sklearn_interface
         from sklearn.tree import DecisionTreeRegressor
         sklearn_interface.add_model(
             ml_repo, DecisionTreeRegressor(), model_param={'max_depth': 5})
