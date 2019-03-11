@@ -3,7 +3,7 @@ import ipywidgets as widgets
 from IPython.display import display, clear_output
 
 from pailab import MLObjectType, RepoInfoKey, FIRST_VERSION, LAST_VERSION
-import pailab.checker as checker
+import pailab.tools.checker as checker
 import pandas as pd
 
 # set option so that long lines have a linebreak
