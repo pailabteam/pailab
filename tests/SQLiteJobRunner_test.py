@@ -2,14 +2,14 @@ import unittest
 import os
 import numpy as np
 import shutil
-import pailab.repo as repo
+import pailab.ml_repo.repo as repo
 import pailab.repo_objects as repo_objects
 from pailab.repo_objects import RepoInfo, RepoObject
 from pailab import RepoInfoKey, MeasureConfiguration, MLObjectType, RawData, DataSet, repo_object_init, JobState
 from pailab.repo_store import RepoStore
 
-from pailab.numpy_handler_hdf import NumpyHDFStorage
-from pailab.disk_handler import RepoObjectDiskStorage
+from pailab.ml_repo.numpy_handler_hdf import NumpyHDFStorage
+from pailab.ml_repo.disk_handler import RepoObjectDiskStorage
 from pailab.job_runner.job_runner import SQLiteJobRunner
 
 import time

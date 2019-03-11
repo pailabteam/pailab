@@ -3,14 +3,14 @@ import os
 import numpy as np
 
 from pailab import RepoInfoKey, MLObjectType, repo_object_init, RepoInfoKey, DataSet, RawData, MLRepo  # pylint: disable=E0401
-from pailab.repo import NamingConventions
+from pailab.ml_repo.repo import NamingConventions
 from pailab.repo_objects import RepoInfo
 import pailab.tools.tests as ml_tests
 import pailab.repo_objects as repo_objects
-import pailab.memory_handler as memory_handler
+import pailab.ml_repo.memory_handler as memory_handler
 import pailab.repo_store as repo_store
 from pailab.job_runner.job_runner import SimpleJobRunner # pylint: disable=E0401
-from pailab.numpy_handler_hdf import NumpyHDFStorage
+from pailab.ml_repo.numpy_handler_hdf import NumpyHDFStorage
 import logging
 logging.basicConfig(level=logging.FATAL) # since we also test for errors we switch off the logging in this level
 

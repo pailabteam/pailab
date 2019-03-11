@@ -3,7 +3,7 @@ such as axes labels, titles, additional info which may be shown on hover in the 
 """
 
 import logging
-from pailab.repo import MLObjectType, MLRepo, NamingConventions  # pylint: disable=E0401,E0611
+from pailab.ml_repo.repo import MLObjectType, MLRepo, NamingConventions  # pylint: disable=E0401,E0611
 from pailab.repo_objects import RepoInfoKey  # pylint: disable=E0401
 from pailab.repo_store import RepoStore, LAST_VERSION, FIRST_VERSION, _time_from_version  # pylint: disable=E0401
 

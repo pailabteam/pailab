@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import pathlib
 import pailab.repo_objects as repo_objects
 from pailab.repo_store import RepoInfoKey, _time_from_version
-import pailab.repo as repo
+import pailab.ml_repo.repo as repo
 from pailab.repo_store import RepoStore
 from shutil import copy
 import logging

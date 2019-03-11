@@ -2,7 +2,7 @@ import logging
 import collections
 from numpy import load
 from deepdiff import DeepDiff
-from pailab.repo import MLObjectType, MLRepo, NamingConventions
+from pailab.ml_repo.repo import MLObjectType, MLRepo, NamingConventions
 from pailab.repo_objects import RepoInfoKey, DataSet  # pylint: disable=E0401
 from pailab.repo_store import RepoStore  # pylint: disable=E0401
 import pailab.repo_store as repo_store

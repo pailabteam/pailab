@@ -6,7 +6,7 @@ from tensorflow.keras.models import model_from_config  # model_from_json
 from tensorflow.keras.models import Sequential
 from pailab.repo_objects import repo_object_init
 from pailab.repo_objects import RepoInfoKey
-from pailab.repo import MLObjectType
+from pailab.ml_repo.repo import MLObjectType
 import logging
 logger = logging.getLogger(__name__)
 

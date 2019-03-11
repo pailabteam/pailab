@@ -1,5 +1,5 @@
 import logging
-from pailab.repo import MLRepo, MLObjectType, NamingConventions
+from pailab.ml_repo.repo import MLRepo, MLObjectType, NamingConventions
 from pailab.repo_objects import RepoInfoKey  # pylint: disable=E0401
 from pailab.repo_store import RepoStore  # pylint: disable=E0401
 logger = logging.getLogger(__name__)

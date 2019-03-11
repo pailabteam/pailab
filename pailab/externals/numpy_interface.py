@@ -11,7 +11,7 @@ import numpy as np
 from pailab.repo_objects import repo_object_init
 from pailab.repo_objects import RepoInfoKey
 from pailab.repo_objects import Preprocessor
-from pailab.repo import MLObjectType
+from pailab.ml_repo.repo import MLObjectType
 
 
 def get_classname(x):

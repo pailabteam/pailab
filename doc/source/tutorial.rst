@@ -30,7 +30,7 @@ Adding training and testdata
 The data in the repository is handled by two different data objects:
 
 - :py:class:`pailab.repo_objects.RawData` is the object containing real data.
-- :py:class:`pailab.repo.DataSet` is the object conaining the logical data, i.e. a reference to a RawData object together with a specification, which data from the RawData will be used. Here, one can specify a fixed version of the underlying RawData object (then changes to the RawData will not affect the derived DataSet) or a fixed or floating subset of the RawData by defininga start and endindex cutting the derived data just out of the original data.
+- :py:class:`pailab.ml_repo.repo.DataSet` is the object conaining the logical data, i.e. a reference to a RawData object together with a specification, which data from the RawData will be used. Here, one can specify a fixed version of the underlying RawData object (then changes to the RawData will not affect the derived DataSet) or a fixed or floating subset of the RawData by defininga start and endindex cutting the derived data just out of the original data.
 
 Normally one will add RawData and then define DataSets which are used to train or test a model which is exactly the way shown in the following.
 
@@ -90,7 +90,7 @@ In the following we just use a DecisionTree as our model.
 Train the model
 -----------------------------------
 Now, model taining is very simple, since you have defined training and testing data as well as  methods to value and fit your model and the model parameter.
-So, you can just call :py:meth:`pailab.repo.MLRepo.run_training` on the repository, and the training is perfomred automatically.
+So, you can just call :py:meth:`pailab.ml_repo.repo.MLRepo.run_training` on the repository, and the training is perfomred automatically.
 The training job is executed via the JobRunner you specified setting up the repository. All method of the repository involving jobs return the job id when adding the job to the JobRunner so that you can control the status of the task and see if it sucessfully finished.
 
 .. literalinclude:: ../../tests/tutorial_test.py
@@ -101,7 +101,7 @@ The training job is executed via the JobRunner you specified setting up the repo
 Define error measures and evaluate the model
 ----------------------------------------------
 To measure errors and to provide plots the model must be evaluated on all test and training datasets. This can simply be accomplished by calling 
-:py:meth:`pailab.repo.MLRepo.run_evaluation`.
+:py:meth:`pailab.ml_repo.repo.MLRepo.run_evaluation`.
 
 .. literalinclude:: ../../tests/tutorial_test.py
     :language: python
@@ -118,7 +118,7 @@ Based on the evaluations one can specify different kinds of error measures.
 Retrieving measures
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The measurement values are also stored as a repository object in the repository (see :py:class:`pailab.repo_objects.measure`). One can simply retrieve them by calling the repositories
-:py:meth:`pailab.repo.MLRepo.get` method which can be used to retrieve all objects stored in the repository.
+:py:meth:`pailab.ml_repo.repo.MLRepo.get` method which can be used to retrieve all objects stored in the repository.
 
 .. literalinclude:: ../../tests/tutorial_test.py
     :language: python
@@ -127,8 +127,8 @@ The measurement values are also stored as a repository object in the repository 
 
 Creating a list of all objects
 ----------------------------------
-One can simply get an overview over all objects stored in the repository by calling :py:meth:`pailab.repo.MLRepo.get_names` to retrieve a list of names of 
-all objects of a specific category (see :py:class:`pailab.repo.MLObjectType`). The following line will loop over all categories and print the names of all objects within this category
+One can simply get an overview over all objects stored in the repository by calling :py:meth:`pailab.ml_repo.repo.MLRepo.get_names` to retrieve a list of names of 
+all objects of a specific category (see :py:class:`pailab.ml_repo.repo.MLObjectType`). The following line will loop over all categories and print the names of all objects within this category
 contained in the repository.
 
 .. literalinclude:: ../../tests/tutorial_test.py
