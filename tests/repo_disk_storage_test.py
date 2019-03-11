@@ -1,11 +1,11 @@
 import unittest
-from pailab.numpy_handler_hdf import NumpyHDFStorage
+from pailab.ml_repo.numpy_handler_hdf import NumpyHDFStorage
 import os
 import shutil
-import pailab.repo as repo
-import pailab.repo_objects as repo_objects
-from pailab.repo_store import RepoStore
-import pailab.disk_handler as disk_handler
+import pailab.ml_repo.repo as repo
+import pailab.ml_repo.repo_objects as repo_objects
+from pailab.ml_repo.repo_store import RepoStore
+import pailab.ml_repo.disk_handler as disk_handler
 import time
 import logging
 # since we also test for errors we switch off the logging in this level

@@ -8,14 +8,14 @@ repo
    
 repo objects
 -----------------------------------
-.. automodule:: pailab.repo_objects
+.. automodule:: pailab.ml_repo.repo_objects
    :members:
    
 
 repo stores
 -----------------------------------
 
-.. automodule:: pailab.repo_store
+.. automodule:: pailab.ml_repo.repo_store
    :members:
    
    
@@ -23,7 +23,7 @@ repo stores
    :members:
    
 
-.. automodule:: pailab.disk_handler
+.. automodule:: pailab.ml_repo.repo.disk_handler
    :members:
    
 
@@ -39,9 +39,9 @@ plotting
     :members:
     :show-inheritance:
 
-pailab_externals
+pailab.externals
 ========================
-pailab_externals.sklearn_interface
+pailab.externals.sklearn_interface
 -----------------------------------
-.. automodule:: pailab_externals.sklearn_interface
+.. automodule:: pailab.externals.sklearn_interface
     :members:
