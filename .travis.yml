@@ -6,8 +6,9 @@ install:
   - pip install .
 script: 
   - python tests/repo_test.py
-  - coverage run --source=pailab ./tests/repo_test.py
-  - coverage run --source=pailab -a ./tests/repo_disk_storage_test.py
-  - coverage run --source=pailab -a ./tests/SQLiteJobRunner_test.py
+  - cd tests
+  - coverage run --source=pailab ./repo_test.py
+  - coverage run --source=pailab -a ./repo_disk_storage_test.py
+  - coverage run --source=pailab -a ./SQLiteJobRunner_test.py
   - coverage html
   - codecov
