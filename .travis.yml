@@ -3,4 +3,5 @@ python:
   - "3.6"
 
  script:
-  repo_test.py
+  -python tests/repo_test.py
+  
