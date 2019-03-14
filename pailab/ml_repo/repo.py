@@ -1,7 +1,6 @@
 """Machine Learning Repository
 
-This module contains pailab's machine learning repository, i.e. the repository 
-Machine learning repository
+This module contains pailab's machine learning repository.
 """
 import abc
 import json
