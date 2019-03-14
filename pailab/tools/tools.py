@@ -412,7 +412,7 @@ class ModelCompare:
             y_coord = 0
         else:
             y_coord = eval_data_1.y_coord_names.index(y_coordname)
-        diff = eval_data_1[:,y_coord] - eval_data_2[:,y_coord]
+        #diff = eval_data_1[:,y_coord] - eval_data_2[:,y_coord]
         
 import numpy as np
 from sklearn.linear_model import LinearRegression
@@ -434,7 +434,6 @@ class ModelAnalyzer:
         rnd_shape = (n_samples,) + x_data.shape[1:]
         np.random.seed(42)
         rand_values = (2.0-2.0*factor)*np.random.random_sample(rnd_shape)+factor
-        y = model_eval_function.create()(model, x_data)
         local_model_coeff = np.empty(x_data.shape)
         mse = np.empty((x_data.shape[0],))
         training_data_x = np.empty(rnd_shape)
@@ -533,7 +532,8 @@ class ModelAnalyzer:
 
     @staticmethod
     def _compute_ice(x_data, model_eval_function, model, 
-                        direction, y_coordinate, n_steps = 100, scale = True):
+                        y_coordinate, x_coordinate,
+                        x_values, scale = True):
         """Independent conditional expectation plot
         
         Args:
@@ -541,42 +541,47 @@ class ModelAnalyzer:
             model_eval_function ([type]): [description]
             model ([type]): [description]
             direction ([type]): [description]
-            n_steps (int, optional): Defaults to 100. [description]
+            y_coordinate ([type]): [description]
+            x_coordinate ([type]): [description]
+            x_values ([type]): [description]
+            scale (bool, optional): Defaults to True. [description]
         
         Returns:
             [type]: [description]
         """
 
-        steps = [-1.0 + 2.0*float(x)/float(n_steps-1) for x in range(n_steps) ]
         # compute input for evaluation
-        shape = (x_data.shape[0], len(steps),) #x_data.shape[1:]
-        _x_data = np.empty(shape= (len(steps), ) +  x_data.shape[1:]) 
+        shape = (x_data.shape[0], len(x_values),) #x_data.shape[1:]
+        _x_data = np.empty(shape= (len(x_values), ) +  x_data.shape[1:]) 
         result = np.empty(shape)
         eval_f = model_eval_function.create()
         for i in range(x_data.shape[0]):
-            for j in range(len(steps)):
-                _x_data[j] = x_data[i] + steps[j]*direction
+            for j in range(len(x_values)):
+                _x_data[j] = x_data[i]
+                _x_data[j,x_coordinate] = x_values[j]
             y = eval_f(model, _x_data)[:,y_coordinate]
             if scale:
                 denom = max(np.linalg.norm(y),1e-10)
                 result[i] = y / denom
             else:
                 result[i] = y
-        return result, steps
+        return result
     
-    def analyze_ice(self, model,  data, direction, version = RepoStore.LAST_VERSION, data_version = RepoStore.LAST_VERSION, 
+    def analyze_ice(self, model,  data, x_values, x_coordinate, version = RepoStore.LAST_VERSION, data_version = RepoStore.LAST_VERSION, 
                     y_coordinate=None, start_index = 0, end_index= 100, full_object = True, n_steps = 20, 
                     n_clusters=20, scale=True, random_state=42, percentile = 90):
         if y_coordinate is None:
             y_coordinate = 0
         if isinstance(y_coordinate, str):
             raise NotImplementedError()
+        if isinstance(x_coordinate, str):
+            raise NotImplementedError()
         
-        direction_tmp = [x for x in direction] # transform numpy array to list to make it json serializable
         param = {
             'y_coordinate': y_coordinate, 'start_index': start_index, 'end_index': end_index, 
             'n_steps': n_steps,
-            'direction': direction_tmp,
+            'x_values': x_values,
+            'x_coodrinate': x_coordinate,
             'n_clusters': n_clusters, 
             'scale' : scale, 'random_state': random_state,
             'percentile': percentile}
@@ -607,10 +612,11 @@ class ModelAnalyzer:
                     
         data_ = data.x_data[start_index:end_index, :]
         
-        x, steps =  ModelAnalyzer._compute_ice(data_, eval_func, model, direction, y_coordinate, n_steps)
+        x =  ModelAnalyzer._compute_ice(data_, eval_func, model,  y_coordinate, 
+                                                x_coordinate=x_coordinate, x_values = x_values, scale = scale)
         big_obj = {}
         big_obj['ice'] = x
-        big_obj['steps'] = np.array(steps)
+        big_obj['x_values'] = np.array(x_values)
         # now apply a clustering algorithm to search for good representations of all ice results
         k_means = KMeans(init='k-means++', n_clusters=n_clusters, n_init=10, random_state=42)
         labels =  k_means.fit_predict(x)

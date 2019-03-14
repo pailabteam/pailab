@@ -164,7 +164,7 @@ def measure_history(ml_repo, measure_name):
     iplot(fig)  # , filename='pandas/basic-line-plot')
 
 
-def _histogram(plot_dict, n_bins = None):
+def _histogram(plot_dict, n_bins = None, histnorm = 'percent'):
     layout = go.Layout(
         title=plot_dict['title'],
         xaxis=dict(title=plot_dict['x0_name']),
@@ -185,14 +185,15 @@ def _histogram(plot_dict, n_bins = None):
                                         text=text,
                                         name=k,
                                         opacity=opacity,
-                                        histnorm='probability'))
+                                        histnorm=histnorm))
         else:
             plot_data.append(go.Histogram(x=x['x0'],
                                         text=text,
                                         name=k,
                                         opacity=opacity, 
                                         nbinsx = n_bins,
-                                        histnorm='probability'))
+                                        histnorm=histnorm))
+                                        
     fig = go.Figure(data=plot_data, layout=layout)
 
     iplot(fig)  # , filename='pandas/basic-line-plot')
