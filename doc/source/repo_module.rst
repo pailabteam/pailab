@@ -1,18 +1,47 @@
-repo module
-===================
+Machine Learning Repository
+===========================================
 
-.. automodule:: repo.repo
+repo
+-----------------------------------
+.. automodule:: pailab.repo
    :members:
-   :private-members:
-
-.. automodule:: repo.repo_objects
+   
+repo objects
+-----------------------------------
+.. automodule:: pailab.ml_repo.repo_objects
    :members:
-   :private-members:
+   
 
-.. automodule:: repo.memory_handler
+repo stores
+-----------------------------------
+
+.. automodule:: pailab.ml_repo.repo_store
    :members:
-   :private-members:
+   
+   
+.. automodule:: pailab.memory_handler
+   :members:
+   
 
-.. automodule:: job_runner.job_runner
+.. automodule:: pailab.ml_repo.repo.disk_handler
+   :members:
+   
+
+job runner
+-----------------------------------
+.. automodule:: pailab.job_runner.job_runner
     :members:
-    :private-members:
+    :show-inheritance:
+
+plotting
+-----------------------------------
+.. automodule:: pailab.plot
+    :members:
+    :show-inheritance:
+
+pailab.externals
+========================
+pailab.externals.sklearn_interface
+-----------------------------------
+.. automodule:: pailab.externals.sklearn_interface
+    :members:

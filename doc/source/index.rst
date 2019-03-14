@@ -6,13 +6,15 @@
 Welcome to pailab's documentation!
 ==================================
 
+.. include:: ../../README.rst
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
    
+   basics
    tutorial
    repo_module
-   
 
 Indices and tables
 ==================

@@ -1,9 +1,13 @@
 .vs
 __pycache__
 /doc/source/_static/
+/doc/source/_build/
 /doc/build/doctrees
 /doc/build/html
 .coverage
 /htmlcov
 .vscode/.ropeproject/objectdb
 examples/boston_housing/.ipynb_checkpoints/boston_housing-checkpoint.ipynb
+coverage.xml
+examples/.ipynb_checkpoints/start_job_runner-checkpoint.ipynb
+e
