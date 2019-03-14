@@ -1,7 +1,10 @@
-.. image:: https://codecov.io/gh/pailabteam/pailab/branch/feature%2Ftravis/graph/badge.svg
-  :target: https://codecov.io/gh/pailabteam/pailab
+|Travis|_ |Codecov|_ 
 
-.. image:: https://travis-ci.org/pailabteam/pailab.svg?branch=feature%2Ftravis
+.. |Travis| image:: https://travis-ci.org/pailabteam/pailab.svg?branch=feature%2Ftravis
+.. _Travis: https://travis-ci.org/pailabteam/pailab
+
+.. |Codecov| image:: https://codecov.io/gh/pailabteam/pailab/branch/feature%2Ftravis/graph/badge.svg
+.. _Codecov:  :target: https://codecov.io/gh/pailabteam/pailab
 
 
 pailab
