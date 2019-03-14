@@ -1,6 +1,5 @@
-.. image:: https://codecov.io/gh/favdo/ml_repo/branch/develop/graph/badge.svg?token=hlafckvwJw
-  :target: https://codecov.io/gh/favdo/ml_repo
-
+.. image:: https://codecov.io/gh/pailabteam/pailab/branch/feature%2Ftravis/graph/badge.svg
+  :target: https://codecov.io/gh/pailabteam/pailab
 
 pailab
 ==============
