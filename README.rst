@@ -1,6 +1,9 @@
 .. image:: https://codecov.io/gh/pailabteam/pailab/branch/feature%2Ftravis/graph/badge.svg
   :target: https://codecov.io/gh/pailabteam/pailab
 
+.. image:: https://travis-ci.org/pailabteam/pailab.svg?branch=feature%2Ftravis
+
+
 pailab
 ==============
 Pailab is an integrated machine learning environment to version, analyze and automatize the machine learning model building processes and deployments.
