@@ -2,5 +2,5 @@ numpy==1.13
 h5py==2.7
 pandas==0.20
 nbformat==4.3
-deepdiff===3.3
+deepdiff==3.3
 sklearn==0.21
