@@ -35,7 +35,7 @@ setup(name='pailab',
       url='',
       author='Pailab Inc',
       author_email='info@pailab.com',
-      license='Comming',
+      license='Apache 2.0',
       packages=setuptools.find_packages(exclude=['doc', 'examples', 'sandbox', 'tests']),
       install_requires=install_requirements,
 	  extras_require={
