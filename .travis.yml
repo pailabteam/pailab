@@ -1,6 +1,6 @@
 language: python
 python:
-  -"3.6"
+  - "3.6"
 
  script:
-  -python tests/repo_test.py
+  - python tests/repo_test.py
