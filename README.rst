@@ -1,4 +1,4 @@
-|Docs|_ |Travis|_ |Codecov|_ 
+|Docs|_ |Travis|_
 
 .. |Travis| image:: https://travis-ci.org/pailabteam/pailab.svg?branch=feature%2Ftravis
 .. _Travis: https://travis-ci.org/pailabteam/pailab
