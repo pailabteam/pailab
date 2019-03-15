@@ -1,6 +1,15 @@
 language: python
-python:
+python: 
   - "3.6"
-
- script:
-  repo_test.py
+install:
+  - pip install -r requirements.txt
+  - pip install .
+script: 
+  - python tests/repo_test.py
+  - cd tests
+  - coverage run --source=pailab ./repo_test.py
+  - coverage run --source=pailab -a ./repo_disk_storage_test.py
+  - coverage run --source=pailab -a ./SQLiteJobRunner_test.py
+  #- coverage run --source=pailab -a ./notebook_test.py
+  - coverage html
+  - codecov

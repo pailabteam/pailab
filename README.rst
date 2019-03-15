@@ -1,6 +1,13 @@
-.. image:: https://codecov.io/gh/favdo/ml_repo/branch/develop/graph/badge.svg?token=hlafckvwJw
-  :target: https://codecov.io/gh/favdo/ml_repo
+|Docs|_ |Travis|_
 
+.. |Travis| image:: https://travis-ci.org/pailabteam/pailab.svg?branch=feature%2Ftravis
+.. _Travis: https://travis-ci.org/pailabteam/pailab
+
+.. |Codecov| image:: https://codecov.io/gh/pailabteam/pailab/branch/feature%2Ftravis/graph/badge.svg
+.. _Codecov:  :target: https://codecov.io/gh/pailabteam/pailab
+
+.. |Docs| image:: https://readthedocs.org/projects/pailab/badge/?version=latest
+.. _Docs: https://pailab.readthedocs.io/en/latest/?badge=latest
 
 pailab
 ==============
