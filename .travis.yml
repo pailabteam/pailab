@@ -10,5 +10,6 @@ script:
   - coverage run --source=pailab ./repo_test.py
   - coverage run --source=pailab -a ./repo_disk_storage_test.py
   - coverage run --source=pailab -a ./SQLiteJobRunner_test.py
+  - coverage run --source=pailab -a ./tests/notebook_test.py
   - coverage html
   - codecov
