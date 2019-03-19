@@ -264,7 +264,9 @@ class RepoStore(abc.ABC):
 class NumpyStore(abc.ABC):
     @abc.abstractmethod
     def _delete(self, name, version):
-        """Delete an object with a predefined version
+        """Delete an object with a predefined version.
+        
+        This method is only internally used by the MLRepo.
 
         Args:
             name (str): name of object
