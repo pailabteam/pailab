@@ -151,6 +151,8 @@ class RepoObjectDiskStorage(RepoStore):
         select_statement = "select path, file from versions " + condition
         files = [row[0] + '/' + row[1]
                  for row in execute(cursor, select_statement)]
+        if len(files) == 0:
+            raise Exception('Deletion failed: Object ' + name + " with version " + version +' does not exist.')
         for filename in files:
             os.remove(self._main_dir + '/' + filename + self._extension)
         delete_statement = "delete from versions " + condition
@@ -389,7 +391,10 @@ class RepoObjectDiskStorage(RepoStore):
             ignored_files = [f_ for f_ in files if f_.startswith('.')]
             for name in files:
                 if not name in ignored_files:
+                    #name = path + "/" + os.path.splitext(name)[0]
+                    #name = name.replace('\\','/')
                     f.add(os.path.splitext(name)[0])
+                    #path_to_file[name] = path
         return f
 
     def check_integrity(self):
@@ -409,8 +414,12 @@ class RepoObjectDiskStorage(RepoStore):
         files_not_added = tmp-repo_f
         result = {}
         if(len(files_not_added) > 0):
-            result = {'files not added to repo': files_not_added}
+            result = {'untracked files': files_not_added}
         files_missing = repo_f - f
         if(len(files_missing) > 0):
-            result = {'files missing in repo': files_missing}
+            result = {'deleted files': files_missing}
         return result
+
+    def _cleanup(self):
+        files = self.check_integrity()
+        print(files)
