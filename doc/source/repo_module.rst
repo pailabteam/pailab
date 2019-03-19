@@ -3,7 +3,7 @@ Machine Learning Repository
 
 repo
 -----------------------------------
-.. automodule:: pailab.repo
+.. automodule:: pailab.ml_repo.repo
    :members:
    
 repo objects
@@ -19,7 +19,7 @@ repo stores
    :members:
    
    
-.. automodule:: pailab.memory_handler
+.. automodule:: pailab.ml_repo.memory_handler
    :members:
    
 
@@ -30,12 +30,6 @@ repo stores
 job runner
 -----------------------------------
 .. automodule:: pailab.job_runner.job_runner
-    :members:
-    :show-inheritance:
-
-plotting
------------------------------------
-.. automodule:: pailab.plot
     :members:
     :show-inheritance:
 
