@@ -5,3 +5,4 @@ nbformat==4.4.0
 deepdiff==3.3.0
 scikit-learn==0.20.0
 codecov==2.0.15
+GitPython==2.1.11
