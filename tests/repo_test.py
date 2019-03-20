@@ -356,7 +356,15 @@ class RepoTest(unittest.TestCase):
         self.repository.run_evaluation()
         self.repository.run_measures()
         self.repository.run_tests()
+    
 
+class MLRepoConstructorTest(unittest.TestCase):
+    def test_default_constructor(self):
+        #example with default
+        ml_repo = MLRepo(user = 'test_user')
+        #end example with default
+        self.assertTrue(isinstance(ml_repo._ml_repo, memory_handler.RepoObjectMemoryStorage))
+        self.assertTrue(isinstance(ml_repo._numpy_repo, memory_handler.NumpyMemoryStorage))
 
 import shutil
 class NumpyHDFStorageTest(unittest.TestCase):
