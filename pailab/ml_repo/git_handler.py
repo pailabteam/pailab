@@ -39,11 +39,11 @@ class RepoObjectGitStorage(RepoObjectDiskStorage):
         # initialize git repo if it does not exist
         if not RepoObjectGitStorage._is_git_repo(self._main_dir):
             _ = Repo.init(self._main_dir)
-        
+
     def _add(self, obj):
         super(RepoObjectGitStorage, self)._add(obj)
-        message = 'no message'
-        if obj['repo_info']['commit_message'] is not None:
+        message = 'adding ' + obj['repo_info']['name']
+        if (obj['repo_info']['commit_message'] is not None) and (obj['repo_info']['commit_message'] != ""):
             message = obj['repo_info']['commit_message']
         self.commit(message)
 
