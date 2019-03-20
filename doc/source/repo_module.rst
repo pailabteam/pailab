@@ -1,9 +1,9 @@
-Machine Learning Repository
+API Reference
 ===========================================
 
-repo
+MLRepo
 -----------------------------------
-.. automodule:: pailab.ml_repo.repo
+.. autoclass:: pailab.ml_repo.repo.MLRepo
    :members:
    
 repo objects
@@ -27,14 +27,15 @@ repo stores
    :members:
    
 
+.. automodule:: pailab.ml_repo.git_handler
+   :members:
+
 job runner
 -----------------------------------
 .. automodule:: pailab.job_runner.job_runner
     :members:
     :show-inheritance:
 
-pailab.externals
-========================
 pailab.externals.sklearn_interface
 -----------------------------------
 .. automodule:: pailab.externals.sklearn_interface

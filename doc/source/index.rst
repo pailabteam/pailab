@@ -8,10 +8,25 @@ Welcome to pailab's documentation!
 
 .. include:: ../../README.rst
 
+
+Overview
+==================================
+Source code
+---------------------------------
+pailab's source code is available on GitHub:
+
+https://github.com/pailabteam/pailab
+
+and cloned using::
+
+    git clone https://github.com/pailabteam/pailab.git pailab
+
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
    
+
    basics
    tutorial
    repo_module

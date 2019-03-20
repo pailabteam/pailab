@@ -9,7 +9,6 @@ We first create a new repository for our task. The repository is the central key
 Similar to a repository used for source control in classical software development it contains all data and algorithms needed for the machine 
 learning task. The repository needs storages for 
 
-- scripts containing the machine learning algorithms and interfaces,
 - numerical objects such as arrays and matrices representing data, e.g. input data, data from the valuation of the models,
 - json documents representing parameters, e.g. training parameter, model parameter.
 
