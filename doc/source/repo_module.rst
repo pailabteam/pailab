@@ -23,7 +23,7 @@ repo stores
    :members:
    
 
-.. automodule:: pailab.ml_repo.repo.disk_handler
+.. automodule:: pailab.ml_repo.disk_handler
    :members:
    
 

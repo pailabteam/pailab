@@ -12,5 +12,5 @@ script:
   - coverage run --source=pailab -a ./SQLiteJobRunner_test.py
   - coverage run --source=pailab -a ./repo_git_handler_test.py
   #- coverage run --source=pailab -a ./notebook_test.py
-  - coverage html
+  - coverage html --omit=*/tools_gc.py,*/analysis/*,*/externals/*,*/tools/*
   - codecov
