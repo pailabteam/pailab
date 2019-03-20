@@ -363,8 +363,10 @@ class MLRepoConstructorTest(unittest.TestCase):
         #example with default
         ml_repo = MLRepo(user = 'test_user')
         #end example with default
+        # If on of these test fail asince the logic has been modified, please update the documentation in basics.rst
         self.assertTrue(isinstance(ml_repo._ml_repo, memory_handler.RepoObjectMemoryStorage))
         self.assertTrue(isinstance(ml_repo._numpy_repo, memory_handler.NumpyMemoryStorage))
+        self.assertTrue(isinstance(ml_repo._job_runner, SimpleJobRunner))
 
 import shutil
 class NumpyHDFStorageTest(unittest.TestCase):
