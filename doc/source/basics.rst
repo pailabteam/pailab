@@ -43,16 +43,85 @@ so that after closing the MLRepo, all data wil be lost. Therefore this should be
 used is the :py:class:`pailab.job_runner.job_runner.SimpleJobRunner` which simply runs all jobs sequential on the local machine in the same python thread the MLRepo has been constructed (synchronously).
 
 
-
-Setup with git
+Disk
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+To initialize an MLRepo so that the objects are stored on disk, we need to setup th respectiv storages within the MLRepo. 
+One way to achieve this is to define the respective configurations in a dictionary and initialize the MLRepo with this dictionary.
+An example is given 
+
+
+.. literalinclude:: ../../tests/repo_test.py
+    :language: python
+    :start-after: diskhandlerconfig
+    :end-before: end diskhandlerconfig
+
+First we see that there is a user and also a workspace defined in the dictionary. The workspace is a directory where the configuration and settings are stored so that when you
+instantiate the MLRepo again, you just need to specify the workspace and not the whole settings again.
+The RepoStore used within the MLRepo is defined via the dictionary belonging to the repo_store key. Here we see that the configuration consists of describin the type of store
+(here we use the disk_handler which simply stores the objects on disk) and the settings for this storage. In our example the objects are stored in json format in the 
+folder example_1/objects.
+The NumpyStore internally used is selected so that the big data will be stored in hdf5 files.
+
+Now we simply instantiate the MLRepo using this configuration.
+
+
+.. literalinclude:: ../../tests/repo_test.py
+    :language: python
+    :start-after: instantiate diskhandler
+    :end-before: end instantiate diskhandler
+
+To instantiate the MLRepo and directly save the respective config you have to set the parameter save_config
+
+.. literalinclude:: ../../tests/repo_test.py
+    :language: python
+    :start-after: instantiate diskhandler save config
+    :end-before: end instantiate diskhandler save config
+
+Saving the config you may instantiate the MLRepo another time simply by 
+
+.. literalinclude:: ../../tests/repo_test.py
+    :language: python
+    :start-after: instantiate with workspace
+    :end-before: end instantiate with workspace
+
+
+
+git
+~~~~~~~~~~~~~~~~~~~~~~
+The previous example stored the objects simply as json files on disk. There is the possibility to use git to manage the files. Here, you just have to replace the type by 'git_handler',
+i.e. change
+
+    'repo_store': 
+    {
+        'type': 'disk_handler',  
+        'config': {
+            'folder': 'example_1/objects', 
+            'file_format': 'json'
+        }
+    }
+
+to 
+
+    'repo_store': 
+    {
+        'type': 'git_handler',  
+        'config': {
+            'folder': 'example_1/objects', 
+            'file_format': 'json'
+        }
+    }
+
+
+
+
+
 In this setion we briefly describe how to setup an MLRepo where the object data is stored in a git repository and the 
 numpy data by a network or a shared drive like google drive.
 So, let us assume that you have 
 - a shared drive to store the numpy data, e.g. C:/shared_drive/repo_data,
 - a centralized git repository.
 
-To setup yor local repository you have to do the following steps.
+To setup your local repository you have to do the following steps.
 
 - First clone a local repository from the centralized repo, let us assume that you do it into the folder C:/ml_repo/example_1/objects.
 - Define the configuration settings for the repo as a python dictionary, e.g.

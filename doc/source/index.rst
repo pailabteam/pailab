@@ -10,9 +10,9 @@ Welcome to pailab's documentation!
 
 
 Overview
-==================================
+-------------------------------
 Source code
----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 pailab's source code is available on GitHub:
 
 https://github.com/pailabteam/pailab
@@ -20,6 +20,10 @@ https://github.com/pailabteam/pailab
 and cloned using::
 
     git clone https://github.com/pailabteam/pailab.git pailab
+
+Examples and first steps
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+To learn how to work with pailab you may find the tutorial useful. In addition, you can find jupyter notebooks in the examples directory.
 
 
 .. toctree::
