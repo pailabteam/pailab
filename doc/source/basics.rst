@@ -1,55 +1,95 @@
 Basics
 ======================
 
-Setting up a local repository
+
+
+Core principles
+------------------------
+pailab's core is the :py:class:`pailab.ml_repo.repo.MLRepo` class which is what we call the machine learning repository.
+The repository stores and versions all objects needed in the machine learning development cycle. 
+There are three fundamental differences to version control systems such as git or svn for classical software development:
+
+- Instead of source code, objects are checked into the repository. Here, each object must inherit or at least implement the respective methods from :py:class:`pailab.ml_repo.repo_objects.RepoObject` so that it can be handled by the repository. Furthermore, each such object belongs to a certain category (:py:class:`pailab.ml_repo.repo.MLObjectType`), so that the repository may perform certain checks and allow to automatize the ml build pipeline. 
+
+- Each object is split into a part with standard data and a part with (large) numerical data and both parts are stored separately in different storages.
+  Here, the normal data is stored in a storage derived from :py:class:`pailab.ml_repo.repo_store.RepoStore` whereas the numerical 
+  data is stored via a :py:class:`pailab.ml_repo.repo_store.NumpyStore`.
+
+- The execution of different jobs such as model training and evaluation or error computation is triggered via the MLRepo. 
+  Here, the MLRepo simply uses a JobRunner to execute the jobs.
+
+As we see, we need at least three ingredients to initialize an MLRepo:
+
+- RepoStore
+- NumpyStore
+- JobHandler
+
+In the next section we will show how to setup an MLRepo using these ingredients.
+
+Setting up an MLRepo
 ------------------------------
-In this setion we briefly describe how to checkout a local repository from a central git repo sharing the 
-numpy data by a network drive or a shared drive like google drive.
-So, let us assume that you have 
-- a shared drive with numpy data, e.g. C:/shared_drive/repo_data,
-- a centralized repo.
 
-To setup yor local repository you have to do the follwoing steps.
+In-memory
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The easiest way to start using pailab is instantiate MLRepo using all defaults, except the user which must be specified, otherwise an exception is thrown.
 
-- First clone a local repository from the centralized repo, let us assume that you do it into the folder C:/ml_repo/example_1/objects.
-- Define the configuration settings for the repo as a python dictionary, e.g.
+.. literalinclude:: ../../tests/repo_test.py
+    :language: python
+    :start-after: example with default
+    :end-before: end example with default
 
-.. code-block:: python
+This results in an MLRepo that handles everything in memory only, using  :py:class:`pailab.ml_repo.memory_handler.RepoObjectMemoryStorage` and :py:class:`pailab.ml_repo.memory_handler.NumpyMemoryStorage`
+so that after closing the MLRepo, all data wil be lost. Therefore this should be only considered for testing or rapid and dirty prototyping. Note that in this case, the JobRunner 
+used is the :py:class:`pailab.job_runner.job_runner.SimpleJobRunner` which simply runs all jobs sequential on the local machine in the same python thread the MLRepo has been constructed (synchronously).
 
-    config = {
-          'user': 'test_user',
-          'workspace': 'c:/ml_repos/example_1',
-          'repo_store': 
-          {
-              'type': 'git_handler',  
-              'config': {
-                  'folder': 'c:/ml_repos/example_1/objects', 
-                  'file_format': 'json'
-              }
-          },
-          'numpy_store':
-          {
-              'type': 'hdf_handler',
-              'config':{
-                  'folder': 'C:/shared_drive/repo_data',
-                  'version_files': True
-              }
-          }
-    }
 
-Note that the workspace is used to store the configuration of the repository so that you must only specify the above settings in the setup and not in later use. 
-The above configuration specifies the two main ingredient for the repository: The repo_store where all objects (without their numpy members ) are stored 
-and the numpy_store for the numpy objects. Here we have chosen a git handled repo for the repo_store and an hdf_handler where all numpy objecs are stored
-in hdf files. Using this configuration we can now init the ml repository.
+Disk
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+To initialize an MLRepo so that the objects are stored on disk, we need to setup th respectiv storages within the MLRepo. 
+One way to achieve this is to define the respective configurations in a dictionary and initialize the MLRepo with this dictionary.
+An example is given 
 
-.. code-block:: python
 
-    from pailab import MLRepo
-    ml_repo = MLRepo(config = config, save_config = True)
+.. literalinclude:: ../../tests/repo_test.py
+    :language: python
+    :start-after: diskhandlerconfig
+    :end-before: end diskhandlerconfig
 
-Note that you may from now on use the repository by just defining the workspace (all settings are stored in the .config.json file in the workspace):
+First we see that there is a user and also a workspace defined in the dictionary. The workspace is a directory where the configuration and settings are stored so that when you
+instantiate the MLRepo again, you just need to specify the workspace and not the whole settings again.
+The RepoStore used within the MLRepo is defined via the dictionary belonging to the repo_store key. Here we see that the configuration consists of describin the type of store
+(here we use the disk_handler which simply stores the objects on disk) and the settings for this storage. In our example the objects are stored in json format in the 
+folder example_1/objects.
+The NumpyStore internally used is selected so that the big data will be stored in hdf5 files.
 
-.. code-block:: python
+Now we simply instantiate the MLRepo using this configuration.
 
-    ml_repo = MLRepo(workspace = 'c:/ml_repos/sc_new')
 
+.. literalinclude:: ../../tests/repo_test.py
+    :language: python
+    :start-after: instantiate diskhandler
+    :end-before: end instantiate diskhandler
+
+To instantiate the MLRepo and directly save the respective config you have to set the parameter save_config
+
+.. literalinclude:: ../../tests/repo_test.py
+    :language: python
+    :start-after: instantiate diskhandler save config
+    :end-before: end instantiate diskhandler save config
+
+Saving the config you may instantiate the MLRepo another time simply by 
+
+.. literalinclude:: ../../tests/repo_test.py
+    :language: python
+    :start-after: instantiate with workspace
+    :end-before: end instantiate with workspace
+
+
+
+git
+~~~~~~~~~~~~~~~~~~~~~~
+The previous example stored the objects simply as json files on disk. There is the possibility to use git to manage the files. Here, you just have to replace the type by 'git_handler',
+i.e. change the type simply to git_handler.
+
+If you have a remote git repository which you want to use as a remote, you have to clone the repository first and then specify the directory of the cloned repo 
+as directory of the git_handler.

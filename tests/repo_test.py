@@ -356,7 +356,54 @@ class RepoTest(unittest.TestCase):
         self.repository.run_evaluation()
         self.repository.run_measures()
         self.repository.run_tests()
+    
 
+class MLRepoConstructorTest(unittest.TestCase):
+    def test_default_constructor(self):
+        #example with default
+        ml_repo = MLRepo(user = 'test_user')
+        #end example with default
+        # If on of these test fail asince the logic has been modified, please update the documentation in basics.rst
+        self.assertTrue(isinstance(ml_repo._ml_repo, memory_handler.RepoObjectMemoryStorage))
+        self.assertTrue(isinstance(ml_repo._numpy_repo, memory_handler.NumpyMemoryStorage))
+        self.assertTrue(isinstance(ml_repo._job_runner, SimpleJobRunner))
+
+    def test_config_disk_handler(self):
+        #diskhandlerconfig
+        config = {
+          'user': 'test_user',
+          'workspace': 'tmp',
+          'repo_store': 
+          {
+              'type': 'disk_handler',  
+              'config': {
+                  'folder': 'tmp/objects', 
+                  'file_format': 'json'
+              }
+          },
+          'numpy_store':
+          {
+              'type': 'hdf_handler',
+              'config':{
+                  'folder': 'tmp/repo_data',
+                  'version_files': True
+              }
+          }
+        }
+        # end diskhandlerconfig
+
+        # instantiate diskhandler
+        ml_repo = MLRepo(config = config)
+        # end instantiate diskhandler
+        
+        # instantiate diskhandler save config
+        ml_repo = MLRepo(config = config, save_config=True)
+        # end instantiate diskhandler save config
+        
+        # instantiate with workspace
+        ml_repo = MLRepo(workspace = 'tmp')
+        # end instantiate with workspace
+        
 
 import shutil
 class NumpyHDFStorageTest(unittest.TestCase):
