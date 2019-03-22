@@ -129,8 +129,17 @@ def create_repo_obj_dict(obj):
 
 
 class RepoObject:
-   
+    """
+    Base class for objects which are handled b the repository.
+    """
+
     def __init__(self, repo_info):
+        """[summary]
+        
+        Args:
+            repo_info ([type]): [description]
+        """
+
         self.repo_info = RepoInfo()
         # if 'repo_info' in kwargs.keys():
         #     repo_info = kwargs['repo_info']
@@ -342,8 +351,6 @@ class RawData(RepoObject):
                 data, (data.shape[0], 1))  # pylint: disable=E1101
         return data
 
-    """Class encapsulating raw data
-    """
     def __init__(self, x_data, x_coord_names, y_data=None, y_coord_names=None, repo_info = RepoInfo()):
         """Constructor
 
@@ -615,18 +622,6 @@ class DataSet(RepoObject):
         setattr(self, 'y_coord_names', raw_data.y_coord_names)
         setattr(self, 'n_data', raw_data.n_data)
 
-    def get_pandas_data(self):
-        """ Returns a pandas data frame
-        
-        Arguments:
-        """
-
-        if self.y_data is None:
-            return pd.DataFrame(data = self.x_data, columns = self.x_coord_names)
-        else:
-            return pd.DataFrame(data = np.concatenate((self.x_data, self.y_data), axis=1), \
-                columns = self.x_coord_names + self.y_coord_names)
-    
     def __str__(self):
         return str(self.to_dict())
 
