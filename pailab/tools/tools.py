@@ -476,7 +476,9 @@ class ModelAnalyzer:
     def _create_result(name, model, data, param, result_data, big_data = None):
         result = repo_objects.Result(result_data, big_data)
         result.repo_info.name = name
+        logger.debug('Create md5 hash for parameters.')
         param_hash = hashlib.md5(json.dumps(param, sort_keys=True).encode('utf-8')).hexdigest()
+        logger.debug('Add md5 hash for parameters to modification_info of results.')
         result.repo_info.modification_info = {model.repo_info.name: model.repo_info.version, 
                     data.repo_info.name: data.repo_info.version, 'param_hash': param_hash}
         return result
@@ -485,6 +487,7 @@ class ModelAnalyzer:
     def analyze_local_model(self, model, data_str, n_samples, version = RepoStore.LAST_VERSION, data_version = RepoStore.LAST_VERSION, 
                     y_coordinate=None, start_index = 0, end_index= 100, full_object = True, factor=0.1, 
                     max_depth = 4):
+        logger.info('Start analyzing local model.')
         if y_coordinate is None:
             y_coordinate = 0
         if isinstance(y_coordinate, str):
@@ -507,6 +510,7 @@ class ModelAnalyzer:
                 return result
 
         model_definition_name = model.split('/')[0]
+        model_name = model
         model = self._ml_repo.get(model, version, full_object = True)
         model_def_version = model.repo_info[RepoInfoKey.MODIFICATION_INFO][model_definition_name]
         model_definition = self._ml_repo.get(model_definition_name, model_def_version)
@@ -523,7 +527,7 @@ class ModelAnalyzer:
         # store result in repo
         self.result['parameter'] = param
         self.result['data'] = data_str
-        self.result['model'] = model
+        self.result['model'] = model_name
         self.result['x_coord_names'] = data.x_coord_names
         result = ModelAnalyzer._create_result(result_name, 
             model, data, param, self.result, {'local_model_coeff':local_model_coeff, 'data_to_leaf_index':datapoint_to_leaf_node_idx, 'mse': mse })
