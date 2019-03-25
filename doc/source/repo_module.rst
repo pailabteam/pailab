@@ -8,9 +8,17 @@ MLRepo
    
 repo objects
 -----------------------------------
+
+.. autoclass:: pailab.ml_repo.repo_objects.RepoObject
+    :members:
+    
 .. automodule:: pailab.ml_repo.repo_objects
    :members:
    
+object types
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: pailab.ml_repo.repo.MLObjectType
+   :members:
 
 repo stores
 -----------------------------------
@@ -24,6 +32,7 @@ Memory storages
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. automodule:: pailab.ml_repo.memory_handler
    :members:
+   :show-inheritance:
    
 RepoObjectDiskStorage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
