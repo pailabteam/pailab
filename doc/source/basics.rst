@@ -1,9 +1,10 @@
 Basics
 ======================
+In this section we explain pailab's basic building blocks. For a quick introduction how to work with pailab and to get a first
+impression of the functionality we refer to work to the :ref:`tutorial`.
 
 
-
-Building blocks
+Overview
 ------------------------
 pailab's core is the :py:class:`pailab.ml_repo.repo.MLRepo` class which is what we call the machine learning repository.
 The repository stores and versions all objects needed in the machine learning development cycle. 
@@ -26,7 +27,7 @@ As we see, we need three ingredients to initialize an MLRepo:
 - NumpyStore (handles numpy part of the object data)
 - JobHandler (runs the jobs such as training or evaluation)
 
-basic functionality
+Basic functionality
 --------------------------------------
 The MLRepo offers four main functionalities
 
@@ -141,6 +142,53 @@ has been changed since last run of the job.
     However, all these method will, after creation of the needed ``Job`` object,  at the end call ``run``. 
 
 
+Add a model
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+A model is defined by specifying
+
+- preprocessing methods (in a certain order)
+- a function to evaluate the calibrated model on a given dataset
+- a function to train the model given data, training and model parameter
+- training parameter
+- model parameter
+
+This specification is done by setting the identifies of the objects into an instance of :py:class:`pailab.repo_objects.Model`.
+Let us assume you have added a prepocessor with name ``'uniform_scaling'``, a function to evaluate the model named ``'eval'``, a function to train the model
+``'train'`` and training parameter ``'training_param'``, you can then add a new model to the repo by::
+
+    model = repo_objects.Model(preprocessors = 'uniform_scaling', 
+                            eval_function='eval', train_function='train', 
+                            training_param='training_param')
+    model.repo_info.name = 'name_of_model'
+    ml_repo.add(model, message='my first model')
+
+As we see in this example, you do not have to specify a model parameter if your training function does not need one. Also, you do not have
+to specify the preprocessing, if you do no want to apply a preprocessing technique. Another possibility is to use the 
+method ``add_model`` that may be more convenient::
+
+    ml_repo.add_model('name_of_model', model_eval = 'eval', model_training = 'train', 
+                    training_param = 'training_param',
+                    preprocessors = 'uniform_scaling')
+
+If there is only one evaluation function in the MLRepo and you want to use it, the method ``add_model`` will do the job for you, i.e. just do not specify the evaluation
+function::
+
+    ml_repo.add_model('name_of_model', model_training = 'train', 
+                    training_param = 'training_param',
+                    preprocessors = 'uniform_scaling')
+
+which now checks if there is only one eval function in the ml_repo and in this case uses this unique function. 
+If there is more then one function or nofunction, an exception is thrown.
+This logic applies to all members except the preprocessing: If you do not define a preprocessing, no preprocessing will be applied. 
+So, to specify a model under the assumption that the respective components are in the repository usng the preprocessing from above, we may
+call::
+
+        ml_repo.add_model('name_of_model', preprocessors = 'uniform_scaling')
+
+
+
+
+
 Setting up an MLRepo
 ------------------------------
 
@@ -162,7 +210,7 @@ Disk
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 To initialize an MLRepo so that the objects are stored on disk, we need to setup th respectiv storages within the MLRepo. 
 One way to achieve this is to define the respective configurations in a dictionary and initialize the MLRepo with this dictionary.
-An example is given 
+An example for such a configuration is given by
 
 
 .. literalinclude:: ../../tests/repo_test.py
@@ -170,7 +218,8 @@ An example is given
     :start-after: diskhandlerconfig
     :end-before: end diskhandlerconfig
 
-First we see that there is a user and also a workspace defined in the dictionary. The workspace is a directory where the configuration and settings are stored so that when you
+First we see that there is a user and also a workspace defined in the dictionary. The workspace is a directory where the configuration
+and settings are stored so that when you
 instantiate the MLRepo again, you just need to specify the workspace and not the whole settings again.
 The RepoStore used within the MLRepo is defined via the dictionary belonging to the repo_store key. Here we see that the configuration consists of describin the type of store
 (here we use the disk_handler which simply stores the objects on disk) and the settings for this storage. In our example the objects are stored in json format in the 
@@ -178,6 +227,7 @@ folder example_1/objects.
 The NumpyStore internally used is selected so that the big data will be stored in hdf5 files.
 
 Now we simply instantiate the MLRepo using this configuration.
+
 
 
 .. literalinclude:: ../../tests/repo_test.py
@@ -204,13 +254,14 @@ Saving the config you may instantiate the MLRepo another time simply by
 git
 ~~~~~~~~~~~~~~~~~~~~~~
 The previous example stored the objects simply as json files on disk. There is the possibility to use git to manage the files. Here, you just have to replace the type by 'git_handler',
-i.e. just change in the configuration dictionary above the type from 'disk_handler' to 'git_handler'. 
+i.e. just change in the configuration dictionary above the type from ``disk_handler`` to ``git_handler``. 
 The MLRepo will then use the :py:class:`pailab.ml_repo.git_handler.RepoObjectGitStorage` as repo.
 
-If you have a remote git repository which you want to use as a remote, you have to clone the repository first and then specify the directory of the cloned repo 
+If you have a remote git repository which you want to use, you have to clone the repository first and then specify the directory of the cloned repo 
 as directory of the git_handler.
 
 
-Adding objects
-----------------------------------
-The repo works 
+
+
+Integrate a new model
+-----------------------------
