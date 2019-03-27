@@ -26,7 +26,7 @@ For this example we use the most simple one, executing everything sequential in 
     :end-before: end creating new repository
 
 
-Adding training and testdata
+Adding training and test data
 ------------------------------
 The data in the repository is handled by two different data objects:
 
