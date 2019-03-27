@@ -31,7 +31,10 @@ Adding training and test data
 The data in the repository is handled by two different data objects:
 
 - :py:class:`pailab.ml_repo.repo_objects.RawData` is the object containing real data.
-- :py:class:`pailab.ml_repo.repo.DataSet` is the object containing the logical data, i.e. a reference to a RawData object together with a specification, which data from the RawData will be used. Here, one can specify a fixed version of the underlying RawData object (then changes to the RawData will not affect the derived DataSet) or a fixed or floating subset of the RawData by defininga start and endindex cutting the derived data just out of the original data.
+- :py:class:`pailab.ml_repo.repo.DataSet` is the object containing the logical data, i.e. a reference to a RawData object together with a specification, 
+  which data from the RawData will be used. Here, one can specify a fixed version of
+  the underlying RawData object (then changes to the RawData will not affect the derived DataSet) or a fixed or floating subset of the RawData by 
+  defining start and end index cutting the derived data just out of the original data.
 
 Normally one will add RawData and then define DataSets which are used to train or test a model which is exactly the way shown in the following.
 
