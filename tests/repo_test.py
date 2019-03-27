@@ -347,7 +347,6 @@ class RepoTest(unittest.TestCase):
         self.assertEqual(commits[2].objects['test_data_2'], test_data_2.repo_info.version)
         #self.assertEqual(commits[2].objects['repo_mapping'], 2)
         
-        
     def test_repo_RegressionTest(self):
         regression_test_def = ml_tests.RegressionTestDefinition(repo_info = {RepoInfoKey.NAME: 'regression_test', RepoInfoKey.CATEGORY:MLObjectType.TEST_DEFINITION.name})
         tests = regression_test_def.create(self.repository)
@@ -356,8 +355,60 @@ class RepoTest(unittest.TestCase):
         self.repository.run_evaluation()
         self.repository.run_measures()
         self.repository.run_tests()
-    
 
+    def test_add_multiple(self):
+        """Test adding multiple objects at once
+        """
+        obj1 = TestClass(5,4, repo_info={})
+        obj1.repo_info.name = 'obj1'
+        v1 = self.repository.add(obj1, category = MLObjectType.CALIBRATED_MODEL)
+        obj2 = TestClass(2,3, repo_info={})
+        obj2.repo_info.name = 'obj2'
+        self.repository.add([obj1, obj2], category = MLObjectType.CALIBRATED_MODEL)
+        new_obj1 = self.repository.get('obj1')
+        self.assertEqual(new_obj1.repo_info.name, 'obj1')
+        new_obj2 = self.repository.get('obj2')
+        self.assertEqual(new_obj2.repo_info.name, 'obj2')
+        
+
+    def test_delete(self):
+        """Test if deletion works and if it considers if there are dependencies to other objects
+        """
+
+        obj1 = TestClass(5,4, repo_info={})
+        obj1.repo_info.name = 'obj1'
+        v1 = self.repository.add(obj1, category = MLObjectType.CALIBRATED_MODEL)
+        obj2 = TestClass(2,3, repo_info={})
+        obj2.repo_info.name = 'obj2'
+        obj2.repo_info.modification_info = {'obj1': v1}
+        v2 = self.repository.add(obj2, category = MLObjectType.CALIBRATED_MODEL)
+        # check if an exception is thrown if one tries to delete obj1 although obj2 has
+        # a dependency on obj1
+        try:
+            self.repository.delete('obj1', v1)
+            self.assertEqual(0,1)
+        except:
+            pass
+        # now first delete obj2
+        self.repository.delete('obj2', v2)
+        # check if obj2 has really been deleted
+        try:
+            obj2 = self.repository.get('obj2')
+            self.assertEqual(0,1)
+        except:
+            pass
+        
+        #now, deletion of obj 1 should work
+        try:
+            self.repository.delete('obj1', v1)
+        except:
+            self.assertEqual(0,1)
+        try: #check if object really has been deleted
+            obj1 = self.repository.get('obj1')
+            self.assertEqual(0,1)
+        except:
+            pass
+        
 class MLRepoConstructorTest(unittest.TestCase):
     def test_default_constructor(self):
         #example with default
@@ -404,6 +455,23 @@ class MLRepoConstructorTest(unittest.TestCase):
         ml_repo = MLRepo(workspace = 'tmp')
         # end instantiate with workspace
 
+
+class NumpyMemoryHandlerTest(unittest.TestCase):
+    def test_append(self):
+        numpy_store = memory_handler.NumpyMemoryStorage()
+        numpy_dict = {'a':np.zeros([10,2]), 'b': np.zeros([5])}
+        numpy_store.add('test_data', 'v1', numpy_dict)
+        numpy_dict_2 = {'a':np.zeros([1,2]), 'b': np.zeros([1])}
+        numpy_dict_2['b'][0] = 5.0
+        numpy_dict_2['a'][0,0] = 3.0
+        numpy_dict_2['a'][0,1] = 2.0
+        numpy_store.append('test_data', 'v1', 'v2', numpy_dict_2)
+
+        numpy_dict_3 = numpy_store.get('test_data', 'v2')
+        self.assertEqual(numpy_dict_3['a'].shape[0],11)
+        self.assertEqual(numpy_dict_3['b'].shape[0],6)
+        self.assertEqual(numpy_dict_3['b'][5],5.0)
+        self.assertEqual(numpy_dict_3['b'][0],0.0)
 
 # define model
 class SuperML:
@@ -503,6 +571,56 @@ class NumpyHDFStorageTest(unittest.TestCase):
         self.assertEqual(test_data[0,0,0], test_data_get['test_data'][0,0,0])
         
     def test_append(self):
+        """test appending data to existing numpy data (using one hdf file)
+        """
+
+        # add martix
+        test_data = np.full((1,5), 1.0)
+        self.store.add('test_2d', '1', {'test_data': test_data})
+        self.store.append('test_2d', '1', '2', {'test_data': np.full((1,5), 2.0)})
+        self.store.append('test_2d', '2', '3', {'test_data': np.full((1,5), 3.0)})
+        test_data_get = self.store.get('test_2d', '1')
+        self.assertEqual(test_data_get['test_data'].shape, (1,5))
+        self.assertEqual(test_data_get['test_data'][0,0], 1.0)
+        test_data_get = self.store.get('test_2d', '2')
+        self.assertEqual(test_data_get['test_data'].shape, (2,5))
+        self.assertEqual(test_data_get['test_data'][0,0], 1.0)
+        self.assertEqual(test_data_get['test_data'][1,0], 2.0)
+        test_data_get = self.store.get('test_2d', '3')
+        self.assertEqual(test_data_get['test_data'].shape, (3,5))
+        self.assertEqual(test_data_get['test_data'][0,0], 1.0)
+        self.assertEqual(test_data_get['test_data'][1,0], 2.0)
+        self.assertEqual(test_data_get['test_data'][2,0], 3.0)
+
+        # add array
+        test_data = np.full((1,), 1.0)
+        self.store.add('test_1d', '1', {'test_data': test_data})
+        self.store.append('test_1d', '1', '2', {'test_data': np.full((1, ), 2.0)})
+        self.store.append('test_1d', '2', '3', {'test_data': np.full((1, ), 3.0)})
+        test_data_get = self.store.get('test_1d', '1')
+        self.assertEqual(test_data_get['test_data'].shape, (1, ))
+        self.assertEqual(test_data_get['test_data'][0], 1.0)
+        test_data_get = self.store.get('test_1d', '2')
+        self.assertEqual(test_data_get['test_data'].shape, (2, ))
+        self.assertEqual(test_data_get['test_data'][0], 1.0)
+        self.assertEqual(test_data_get['test_data'][1], 2.0)
+        test_data_get = self.store.get('test_1d', '3')
+        self.assertEqual(test_data_get['test_data'].shape, (3,))
+        self.assertEqual(test_data_get['test_data'][0], 1.0)
+        self.assertEqual(test_data_get['test_data'][1], 2.0)
+        self.assertEqual(test_data_get['test_data'][2], 3.0)
+        
+        # add 3d array
+        test_data = np.full((1,5,5), 1.0)
+        self.store.add('test_3d', '1', {'test_data': test_data})
+        test_data_get = self.store.get('test_3d', '1')
+        self.assertEqual(test_data_get['test_data'].shape, test_data.shape)
+        self.assertEqual(test_data[0,0,0], test_data_get['test_data'][0,0,0])
+
+    def test_append_single_files(self):
+        """test appending data to existing numpy data (using deifferent hdf files for different versions)
+        """
+        self.store = NumpyHDFStorage('test_numpy_hdf5', True)
         # add martix
         test_data = np.full((1,5), 1.0)
         self.store.add('test_2d', '1', {'test_data': test_data})
