@@ -571,6 +571,56 @@ class NumpyHDFStorageTest(unittest.TestCase):
         self.assertEqual(test_data[0,0,0], test_data_get['test_data'][0,0,0])
         
     def test_append(self):
+        """test appending data to existing numpy data (using one hdf file)
+        """
+
+        # add martix
+        test_data = np.full((1,5), 1.0)
+        self.store.add('test_2d', '1', {'test_data': test_data})
+        self.store.append('test_2d', '1', '2', {'test_data': np.full((1,5), 2.0)})
+        self.store.append('test_2d', '2', '3', {'test_data': np.full((1,5), 3.0)})
+        test_data_get = self.store.get('test_2d', '1')
+        self.assertEqual(test_data_get['test_data'].shape, (1,5))
+        self.assertEqual(test_data_get['test_data'][0,0], 1.0)
+        test_data_get = self.store.get('test_2d', '2')
+        self.assertEqual(test_data_get['test_data'].shape, (2,5))
+        self.assertEqual(test_data_get['test_data'][0,0], 1.0)
+        self.assertEqual(test_data_get['test_data'][1,0], 2.0)
+        test_data_get = self.store.get('test_2d', '3')
+        self.assertEqual(test_data_get['test_data'].shape, (3,5))
+        self.assertEqual(test_data_get['test_data'][0,0], 1.0)
+        self.assertEqual(test_data_get['test_data'][1,0], 2.0)
+        self.assertEqual(test_data_get['test_data'][2,0], 3.0)
+
+        # add array
+        test_data = np.full((1,), 1.0)
+        self.store.add('test_1d', '1', {'test_data': test_data})
+        self.store.append('test_1d', '1', '2', {'test_data': np.full((1, ), 2.0)})
+        self.store.append('test_1d', '2', '3', {'test_data': np.full((1, ), 3.0)})
+        test_data_get = self.store.get('test_1d', '1')
+        self.assertEqual(test_data_get['test_data'].shape, (1, ))
+        self.assertEqual(test_data_get['test_data'][0], 1.0)
+        test_data_get = self.store.get('test_1d', '2')
+        self.assertEqual(test_data_get['test_data'].shape, (2, ))
+        self.assertEqual(test_data_get['test_data'][0], 1.0)
+        self.assertEqual(test_data_get['test_data'][1], 2.0)
+        test_data_get = self.store.get('test_1d', '3')
+        self.assertEqual(test_data_get['test_data'].shape, (3,))
+        self.assertEqual(test_data_get['test_data'][0], 1.0)
+        self.assertEqual(test_data_get['test_data'][1], 2.0)
+        self.assertEqual(test_data_get['test_data'][2], 3.0)
+        
+        # add 3d array
+        test_data = np.full((1,5,5), 1.0)
+        self.store.add('test_3d', '1', {'test_data': test_data})
+        test_data_get = self.store.get('test_3d', '1')
+        self.assertEqual(test_data_get['test_data'].shape, test_data.shape)
+        self.assertEqual(test_data[0,0,0], test_data_get['test_data'][0,0,0])
+
+    def test_append_single_files(self):
+        """test appending data to existing numpy data (using deifferent hdf files for different versions)
+        """
+        self.store = NumpyHDFStorage('test_numpy_hdf5', True)
         # add martix
         test_data = np.full((1,5), 1.0)
         self.store.add('test_2d', '1', {'test_data': test_data})
