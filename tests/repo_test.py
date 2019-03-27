@@ -356,6 +356,21 @@ class RepoTest(unittest.TestCase):
         self.repository.run_measures()
         self.repository.run_tests()
 
+    def test_add_multiple(self):
+        """Test adding multiple objects at once
+        """
+        obj1 = TestClass(5,4, repo_info={})
+        obj1.repo_info.name = 'obj1'
+        v1 = self.repository.add(obj1, category = MLObjectType.CALIBRATED_MODEL)
+        obj2 = TestClass(2,3, repo_info={})
+        obj2.repo_info.name = 'obj2'
+        self.repository.add([obj1, obj2], category = MLObjectType.CALIBRATED_MODEL)
+        new_obj1 = self.repository.get('obj1')
+        self.assertEqual(new_obj1.repo_info.name, 'obj1')
+        new_obj2 = self.repository.get('obj2')
+        self.assertEqual(new_obj2.repo_info.name, 'obj2')
+        
+
     def test_delete(self):
         """Test if deletion works and if it considers if there are dependencies to other objects
         """
