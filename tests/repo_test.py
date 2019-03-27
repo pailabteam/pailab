@@ -403,7 +403,68 @@ class MLRepoConstructorTest(unittest.TestCase):
         # instantiate with workspace
         ml_repo = MLRepo(workspace = 'tmp')
         # end instantiate with workspace
-        
+
+
+# define model
+class SuperML:
+    @repo_object_init()
+    def __init__(self):
+        self._value = None
+
+    def train(self, data_x, data_y, median = True):
+        if median:
+            self._value = np.median(data_y)
+        else:
+            self._value = np.mean(data_y)
+
+    def eval(self, data):
+        return self._value
+# end define model
+# define training param
+class SuperMLTrainingParam:
+    @repo_object_init()
+    def __init__(self):
+        self.median = True
+# end define training param
+
+# define training function
+def train(training_param, data_x, data_y):
+    result =  SuperML()
+    result.train(data_x, data_y, training_param.median)
+    return result
+# end define training function
+
+# define eval function
+def eval(model, data):
+    return model.eval(data)
+# end define eval function
+
+class ModelIntegrationTest(unittest.TestCase):
+    def test_model_integration(self):
+        """Simple test of code snippets for documentation around model integration
+        """
+        def test_integration(self):
+            ml_repo = MLRepo(user = 'test_user')
+            x=np.zeros([10,1])
+            y=np.zeros([10])
+            # define eval and train
+            ml_repo.add_eval_function(train,
+                           repo_name='my_eval_func')
+            ml_repo.add_training_function(eval, repo_name='my_eval_func')
+            # end define eval and train
+
+            # define add training parameter
+            training_param = SuperMLTrainingParam()
+            training_param.median = True
+            ml_repo.add(training_param, message='my first training parameter for my own super ml algorithm')
+            # end define add training parameter
+
+            # add own model
+            ml_repo.add_model('my_model')
+            # end add own model
+            ml_repo.run_training()
+            
+            #self.assertEqual
 
 import shutil
 class NumpyHDFStorageTest(unittest.TestCase):
