@@ -6,8 +6,9 @@ impression of the functionality we refer to work to the :ref:`tutorial`.
 
 Overview
 ------------------------
-pailab's core is the :py:class:`pailab.ml_repo.repo.MLRepo` class which is what we call the machine learning repository.
-The repository stores and versions all objects needed in the machine learning development cycle. 
+pailab's core is the :py:class:`pailab.ml_repo.repo.MLRepo` class which is what we call 
+the machine learning repository. The repository stores and versions all objects needed in 
+the machine learning development cycle. 
 There are three fundamental differences to version control systems such as git or svn for classical software development:
 
 - Instead of source code, objects are checked into the repository. Here, each object must inherit or at least implement the respective methods 
@@ -141,16 +142,17 @@ has been changed since last run of the job.
     :py:meth:`pailab.ml_repo.repo.MLRepo.run` which should be preferred.
     However, all these method will, after creation of the needed ``Job`` object,  at the end call ``run``. 
 
+.. _adding_model:
 
 Add a model
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 A model is defined by specifying
 
-- preprocessing methods (in a certain order)
+- preprocessing methods (in a certain order, optional)
 - a function to evaluate the calibrated model on a given dataset
 - a function to train the model given data, training and model parameter
 - training parameter
-- model parameter
+- model parameter (optional)
 
 This specification is done by setting the identifies of the objects into an instance of :py:class:`pailab.repo_objects.Model`.
 Let us assume you have added a prepocessor with name ``'uniform_scaling'``, a function to evaluate the model named ``'eval'``, a function to train the model
@@ -265,3 +267,86 @@ as directory of the git_handler.
 
 Integrate a new model
 -----------------------------
+As we have seen in :ref:`adding_model`, a model needs 
+
+- preprocessing methods 
+- a function to evaluate the calibrated model on a given dataset
+- a function to train the model given data, training and model parameter
+- training parameter
+- model parameter (optional)
+
+When a model is fully specified, you can call :py:meth:`pailab.repo.MLRepo.run_training` to train the model. 
+The calibrated model as a result of the training function is then 
+stored within the repo in the  category ``CALIBRATED_MODEL``. Therefore, to integrate a new model, you have to specify the
+two methods to train and evaluate the model, the training parameter class (if needed also the model parameter) 
+and finally the object containing the calibrated model.
+
+
+Example
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In this section we show one way to  get your custom model into pailab using a very simple and , we discuss a very simple, illustrative and 
+Let us assume that you have implemented a new ml algorithm encapsulated in a class ``SuperML``
+
+.. literalinclude:: ../../tests/repo_test.py
+    :language: python
+    :start-after: define model
+    :end-before: end define model
+
+This algorithm either uses the mean computed on a given dataset or the median depending on the given boolean argument ``median`` 
+as a forecast (a very simple algorithm :-) ).
+Note that we have already used the ``@repo_object_init()`` decorator from ``pailab.repo_objects`` to add the methods and attributes 
+neede to use this class within the repo. Another possibility would have been to directly implement the respective methods and attributes within the class 
+on ourselves. See :py:class:`pailab.repo_objects.RepoObject` which defines the respective  interface. A third 
+alternative would have been to implement a wrapper class which simply contains our ``SuperML`` class and implements all RepoObject functionality (an example for this can be found 
+in the :py:mod:`pailab.externals.tensorflow_keras_interface` module).
+The way you choose depends on your flavor as well as on the question if th ML algorithm is your own development or if you may be wrapping just another ML module.
+
+
+So, what is missing to put the new model into the MLRepo are the eval and train functions as well as the class storing the training parameter (which is simply one boolean).
+
+.. literalinclude:: ../../tests/repo_test.py
+    :language: python
+    :start-after: define training param
+    :end-before: end define training param
+
+.. literalinclude:: ../../tests/repo_test.py
+    :language: python
+    :start-after: define training function
+    :end-before: end define training function
+
+.. literalinclude:: ../../tests/repo_test.py
+    :language: python
+    :start-after: define eval function
+    :end-before: end define eval function
+
+
+After we defined the respective functions, we have to expose their definitions to the ``MLRepo``. Here, we could either construct the 
+respective objects :py:class:`pailab.repo_objects.Function` using their special categories ``MODEL_EVAL_FUNCTION`` or ``TRAINING_FUNCTION`` or just 
+use :py:meth:`pailab.repo.MLRepo.add_eval_function` and :py:meth:`pailab.repo.MLRepo.add_training_function`
+
+.. literalinclude:: ../../tests/repo_test.py
+    :language: python
+    :start-after: define eval and train
+    :end-before: end define eval and train
+
+In addition, we add a first set of training parameter
+.. literalinclude:: ../../tests/repo_test.py
+    :language: python
+    :start-after: define add training parameter
+    :end-before: end define add training parameter
+
+Finally, we call ``add_model`` to define the overall model. 
+Since our repo contains only one eval and train function as well as one unique training parameter we may call ``add_model`` without specifying them.
+
+.. literalinclude:: ../../tests/repo_test.py
+    :language: python
+    :start-after: add own model
+    :end-before: end add own model
+
+.. IMPORTANT::
+
+    The MLRepo's underlying RepoStore needs to store the objects of the model and training parameter classes. For this, the RepoStore
+    calls the method ``to_dict`` to obtain a dictionary of the objects attributes which is then serialized. Here, one has to take care that all objects
+    in this dictionary are serializable w.r.t. RepoStore's format. If your classes use simple standard python types, you may not need to adjust anything.
+
+
