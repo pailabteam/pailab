@@ -347,7 +347,6 @@ class RepoTest(unittest.TestCase):
         self.assertEqual(commits[2].objects['test_data_2'], test_data_2.repo_info.version)
         #self.assertEqual(commits[2].objects['repo_mapping'], 2)
         
-        
     def test_repo_RegressionTest(self):
         regression_test_def = ml_tests.RegressionTestDefinition(repo_info = {RepoInfoKey.NAME: 'regression_test', RepoInfoKey.CATEGORY:MLObjectType.TEST_DEFINITION.name})
         tests = regression_test_def.create(self.repository)
@@ -356,8 +355,45 @@ class RepoTest(unittest.TestCase):
         self.repository.run_evaluation()
         self.repository.run_measures()
         self.repository.run_tests()
-    
 
+    def test_delete(self):
+        """Test if deletion works and if it considers if there are dependencies to other objects
+        """
+
+        obj1 = TestClass(5,4, repo_info={})
+        obj1.repo_info.name = 'obj1'
+        v1 = self.repository.add(obj1, category = MLObjectType.CALIBRATED_MODEL)
+        obj2 = TestClass(2,3, repo_info={})
+        obj2.repo_info.name = 'obj2'
+        obj2.repo_info.modification_info = {'obj1': v1}
+        v2 = self.repository.add(obj2, category = MLObjectType.CALIBRATED_MODEL)
+        # check if an exception is thrown if one tries to delete obj1 although obj2 has
+        # a dependency on obj1
+        try:
+            self.repository.delete('obj1', v1)
+            self.assertEqual(0,1)
+        except:
+            pass
+        # now first delete obj2
+        self.repository.delete('obj2', v2)
+        # check if obj2 has really been deleted
+        try:
+            obj2 = self.repository.get('obj2')
+            self.assertEqual(0,1)
+        except:
+            pass
+        
+        #now, deletion of obj 1 should work
+        try:
+            self.repository.delete('obj1', v1)
+        except:
+            self.assertEqual(0,1)
+        try: #check if object really has been deleted
+            obj1 = self.repository.get('obj1')
+            self.assertEqual(0,1)
+        except:
+            pass
+        
 class MLRepoConstructorTest(unittest.TestCase):
     def test_default_constructor(self):
         #example with default
@@ -404,6 +440,23 @@ class MLRepoConstructorTest(unittest.TestCase):
         ml_repo = MLRepo(workspace = 'tmp')
         # end instantiate with workspace
 
+
+class NumpyMemoryHandlerTest(unittest.TestCase):
+    def test_append(self):
+        numpy_store = memory_handler.NumpyMemoryStorage()
+        numpy_dict = {'a':np.zeros([10,2]), 'b': np.zeros([5])}
+        numpy_store.add('test_data', 'v1', numpy_dict)
+        numpy_dict_2 = {'a':np.zeros([1,2]), 'b': np.zeros([1])}
+        numpy_dict_2['b'][0] = 5.0
+        numpy_dict_2['a'][0,0] = 3.0
+        numpy_dict_2['a'][0,1] = 2.0
+        numpy_store.append('test_data', 'v1', 'v2', numpy_dict_2)
+
+        numpy_dict_3 = numpy_store.get('test_data', 'v2')
+        self.assertEqual(numpy_dict_3['a'].shape[0],11)
+        self.assertEqual(numpy_dict_3['b'].shape[0],6)
+        self.assertEqual(numpy_dict_3['b'][5],5.0)
+        self.assertEqual(numpy_dict_3['b'][0],0.0)
 
 # define model
 class SuperML:
