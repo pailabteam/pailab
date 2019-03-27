@@ -31,7 +31,7 @@ Adding training and testdata
 The data in the repository is handled by two different data objects:
 
 - :py:class:`pailab.ml_repo.repo_objects.RawData` is the object containing real data.
-- :py:class:`pailab.ml_repo.repo.DataSet` is the object conaining the logical data, i.e. a reference to a RawData object together with a specification, which data from the RawData will be used. Here, one can specify a fixed version of the underlying RawData object (then changes to the RawData will not affect the derived DataSet) or a fixed or floating subset of the RawData by defininga start and endindex cutting the derived data just out of the original data.
+- :py:class:`pailab.ml_repo.repo.DataSet` is the object containing the logical data, i.e. a reference to a RawData object together with a specification, which data from the RawData will be used. Here, one can specify a fixed version of the underlying RawData object (then changes to the RawData will not affect the derived DataSet) or a fixed or floating subset of the RawData by defininga start and endindex cutting the derived data just out of the original data.
 
 Normally one will add RawData and then define DataSets which are used to train or test a model which is exactly the way shown in the following.
 
@@ -51,7 +51,7 @@ Adding DataSet
     :start-after: add DataSet
     :end-before: end adding DataSet
 
-When creating the DataSet we have to set two important informations for the repository, given as a dictionary:
+When creating the DataSet we have to set two important information for the repository, given as a dictionary:
 
 - The object name. Each object in the repository needs to have a unique name in the repository.
 - The object type which gives. In our example here we say that we specify that the DataSet are training and test data. Note that on can have only one training data object pre repository while the repository can obtain many different test data sets.
@@ -66,10 +66,10 @@ Adding a model
 --------------------------
 The next step to do machine learning would be to define a model which will be used in the repository. A model consists of the following pieces
 
-- a skript where the code for the model valuation is defined together with the function name of the evaluation method
-- a skript where the code for the model training is defined together with th function nam of the training method
+- a script where the code for the model valuation is defined together with the function name of the evaluation method
+- a script where the code for the model training is defined together with the function name of the training method
 - a model parameter object defining the model parameter and which must have implemented the correct interface so that it can be used within the repository (see the documentation on integrating new objects, normally there is not more to do then just simply add *@repo_object_init()* to the line above your *__init__* method)
-- a training parameter object defining training parameters (such as number of optimization steps etc.), if necessary for your algorithms (this oen is optional)
+- a training parameter object defining training parameters (such as number of optimization steps etc.), if necessary for your algorithms (this one is optional)
 
 To build and train models we use sklearn. In this case, we do not have to define the pieces defined above, since pailab provides a simple 
 interface to sklearn defined in the module :py:mod:`pailab.externals.sklearn_interface`. This interface provides a simple method 
@@ -90,8 +90,8 @@ In the following we just use a DecisionTree as our model.
 
 Train the model
 -----------------------------------
-Now, model taining is very simple, since you have defined training and testing data as well as  methods to value and fit your model and the model parameter.
-So, you can just call :py:meth:`pailab.ml_repo.repo.MLRepo.run_training` on the repository, and the training is perfomred automatically.
+Now, model training is very simple, since you have defined training and testing data as well as  methods to value and fit your model and the model parameter.
+So, you can just call :py:meth:`pailab.ml_repo.repo.MLRepo.run_training` on the repository, and the training is performed automatically.
 The training job is executed via the JobRunner you specified setting up the repository. All method of the repository involving jobs return the job id when adding the job to the JobRunner so that you can control the status of the task and see if it sucessfully finished.
 
 .. literalinclude:: ../../tests/tutorial_test.py
