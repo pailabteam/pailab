@@ -179,7 +179,7 @@ class RawDataCollection(RepoObjectItem):
 
         Arguments:
             data_name {name of data} -- the name of the data added
-            data {pandas datatable} -- the data as pndas datatable
+            data {pandas datatable} -- the data as pandas datatable
         
         Keyword Arguments:
             input_variables {list of strings} -- list of column names defining the input variables for the machine learning (default: {None}). If None, all variables are used as input
