@@ -61,5 +61,56 @@ We may run the test by calling :py:meth:`pailab.repo.MLRepo.run_test`
     :start-after:  add test snippet
     :end-before: end add test snippet
 
+where ``tests`` is a list of tuples, each containing the name of the test as well as the respective version::
+
+    >>print(tests)
+    [('DecisionTreeRegressor/tests/reg_test/test_data', '5b71ad5a-516f-11e9-bf7c-fc084a6691eb'), 
+    ('DecisionTreeRegressor/tests/reg_test/training_data', '5b8b46ca-516f-11e9-990d-fc084a6691eb')]
+
+The attribute ``result`` of the test object contains the result of the test (if it was successful or not)::
+
+    >>test = ml_repo.get('DecisionTreeRegressor/tests/reg_test/test_data')
+    >>print(test.result)
+    'succeeded'
+    
+Consistency checks
+-----------------------------------
+Pailab's :py:mod:`pailab.tools.checker` -submodule provides functionality to check for consistency and
+quality issues as well as for outstanding tasks (such as rerunning a training after the training set has been changed).
 
 
+Model consistency
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+There are different checks to test model consistency such as if the tests of a model are up to date and succeeded or if the 
+latest model is trained on the latest training data. All model tests are performed for labeled models and the latest model only.
+
+The following checks are performed:
+- Is the latest model calibrated on the latest parameters and training data
+- Are all labeled models (including latest model) evaluated on the latest available training and test data
+- Are all measures of all labeled models computed on the latest data
+- Have all tests been run on the labeled models
+
+.. literalinclude:: ../../tests/tutorial_test.py
+    :language: python
+    :start-after:  run check snippet
+    :end-before: end run check snippet
+
+The variable ``inconsistencies`` contains all inconsistencies found which means in our case that the list is empty::
+
+    >>print(inconsistencies)
+    []
+
+Now we change a model parameter but do not start a new training
+
+.. literalinclude:: ../../tests/tutorial_test.py
+    :language: python
+    :start-after: add inconsistency snippet
+    :end-before: end add inconsistency snippet
+
+Running the consistency check again leads to::
+
+    >>print(inconsistencies)
+    :undefined
+[{'DecisionTreeRegressor/model:last': {'latest model version not on latest inputs': 
+    {'DecisionTreeRegressor/model_param': {'modifier version': 'cdc3fed4-5192-11e9-a7fd-fc084a6691eb', 
+            'latest version': 'cfe1b9fa-5192-11e9-b360-fc084a6691eb'}}}}]

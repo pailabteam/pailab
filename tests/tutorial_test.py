@@ -154,8 +154,26 @@ class TutorialTest(unittest.TestCase):
         # end test definition snippet
 
         # add test snippet
-        ml_repo.add(reg_test, message='regression test definition')
+        tests = ml_repo.run_tests()
         # end add test snippet
+        print(tests)
+
+        # run check snippet
+        import pailab.tools.checker as checker
+        inconsistencies = checker.run(ml_repo)
+        # end run check snippet
+
+        print(inconsistencies)
+
+        # add inconsistency snippet
+        param = ml_repo.get('DecisionTreeRegressor/model_param')
+        param.sklearn_params['max_depth'] = 2
+        version = ml_repo.add(param)
+        # end add inconsistency snippet
+
+        inconsistencies = checker.run(ml_repo)
+
+        print(inconsistencies)
 
         # cleanup after running
         # job_runner.close_connection()
