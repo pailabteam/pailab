@@ -264,6 +264,7 @@ as directory of the git_handler.
 
 
 
+.. _integrating_model:
 
 Integrate a new model
 -----------------------------
@@ -330,6 +331,7 @@ use :py:meth:`pailab.repo.MLRepo.add_eval_function` and :py:meth:`pailab.repo.ML
     :end-before: end define eval and train
 
 In addition, we add a first set of training parameter
+
 .. literalinclude:: ../../tests/repo_test.py
     :language: python
     :start-after: define add training parameter
