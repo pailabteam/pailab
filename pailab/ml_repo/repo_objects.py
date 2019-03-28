@@ -362,6 +362,7 @@ class RawData(RepoObject):
         """
         super(RawData, self).__init__(repo_info)
         self.repo_info.big_objects = ['x_data', 'y_data']
+        self.repo_info.category = 'RAW_DATA'
         if x_data is None:
             raise Exception("No x_data specified.")
         x_data = RawData._cast_data_to_numpy(x_data)

@@ -831,18 +831,15 @@ class MLRepo:
 
                 :param repo_object: repo_object to be added, will be modified so that it contains the version number
                 :param message: commit message
-                :param category: Category of repo_object which is used as fallback if th object does not define a category.
+                :param category: Category of repo_object which overwrites the objects category.
 
                 Raises an exception if the category of the object is not defined in the object and if it is not defined with the category argument.
                 It raises an exception if an object with this id does already exist.
 
-                :return version number of object added and boolean if mapping has changed
-            """        
-            if repo_object.repo_info[RepoInfoKey.CATEGORY] is None:
-                if category is None:
-                    raise Exception('Category of repo_object not set and no fallback category defined.')
-                else:
-                    repo_object.repo_info[RepoInfoKey.CATEGORY] = category
+                :return version number of object added and Boolean if mapping has changed
+            """
+            if category is not None:
+                repo_object.repo_info[RepoInfoKey.CATEGORY] = category  
             
             mapping_changed = self._mapping.add(repo_object.repo_info[RepoInfoKey.CATEGORY], repo_object.repo_info[RepoInfoKey.NAME])
 
@@ -881,7 +878,7 @@ class MLRepo:
 
             :param repo_object: repo_object or list of repo_objects to be added, will be modified so that it contains the version number
             :param message: commit message
-            :param category: Category of repo_object which is used as fallback if the object does not define a category.
+            :param category: Category of repo_object which overwrites the objects category.
 
             Raises an exception if the category of the object is not defined in the object and if it is not defined with the category argument.
             It raises an exception if an object with this id does already exist.
