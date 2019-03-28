@@ -282,7 +282,7 @@ class NumpyMemoryStorage(NumpyStore):
             new_result = {}
             prev = self.get(name, result['previous'])
             for k, v in result['numpy_dict'].items():
-                new_result[k] = concatenate((v, prev[k]), axis=0)
+                new_result[k] = concatenate((prev[k], v), axis=0)
 
         # adjust for given start and end indices
         if from_index != 0 or (to_index is not None):
@@ -301,4 +301,4 @@ class NumpyMemoryStorage(NumpyStore):
                     for k, v in new_result.items():
                         tmp[k] = v[0:to_index, :]
             return tmp
-        return result
+        return new_result

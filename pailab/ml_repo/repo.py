@@ -1148,8 +1148,8 @@ class MLRepo:
     def delete(self, name, version):
         """Delete a specific object. 
         
-        It deletes the object. If other objects were modified by thi object, it thros an exception
-        tht first the modified objects must be deleted.
+        It deletes the object. If other objects were modified by this object, it throws an exception
+        that first the modified objects must be deleted.
         
         Args:
             name (str): name of object
