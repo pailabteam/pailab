@@ -595,7 +595,7 @@ class MeasureJob(Job):
     def _run(self, repo, jobid):
         logging.info('Start measure job ' + self.repo_info.name)
         target = repo.get(self.data_name, self.data_version, full_object = True)
-        m_name = self.model_name.split('/')[0] #if given model name is a name of calibated model, split to find the evaluation
+        m_name = self.model_name.split('/')[0] #if given model name is a name of calibrated model, split to find the evaluation
         eval_data_name = NamingConventions.EvalData(data = self.data_name, model = m_name)
         eval_data = repo.get(str(eval_data_name), modifier_versions={self.model_name: self.model_version, self.data_name: self.data_version}, full_object = True )
         logger.info('run MeasureJob on data ' + self.data_name + ':' + str(self.data_version) 
@@ -1042,7 +1042,7 @@ class MLRepo:
             measure {str} -- string defining the measure, i.e MAX,...
         
         Keyword Arguments:
-            coordinates {list of str} -- list ofstrings defining the coordinates (by name) used for the measure (default: {None}), if None, all coordinates will be used
+            coordinates {list of str} -- list of strings defining the coordinates (by name) used for the measure (default: {None}), if None, all coordinates will be used
         """
         #if a measure configuration already exists, use this, otherwise creat a new one
         measure_config = None
@@ -1389,7 +1389,7 @@ class MLRepo:
                     + str(job.repo_info[RepoInfoKey.VERSION]) + ' added to jobrunner.')
                 job_ids.append((job.repo_info[RepoInfoKey.NAME], str(job.repo_info[RepoInfoKey.VERSION])))
                 if run_descendants:
-                    self.run_measures(model, 'run_mesaures started as predecessor of run_evaluation', datasets={job.data: repo_store.RepoStore.LAST_VERSION}, 
+                    self.run_measures(model, 'run_measures started as predecessor of run_evaluation', datasets={job.data: repo_store.RepoStore.LAST_VERSION}, 
                         predecessors=[(job.repo_info[RepoInfoKey.NAME], job.repo_info[RepoInfoKey.VERSION])])
         return job_ids
 
