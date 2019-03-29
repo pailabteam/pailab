@@ -73,11 +73,14 @@ class TutorialTest(unittest.TestCase):
         # This method just takes a pandas dataframe and the specification, which columns belong to the input
         # and which to the targets.
 
+        try:
         # read pandas
-        import pandas as pd
-        data = pd.read_csv('./examples/boston_housing/housing.csv')
-        # end read pandas
-
+            import pandas as pd
+            data = pd.read_csv('./examples/boston_housing/housing.csv')
+            # end read pandas
+        except:
+            data = pd.read_csv('../examples/boston_housing/housing.csv')
+            
         # extract data
         input_variables = ['RM', 'LSTAT', 'PTRATIO']
         target_variables = ['MEDV']
