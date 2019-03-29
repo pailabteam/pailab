@@ -9,29 +9,12 @@ Welcome to pailab's documentation!
 .. include:: ../../README.rst
 
 
-Overview
--------------------------------
-Source code
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-pailab's source code is available on GitHub:
-
-https://github.com/pailabteam/pailab
-
-and cloned using::
-
-    git clone https://github.com/pailabteam/pailab.git pailab
-
-Examples and first steps
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-To learn how to work with pailab you may find the :ref:`overall_tutorial` useful. 
-In addition, you find jupyter notebooks in the examples directory.
-
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
    
-
+   overview
    basics
    tutorial
    repo_module
