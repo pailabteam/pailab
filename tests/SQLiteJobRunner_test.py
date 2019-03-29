@@ -99,7 +99,7 @@ class SQLiteJobRunner_Test(unittest.TestCase):
                       }
                   }
                   }
-        self.repository = repo.MLRepo(user='doeltz', config=config)
+        self.repository = repo.MLRepo(user='unittestuser', config=config)
         self.handler = self.repository._ml_repo
         self.job_runner = SQLiteJobRunner(
             'tmp/job_runner.sqlite', self.repository)
