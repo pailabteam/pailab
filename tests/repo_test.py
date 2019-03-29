@@ -146,13 +146,29 @@ def eval_func_test(model, data):
 def train_func_test(model_param, training_param, data):
     '''Dummy model training function for testing
     
-        Function retrns independent of data and model a simple numpy array with zeros
+        Function returns independent of data and model a simple numpy array with zeros
     Arguments:
         model_param {} -- dummy model parameter
         training_param {} -- dummy training parameter, not used
         data {} -- dummy trainig data, not used
     '''
     return TestClass(2,3, repo_info = {}) # pylint: disable=E1123
+
+
+def preprocessor_transforming_function_test(preprocessor_param, data_x, x_coord_names, fitted_preprocessor=None):
+    '''Dummy preprocessor transforming function for testing
+    
+        Function returns the input data
+    Arguments:
+        preprocessor_param {} -- dummy preprocessor parameter
+        data_x {} -- dummy input data for transforming
+        x_coord_names {} -- dummy coordinates names for transforming
+        fitted_preprocessor {} -- dummy for a fitted preprocessor
+    ''' 
+    return data_x, x_coord_names
+
+def preprocessor_fitting_function_test(preprocessor_param, data_x, x_coord_names):
+    return TestClass(4,5, repo_info = {}) # pylint: disable=E1123
 
 class RepoTest(unittest.TestCase):
 
@@ -174,7 +190,7 @@ class RepoTest(unittest.TestCase):
     def setUp(self):
         '''Setup a complete ML repo with two different test data objetcs, training data, model definition etc.
         '''
-        self.repository = MLRepo(user = 'doeltz')
+        self.repository = MLRepo(user = 'unittestuser')
         job_runner = SimpleJobRunner(self.repository)
         self.repository._job_runner = job_runner
         #### Setup dummy RawData
@@ -193,12 +209,20 @@ class RepoTest(unittest.TestCase):
                                     repo_info = {repo_objects.RepoInfoKey.NAME.value: 'test_data_2',  repo_objects.RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA})
         self.repository.add([training_data, test_data_1, test_data_2])
 
+        ## setup dummy preprocessor
+        self.repository.add_preprocessing_transforming_function(preprocessor_transforming_function_test,
+                        repo_name = 'transform_func')
+        self.repository.add_preprocessing_fitting_function(preprocessor_fitting_function_test, 
+                        repo_name = 'fit_func')
+        self.repository.add_preprocessor('test_preprocessor_with_fitting', 'transform_func', 'fit_func', 
+                         preprocessor_param = None)
+
         self.repository.add_eval_function(eval_func_test, 'eval_func')
         self.repository.add_training_function(train_func_test, 'train_func')
         self.repository.add(TestClass(1,2, repo_info={repo_objects.RepoInfoKey.NAME.value: 'training_param', # pylint: disable=E1123
                                             repo_objects.RepoInfoKey.CATEGORY: MLObjectType.TRAINING_PARAM}))
         ## setup dummy model definition
-        self.repository.add_model('model', 'eval_func', 'train_func')
+        self.repository.add_model('model', 'eval_func', 'train_func', preprocessors = ['test_preprocessor_with_fitting'])
         # setup measure configuration
         self._setup_measure_config()
         # add dummy calibrated model
@@ -267,7 +291,7 @@ class RepoTest(unittest.TestCase):
     def test_repo_RawData(self):
         """Test RawData within repo
         """
-        repository = MLRepo(user = 'doeltz')
+        repository = MLRepo(user = 'unittestuser')
         job_runner = SimpleJobRunner(repository)
         repository._job_runner = job_runner
         raw_data = repo_objects.RawData(np.zeros([10, 1]), ['test_coord'], repo_info={  # pylint: disable=E0602
@@ -320,7 +344,7 @@ class RepoTest(unittest.TestCase):
     
     def test_repo_training_test_data(self):
         # init repository with sample in memory handler
-        repository = MLRepo(user = 'doeltz')
+        repository = MLRepo(user = 'unittestuser')
         job_runner = SimpleJobRunner(repository)
         repository._job_runner = job_runner
         training_data = RawData(np.zeros([10,1]), ['x_values'], np.zeros([10,1]), ['y_values'], repo_info = {repo_objects.RepoInfoKey.NAME.value: 'training_data'})
