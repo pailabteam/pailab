@@ -1,4 +1,4 @@
-|Docs|_ |Travis|_ |Codecov|_ |License|_
+|version|_ |Docs|_ |Travis|_ |Codecov|_ |License|_
 
 .. |Travis| image:: https://travis-ci.org/pailabteam/pailab.svg?branch=develop
 .. _Travis: https://travis-ci.org/pailabteam/pailab
@@ -12,6 +12,8 @@
 .. |License| image:: https://img.shields.io/badge/License-Apache%202.0-blue.svg
 .. _License: https://opensource.org/licenses/Apache-2.0
 
+.. |version| image:: https://img.shields.io/badge/pailab-pre--alpha-red.svg
+.. _version: https://github.com/pailabteam/pailab
 
 .. |logo| image:: images/monster.png
     :height: 100
