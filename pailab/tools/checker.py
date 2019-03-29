@@ -13,11 +13,7 @@ def get_initial_config(repo):
     for m in model_names:
         model_checks[m] = {'correct': False, 'check_for_latest': True, 'model_version': RepoStore.LAST_VERSION}
     
-    labels = repo.get_names(MLObjectType.LABEL)
-    labeled_model_checks = {}
-    for l in labels:
-            labeled_model_checks[l] = {'correct': False, 'check_for_latest': True}
-    model_checks = {'models': model_checks, 'labels': labeled_model_checks}
+    model_checks = {'models': model_checks, 'labels': {'__ALL__': {'correct': False}}}
 
     data_checks = {'overlapping': True, 'usage': False}
     repo_checks = {'integrity': True}
@@ -113,44 +109,43 @@ class Model:
         return result
 
     @staticmethod
-    def run(repo: MLRepo, model_name=None, correct=False, model_version=RepoStore.LAST_VERSION, model_label=None, check_for_latest = True):
+    def run(repo: MLRepo, model_name=None, correct=False,
+            model_version=RepoStore.LAST_VERSION, 
+            model_label=None, check_for_latest = True):
         """Perform consistency checks for specified model versions
 
         Args:
             :param repo (MLRepo): ml repository
-            :model_name (str, optional): Defaults to None. If specified, the model version(s) specified by the name and the model_version are cheked.
-            :param correct (bool, optional): Defaults to False. If True, th metho starts the corresponding jobs to fix the found isues.
-            :param model_version (str or list of str, optional): Defaults to RepoStore.LAST_VERSION. The model version(s) of th models to check
-            :param model_label ([type], optional): Defaults to None. 
+            :model_name (str, optional): Defaults to None. If specified, the model defined by the name and the model_version are checked.
+            :param correct (bool, optional): Defaults to False. If True, the method starts the corresponding jobs to fix the found issues.
+            :param model_version (str or list of str, optional): Defaults to RepoStore.LAST_VERSION. The model version(s) of the models to check
+            :param model_label ([type], optional): Defaults to None. If it is set to '__ALL__', all labels are checked.
 
         Raises:
             Exception: Raises if a model version but no model name is specified 
 
         Returns:
-            [dict]: dictionary with model+version to found issues. May be empty if no issues exist.
+            [dict]: dictionary mapping model+version to issues found. May be empty if no issues exist.
         """
 
         logger.info('Start checking model.')
         result = {}
 
         model_labels = []
-        if model_label is None:
-            model_labels = repo.get_names(MLObjectType.LABEL)
-        elif isinstance(model_label, list):
-            model_labels=model_label
-        elif isinstance(model_label, str):
-            model_labels=[model_label]
-            
-        if model_name is None:
-            models = repo.get_names(MLObjectType.CALIBRATED_MODEL)
-            if len(models) == 1:
-                model_name = models[0]
-        
+        if model_label is not None:
+            if isinstance(model_label, list):
+                model_labels=model_label
+            elif isinstance(model_label, str):
+                if model_label == '__ALL__':
+                    model_labels = repo.get_names(MLObjectType.LABEL)
+                else:
+                    model_labels=[model_label]
 
         for model_label in model_labels:  # check the model defined by the label
             label = repo.get(model_label)
             tmp = Model.__check_model(repo, label.name, correct,
-                                                model_version=label.version)
+                                    model_version=label.version,
+                                    check_for_latest=False)
             if len(tmp) > 0:
                 result[model_label] = tmp
 
@@ -349,7 +344,7 @@ def run(repo: MLRepo, config : dict = None):
         if len(tmp) > 0:
             result.append(tmp)
     for k,v in config['model_checks']['labels'].items():
-        tmp = Model.run(repo, correct=v['correct'], model_label = k, check_for_latest=v['check_for_latest'])
+        tmp = Model.run(repo, correct=v['correct'], model_label = k, check_for_latest=False)
         if len(tmp) > 0:
             result.append(tmp)
     tmp = Data.run(repo, **config['data_checks'])        
