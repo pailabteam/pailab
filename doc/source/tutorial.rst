@@ -1,3 +1,5 @@
+.. _overall_tutorial:
+
 Tutorial
 ============================
 .. toctree::

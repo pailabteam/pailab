@@ -23,7 +23,8 @@ and cloned using::
 
 Examples and first steps
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-To learn how to work with pailab you may find the tutorial useful. In addition, you can find jupyter notebooks in the examples directory.
+To learn how to work with pailab you may find the :ref:`overall_tutorial` useful. 
+In addition, you find jupyter notebooks in the examples directory.
 
 
 .. toctree::
