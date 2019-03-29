@@ -29,9 +29,6 @@ In addition, you find jupyter notebooks in the examples directory.
 
 Laby and Bugy
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-|laby| Laby and |bugy| Bugy
-
 During a trans-universal trip in 2500 Laby and Bugy made a stop on earth.
 They were quite astonished to see how far humans 
 had developed the AI business but they got a little frightened when they saw how blind-folded humans worked in this business. At least Laby would have not been 
@@ -49,3 +46,4 @@ sense of measuring test coverage but he may implement a better Powerpoint applic
 (who uses the initials MS for whatever reason) with maybe three lines of code 
 (if we count his comment to understand his program the source code file might have four lines).
 
+|laby| Laby and |bugy| Bugy
