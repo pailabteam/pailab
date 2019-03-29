@@ -116,8 +116,7 @@ class Model:
 
         Args:
             :param repo (MLRepo): ml repository
-            :model_name (str, optional): Defaults to None. If specified, the model defined by the name and the model_version are checked. 
-                If it is None but model_version equals RepoStore.LAST_VERSION, all models with version RepoStore.LAST_VERSION are checked.
+            :model_name (str, optional): Defaults to None. If specified, the model defined by the name and the model_version are checked.
             :param correct (bool, optional): Defaults to False. If True, the method starts the corresponding jobs to fix the found issues.
             :param model_version (str or list of str, optional): Defaults to RepoStore.LAST_VERSION. The model version(s) of the models to check
             :param model_label ([type], optional): Defaults to None. If it is set to '__ALL__', all labels are checked.
@@ -141,12 +140,6 @@ class Model:
                     model_labels = repo.get_names(MLObjectType.LABEL)
                 else:
                     model_labels=[model_label]
-            
-        if model_name is None:
-            models = repo.get_names(MLObjectType.CALIBRATED_MODEL)
-            if len(models) == 1:
-                model_name = models[0]
-        
 
         for model_label in model_labels:  # check the model defined by the label
             label = repo.get(model_label)
