@@ -15,6 +15,14 @@
 .. |version| image:: https://img.shields.io/badge/pailab-pre--alpha-red.svg
 .. _version: https://github.com/pailabteam/pailab
 
+
+.. |frontmark| image:: https://img.shields.io/badge/powered%20by-frontmark-lightgrey.svg
+.. _frontmark: https://www.frontmark.de/
+
+.. |rivacon| image:: https://img.shields.io/badge/powered%20by-RIVACON-lightgrey.svg
+.. _rivacon: https://www.rivacon.com/en/
+
+
 .. |logo| image:: images/monster.png
     :height: 100
     :alt: pailab
@@ -42,3 +50,4 @@ one may use git to administrate the remaining data part. It also adds informatio
 the version, the author, date etc. and each object is labeled with a category defining the role in the ml process. 
 
 
+|frontmark|_ |rivacon|_
