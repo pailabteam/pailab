@@ -17,6 +17,15 @@ Examples and first steps
 To learn how to work with pailab you may find the :ref:`overall_tutorial` useful. 
 In addition, you find jupyter notebooks in the examples directory.
 
+Logging
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+pailab uses the Python standard logging module :mod:`logging` making use of different 
+log levels. The log level of the logger may be globally set by::
+
+    import logging as logging
+    logging.basicConfig(level=logging.DEBUG)
+
+See the ``logging`` modules documentation for further details.
 
 
 .. |laby| image:: images/alien.png
