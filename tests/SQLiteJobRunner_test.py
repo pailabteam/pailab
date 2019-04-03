@@ -97,7 +97,7 @@ class SQLiteJobRunner_Test(unittest.TestCase):
                           'folder': 'tmp/numpy',
                           'version_files': True
                       }
-                  }
+                  },
                   'job_runner':
                   {
                       'type': 'sqlite',
@@ -140,7 +140,7 @@ class SQLiteJobRunner_Test(unittest.TestCase):
 
     def tearDown(self):
         try:
-            self.job_runner.close_connection()
+            self.repository._job_runner.close_connection()
             self.handler.close_connection()
             shutil.rmtree('tmp')
         except OSError as e:
@@ -151,33 +151,33 @@ class SQLiteJobRunner_Test(unittest.TestCase):
         def count_waiting_pred(jobs):
             n_waiting_pred = 0
             for job in jobs:
-                job_info = self.job_runner.get_info(job[0], job[1])
+                job_info = self.repository._job_runner.get_info(job[0], job[1])
                 if job_info['job_state'] == JobState.WAITING_PRED.value:
                     n_waiting_pred += 1
             return n_waiting_pred
         job = self.repository.run_training(run_descendants=True)
-        tmp = self.job_runner.get_info(job[0], job[1])
-        # check if traning job is in waiting state
+        tmp = self.repository._job_runner.get_info(job[0], job[1])
+        # check if training job is in waiting state
         self.assertEqual(tmp['job_state'], JobState.WAITING.value)
-        waiting_jobs = self.job_runner.get_waiting_jobs()
+        waiting_jobs = self.repository._job_runner.get_waiting_jobs()
         n_waiting_jobs = len(waiting_jobs)
         # count the number of jobs waiting for preprocessing
         n_waiting_pred = count_waiting_pred(waiting_jobs)
         self.assertEqual(n_waiting_jobs, 10)
         for i in range(n_waiting_jobs):
-            self.job_runner.run(1)
+            self.repository._job_runner.run(1)
             if i == 0:
-                tmp = self.job_runner.get_info(job[0], job[1])
+                tmp = self.repository._job_runner.get_info(job[0], job[1])
                 self.assertEqual(tmp['job_state'],
                                  JobState.SUCCESSFULLY_FINISHED.value)
-            waiting_jobs = self.job_runner.get_waiting_jobs()
+            waiting_jobs = self.repository._job_runner.get_waiting_jobs()
             n_waiting_pred = count_waiting_pred(waiting_jobs)
             self.assertEqual(n_waiting_jobs-1,
                              len(waiting_jobs))
             self.assertGreater(n_waiting_jobs, n_waiting_pred)
             n_waiting_jobs = len(waiting_jobs)
 
-        # now count th jobs waiting for predecessors
+        # now count the jobs waiting for predecessors
 
 
 if __name__ == '__main__':
