@@ -184,3 +184,11 @@ We may also check the overall test status. Here we have to call :py:meth:`pailab
         }
     }
 
+We see that the latest model as well as the `'prod'` labeled model gives us some errors since the regression tests have not ben run on all 
+data sets. We can fix these messages by simply calling ``run_tests``::
+
+    >>ml_repo.run_tests()
+    >>print(checker.Tests.run(ml_repo))
+    {}
+
+
