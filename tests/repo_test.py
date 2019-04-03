@@ -463,10 +463,11 @@ class MLRepoConstructorTest(unittest.TestCase):
                   'folder': 'tmp/repo_data',
                   'version_files': True
               }
-          }
+          },
           'job_runner':
           {
-              'type': 'simple'
+              'type': 'simple',
+              'config':{}
           }
         }
         # end diskhandlerconfig
