@@ -1389,7 +1389,7 @@ class MLRepo:
                     + str(job.repo_info[RepoInfoKey.VERSION]) + ' added to jobrunner.')
                 job_ids.append((job.repo_info[RepoInfoKey.NAME], str(job.repo_info[RepoInfoKey.VERSION])))
                 if run_descendants:
-                    self.run_measures(model,  'run_measures started as predecessor of run_evaluation', model_version=job.model_version, datasets={job.data: repo_store.RepoStore.LAST_VERSION}, 
+                    self.run_measures(job.model,  'run_measures started as predecessor of run_evaluation', model_version=job.model_version, datasets={job.data: repo_store.RepoStore.LAST_VERSION}, 
                         predecessors=[(job.repo_info[RepoInfoKey.NAME], job.repo_info[RepoInfoKey.VERSION])])
         return job_ids
 
