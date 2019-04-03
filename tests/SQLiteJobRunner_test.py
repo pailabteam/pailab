@@ -11,6 +11,7 @@ from pailab.ml_repo.repo_store import RepoStore
 from pailab.ml_repo.numpy_handler_hdf import NumpyHDFStorage
 from pailab.ml_repo.disk_handler import RepoObjectDiskStorage
 from pailab.job_runner.job_runner import SQLiteJobRunner
+from pailab.job_runner.job_runner_factory import JobRunnerFactory
 
 import time
 
@@ -50,6 +51,27 @@ def train_func_test(model_param, training_param, data):
         data {} -- dummy trainig data, not used
     '''
     return TestClass(2, 3, repo_info={})  # pylint: disable=E1123
+
+
+class JobRunnerFactory_Test(unittest.TestCase):
+    """Tests for JobRunnerFactory
+
+    """
+
+    def test_get_job_runners(self):
+        """test method get_job_runners
+        """
+        job_runners = JobRunnerFactory.get_job_runners()
+        self.assertGreater(len(job_runners), 0)
+
+    def test_get_unknown(self):
+        """test if exception is thrown hen an unknown JobRunner is requested
+        """
+        try:
+            JobRunnerFactory.get(None, 'dummy')
+            self.assertEqual(0, 1)
+        except:
+            return
 
 
 class SQLiteJobRunner_Test(unittest.TestCase):
