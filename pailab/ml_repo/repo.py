@@ -16,6 +16,7 @@ from pailab.ml_repo.repo_objects import RepoInfoKey, DataSet, MeasureConfigurati
 from pailab.ml_repo.repo_objects import repo_object_init, RepoInfo, RepoObject  # pylint: disable=E0401
 import pailab.ml_repo.repo_store as repo_store
 from pailab.ml_repo.repo_store_factory import RepoStoreFactory, NumpyStoreFactory
+from pailab.job_runner.job_runner_factory import JobRunnerFactory
 
 logger = logging.getLogger(__name__)
 
@@ -767,10 +768,22 @@ class MLRepo:
     def __create_default_config(user, workspace):
         if user is None:
             raise Exception('Please specify a user.')
-        return {'user': user, 'workspace': workspace, 'repo_store': 
-                    {'type': 'memory_handler', 
-                    'config': {} }, 
-                    'numpy_store': { 'type':'memory_handler', 'config': {}} }
+        return {'user': user, 'workspace': workspace, 
+                'repo_store': {
+                    'type': 'memory_handler', 
+                    'config': {} 
+                    }, 
+                'numpy_store': { 
+                    'type':'memory_handler', 
+                    'config': {}
+                    },
+                'job_runner' : {
+                    'type':'simple', 
+                    'config': {
+                        'throw_job_error': True
+                        }
+                    } 
+                }
 
     def _save_config(self):
         if 'workspace' in self._config.keys():
@@ -778,7 +791,7 @@ class MLRepo:
                 with open(self._config['workspace']  + '/.config.json', 'w') as f:
                     json.dump(self._config, f, indent=4, separators=(',', ': '))
 
-    def __init__(self,  workspace = None, user=None, config = None, job_runner=None, save_config = False):
+    def __init__(self,  workspace = None, user=None, config = None, save_config = False):
         """ Constructor of MLRepo
 
             :param numpy_repo: repository where the numpy data is stored in versions. If None, a NumpyHDFHandler will be used with directory equal to repo_dir.
@@ -795,9 +808,9 @@ class MLRepo:
         
         self._numpy_repo = NumpyStoreFactory.get(self._config['numpy_store']['type'], **self._config['numpy_store']['config'])
         self._ml_repo = RepoStoreFactory.get(self._config['repo_store']['type'], **self._config['repo_store']['config'])
-        
+        self._job_runner = JobRunnerFactory.get(self._config['job_runner']['type'], self, **self._config['job_runner']['config'])
         self._user = self._config['user']
-        self._job_runner = job_runner
+        
         # check if the ml mapping is already contained in the repo, otherwise add it
         logging.info('Get mapping.')
         repo_dict = []
@@ -819,10 +832,6 @@ class MLRepo:
             
         self._add_triggers = []
 
-        if job_runner is None:
-            from pailab.job_runner.job_runner import SimpleJobRunner
-            self._job_runner = SimpleJobRunner(self)
-            #self._job_runner.set_repo(self)
         if save_config:
             self._save_config()
       

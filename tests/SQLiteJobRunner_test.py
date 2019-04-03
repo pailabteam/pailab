@@ -98,12 +98,16 @@ class SQLiteJobRunner_Test(unittest.TestCase):
                           'version_files': True
                       }
                   }
+                  'job_runner':
+                  {
+                      'type': 'sqlite',
+                      'config': {
+                          'sqlite_db_name': 'tmp/job_runner.sqlite'
+                      }
+                  }
                   }
         self.repository = repo.MLRepo(user='unittestuser', config=config)
         self.handler = self.repository._ml_repo
-        self.job_runner = SQLiteJobRunner(
-            'tmp/job_runner.sqlite', self.repository)
-        self.repository._job_runner = self.job_runner
         # Setup dummy RawData
         raw_data = RawData(np.zeros([10, 1]), ['x0'], np.zeros(
             [10, 1]), ['y0'], repo_info={repo_objects.RepoInfoKey.NAME.value: 'raw_1'})

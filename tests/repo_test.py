@@ -464,6 +464,10 @@ class MLRepoConstructorTest(unittest.TestCase):
                   'version_files': True
               }
           }
+          'job_runner':
+          {
+              'type': 'simple'
+          }
         }
         # end diskhandlerconfig
 

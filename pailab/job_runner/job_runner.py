@@ -70,9 +70,18 @@ class JobRunnerBase(abc.ABC):
 
 
 class SimpleJobRunner(JobRunnerBase):
-    def __init__(self, repo):
+    def __init__(self, repo, throw_job_error = False):
+        """Constructor
+        
+        Args:
+            :param: repo (MLRepo): repository 
+            throw_job_error (bool, optional): Defaults to False. If True, all errors from job will be rethrown. Otherwise, 
+                error and traceback are stored in job only and no error will be thrown.
+        """
+
         self._repo = repo
         self._job_info = {}
+        self._throw_job_error = throw_job_error
 
     def set_repo(self, repo):
         self._repo = repo
@@ -98,6 +107,8 @@ class SimpleJobRunner(JobRunnerBase):
             job_info.set_state(JobState.FAILED)
             job_info.error_message = str(e)
             job_info.trace_back = traceback.format_exc()
+            if self._throw_job_error:
+                raise e
 
         return job_id
 

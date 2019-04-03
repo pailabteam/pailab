@@ -59,6 +59,13 @@ class TutorialTest(unittest.TestCase):
                           'folder': repo_path,
                           'version_files': True
                       }
+                  },
+                  'job_runner':
+                  {
+                      'type': 'simple',
+                      'config': {
+                          'throw_job_error': True
+                      }
                   }
                   }
         ml_repo = MLRepo(user='test_user', config=config)
