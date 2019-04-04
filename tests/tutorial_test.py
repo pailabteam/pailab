@@ -23,7 +23,7 @@ import pailab.ml_repo.memory_handler as memory_handler
 from pailab import RepoInfoKey, MeasureConfiguration, MLRepo, DataSet, MLObjectType
 from pailab.job_runner.job_runner import SimpleJobRunner, JobState, SQLiteJobRunner
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.ERROR)
 
 
 class TutorialTest(unittest.TestCase):
@@ -59,6 +59,13 @@ class TutorialTest(unittest.TestCase):
                           'folder': repo_path,
                           'version_files': True
                       }
+                  },
+                  'job_runner':
+                  {
+                      'type': 'simple',
+                      'config': {
+                          'throw_job_error': True
+                      }
                   }
                   }
         ml_repo = MLRepo(user='test_user', config=config)
@@ -68,6 +75,7 @@ class TutorialTest(unittest.TestCase):
         job_runner.set_repo(ml_repo)
         ml_repo._job_runner = job_runner
         # end specifying job runner
+        job_runner._throw_job_error = True
 
         from pailab.tools.tools import MLTree
         MLTree.add_tree(ml_repo)
@@ -197,6 +205,8 @@ class TutorialTest(unittest.TestCase):
         ml_repo.add(test_data_2)
         ml_repo.run_evaluation(run_descendants=True)
         # end add second test data snippet
+
+        ml_repo.run_tests()
 
         print(checker.run(ml_repo))
 

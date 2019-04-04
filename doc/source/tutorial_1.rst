@@ -35,11 +35,12 @@ storage saving the numpy data in hdf5 files. In this case you have to specify th
 
 
 In addition to the storages the repository needs a reference to a ``JobRunner`` which the platform can use to execute different jobs needed during
-your ML development process. As long as we did not specify another ``JobRunnner``, the ``MLRepo`` uses the most simple 
+your ML development process. As long as we do not specify another ``JobRunnner``, the ``MLRepo`` uses the most simple 
 :py:class:`pailab.job_runner.job_runner.SimpleJobRunner` as default, 
-that executes everything sequential in the same thread the repository runs in.
-
-If you want to explicitly set a JobRunner, you may simply instantiate the respective ``JobRunner`` and set it into the MLRepo's ``job_runner`` attribute
+that executes everything sequential in the same thread the repository runs in. There are two possibilities to set the ``JobRunner``. You may use the 
+configuration settings as shown above. In this case, the :py:class:`pailab.job_runner.job_runner_factory.JobRunnerFactory`is used to create the 
+respective `JobRunner` within `MLRepo`'s constructor. Another possibility you may use (e.g. if you implemented your on JobRunner and you do not want to integrate
+it into the factory), you may simply instantiate the respective ``JobRunner`` and set it into the MLRepo's ``job_runner`` attribute
 
 .. literalinclude:: ../../tests/tutorial_test.py
     :language: python
