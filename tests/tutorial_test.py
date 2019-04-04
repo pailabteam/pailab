@@ -2,6 +2,7 @@ import unittest
 import os
 import numpy as np
 import shutil
+import logging as logging
 import pailab.ml_repo.repo as repo
 import pailab.ml_repo.repo_objects as repo_objects
 from pailab import RepoInfoKey, MeasureConfiguration, MLObjectType, RawData, DataSet, repo_object_init, JobState
@@ -21,6 +22,8 @@ import logging as logging
 import pailab.ml_repo.memory_handler as memory_handler
 from pailab import RepoInfoKey, MeasureConfiguration, MLRepo, DataSet, MLObjectType
 from pailab.job_runner.job_runner import SimpleJobRunner, JobState, SQLiteJobRunner
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 class TutorialTest(unittest.TestCase):
@@ -74,13 +77,13 @@ class TutorialTest(unittest.TestCase):
         # and which to the targets.
 
         try:
-        # read pandas
+            # read pandas
             import pandas as pd
             data = pd.read_csv('./examples/boston_housing/housing.csv')
             # end read pandas
         except:
             data = pd.read_csv('../examples/boston_housing/housing.csv')
-            
+
         # extract data
         input_variables = ['RM', 'LSTAT', 'PTRATIO']
         target_variables = ['MEDV']
@@ -175,8 +178,31 @@ class TutorialTest(unittest.TestCase):
         # end add inconsistency snippet
 
         inconsistencies = checker.run(ml_repo)
-
         print(inconsistencies)
+
+        ml_repo.run_training()
+
+        inconsistencies = checker.run(ml_repo)
+        print(inconsistencies)
+
+        ml_repo.run_evaluation(run_descendants=True)
+
+        print(checker.run(ml_repo))
+
+        # add second test data snippet
+        test_data_2 = DataSet('raw_data/boston_housing', 0, 50,
+                              repo_info={RepoInfoKey.NAME: 'test_data_2',
+                                         RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA}
+                              )
+        ml_repo.add(test_data_2)
+        ml_repo.run_evaluation(run_descendants=True)
+        # end add second test data snippet
+
+        print(checker.run(ml_repo))
+
+        # check tests
+        print(checker.Tests.run(ml_repo))
+        # end check tests
 
         # cleanup after running
         # job_runner.close_connection()
