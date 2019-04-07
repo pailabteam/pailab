@@ -41,7 +41,7 @@ def eval_func_test(model, data):
     return np.zeros([10, 1])
 
 
-def train_func_test(model_param, training_param, data):
+def train_func_test(training_param, data):
     '''Dummy model training function for testing
 
         Function retrns independent of data and model a simple numpy array with zeros
