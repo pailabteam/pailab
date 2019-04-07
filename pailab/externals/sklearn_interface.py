@@ -51,10 +51,10 @@ def eval_sklearn(model, data):
         [type]: [description]
     """
 
-    return model.model.predict(data)
+    return model.model.predict(data.x_data)
 
 
-def train_sklearn(model_param, data_x, data_y, preprocessors=None):
+def train_sklearn(model_param, data, preprocessors=None):
     def get_class(full_class_name):
         parts = full_class_name.split('.')
         module = ".".join(parts[:-1])
@@ -64,7 +64,8 @@ def train_sklearn(model_param, data_x, data_y, preprocessors=None):
         return m
     m = get_class(model_param.sklearn_module_name +
                   '.' + model_param.sklearn_class_name)
-
+    data_x = data.x_data
+    data_y = data.y_data
     model = m(**model_param.sklearn_params)
     model.fit(data_x, data_y)
     result = SKLearnModel(model, preprocessors=preprocessors, repo_info={})
@@ -189,21 +190,21 @@ def add_preprocessor(repo, skl_preprocessor, preprocessor_name=None, preprocesso
 
     # add preprocessing
     repo.add_preprocessing_transforming_function(
-        transform_sklearn, repo_name = p_name + '/transform_sklearn')
+        transform_sklearn, repo_name=p_name + '/transform_sklearn')
     repo.add_preprocessing_fitting_function(
-        fit_sklearn, repo_name = p_name + '/fit_sklearn')
+        fit_sklearn, repo_name=p_name + '/fit_sklearn')
     param = skl_preprocessor.get_params(True)
     if preprocessor_param is not None:
         for k, v in preprocessor_param.items():
             param[k] = v
     skl_param = SKLearnPreprocessingParam(skl_preprocessor, param,
-                                          repo_info = {RepoInfoKey.NAME.value: p_name + '/preprocessor_param',
+                                          repo_info={RepoInfoKey.NAME.value: p_name + '/preprocessor_param',
                                                      RepoInfoKey.CATEGORY: MLObjectType.PREPROCESSOR_PARAM.value})
 
     if skl_param is not None:
         repo.add(skl_param, 'adding preprocessor parameter')
 
-    repo.add_preprocessor(p_name, transforming_function = p_name+'/transform_sklearn', fitting_function = p_name+'/fit_sklearn',
-                          preprocessor_param = p_name + '/preprocessor_param')
+    repo.add_preprocessor(p_name, transforming_function=p_name+'/transform_sklearn', fitting_function=p_name+'/fit_sklearn',
+                          preprocessor_param=p_name + '/preprocessor_param')
 
 # endregion
