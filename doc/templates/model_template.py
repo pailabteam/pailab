@@ -77,16 +77,14 @@ def eval(model, data):
 # function to train your model
 
 
-def train(model_param, train_param, data_x, data_y):
+def train(model_param, train_param, data):
     """function to train your model
 
     Args:
         model_param (PailabCompatibleModelParameter): model parameter
         train_param (PailabCompatibleTrainingParameter): training parameter
-        data_x (numpy array/matrix): x data
-        data_y (numpy array/matrix): y_data
-
-
+        data (DataSet): the data used for training
+        
     Returns:
         PailabCompatibleModel: trained model
     """
