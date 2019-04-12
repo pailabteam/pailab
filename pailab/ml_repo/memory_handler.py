@@ -175,7 +175,7 @@ class RepoObjectMemoryStorage(RepoStore):
                 -version is in the given list of versions
                 -modifiers match the version number/are in the list of version numbers of the given modifiers
         Arguments:
-            name {string} -- object id
+            name {str} -- object id
 
         Keyword Arguments:
             versions {list, version_number, tuple} -- either a list of versions or a single version of the objects to be returned (default: {None}),
@@ -183,9 +183,9 @@ class RepoObjectMemoryStorage(RepoStore):
                     all versions between the first and last entry (both including) are returned. In addition FIRST_VERSION and LAST_VERSION can be used for versions to access
                     the last/first version.
             modifier_versions {dictionary} -- modifier ids together with version specs which are matched by the returned object (default: {None}).
-            obj_fields {list of strings or string} -- list of strings identifying the fields which will be returned in the dictionary,
+            obj_fields {list of str or str} -- list of strings identifying the fields which will be returned in the dictionary,
                                                         if None, no fields are returned, if set to 'all', all fields will be returned  (default: {None})
-            repo_info_fields {list of strings or string} -- list of strings identifying the fields of the repo_info dict which will be returned in the dictionary,
+            repo_info_fields {list of str or str} -- list of strings identifying the fields of the repo_info dict which will be returned in the dictionary,
                                                         if None, no fields are returned, if set to 'all', all fields will be returned (default: {None})
             throw_error_not_exist {bool} -- true - throw error if not exists, else return [] (default: {True})
             throw_error_not_unique {bool} -- true - throw error if item is not unique, else return [] (default: {True})
