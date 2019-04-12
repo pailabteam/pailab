@@ -15,14 +15,14 @@ logger = logging.getLogger(__name__)
 
 
 def execute(cursor, cmd):
-    """Execute a sql statement (sqlite) with logging of statement 
-
-    Args:
-        cursor (cursor): cursor used to execute statement
-        cmd (str): sql statement which will be executed
-
+    """ Execute a sql statement (sqlite) with logging of the statement 
+    
+    Arguments:
+        cursor {[type]} -- cursor used to execute statement
+        cmd {str} -- sql statement which will be executed
+    
     Returns:
-        [type]: [description]
+        [type] -- return the cursor return
     """
 
     logger.info('Executing: ' + cmd)
@@ -30,6 +30,8 @@ def execute(cursor, cmd):
 
 
 class RepoObjectDiskStorage(RepoStore):
+    """ The RepoObjectDiskStorage class
+    """
 
     # region private
 
@@ -42,9 +44,18 @@ class RepoObjectDiskStorage(RepoStore):
     # endregion
 
     def _sqlite_db_name(self):
+        """ return the sqlite db path and file name
+        
+        Returns:
+            str -- return the path and file of the sqlite db
+        """
+
         return self._main_dir + '/.version.sqlite'
 
     def _create_new_db(self):
+        """ Creates a new sqlite db
+        """
+
         self._conn = sqlite3.connect(self._sqlite_db_name())
         # three tables: one with category->name mapping, one with category, version, and one with modification info
         # mapping
@@ -68,6 +79,9 @@ class RepoObjectDiskStorage(RepoStore):
             self._conn.rollback()
 
     def _setup_new(self):
+        """ Setup of the handler
+        """
+
         if not os.path.exists(self._main_dir):
             os.makedirs(self._main_dir)
         if not os.path.exists(self._sqlite_db_name()):
@@ -78,12 +92,19 @@ class RepoObjectDiskStorage(RepoStore):
     # endregion
 
     def __init__(self, folder, file_format='pickle'):
-        """Constructor
-
-        Args:
-            folder (str): directory used to store the objects in files as well as the sqlite database
-            save_function (function, optional): Defaults to pickle_save. Function used to save the objects to disk.
-            load_function (function, optional): Defaults to pickle_load. Function used to load the objects from disk.
+        """ Constructor
+        
+        Arguments:
+            folder {str} -- directory used to store the objects in files as well as the sqlite database
+        
+        Keyword Arguments:
+            file_format {str} -- the fileformat to save (default: {'pickle'})
+        
+        Raises:
+            Exception -- raise an exception if the file format is unknown (currently only pickle and json is supported)
+        
+        Returns:
+            [type] -- [description]
         """
 
         self._main_dir = folder
@@ -144,6 +165,16 @@ class RepoObjectDiskStorage(RepoStore):
             raise Exception("Unknown file format " + file_format)
 
     def _delete(self, name, version):
+        """ Deletes a object 
+        
+        Arguments:
+            name {str} -- the identifier of the object
+            version {str} -- the version of the object
+        
+        Raises:
+            Exception -- an exception is raised if the object does not exists
+        """
+
         condition = " where name='"+  name + "' and version='" + version + "'"
         delete_statement = "delete from modification_info " + condition
         cursor = self._conn.cursor()
@@ -166,14 +197,24 @@ class RepoObjectDiskStorage(RepoStore):
         self._conn.commit()
         
     def get_config(self):
+        """ return the configuration
+        
+        Returns:
+            dict -- a dictionary of the configuration
+        """
+
         return {'folder': self._main_dir, 'file_format': self._file_format}
 
     def get_names(self, ml_obj_type):
-        """Return the names of all objects belonging to the given category.
-
+        """ Return the names of all objects belonging to the given category.
+        
         Arguments:
-            ml_obj_type {string} -- Value of MLObjectType-Enum specifying the category for which all names will be returned
+            ml_obj_type {str} -- Value of MLObjectType-Enum specifying the category for which all names will be returned
+        
+        Returns:
+            list of str -- a list of all objects in the category
         """
+
         cursor = self._conn.cursor()
         result = []
         for row in execute(cursor, "select name, category from  mapping where category = '" + ml_obj_type + "'"):
@@ -183,13 +224,13 @@ class RepoObjectDiskStorage(RepoStore):
     def _add(self, obj):
         """Add an object to the storage.
 
-
         Arguments:
             obj {RepoObject} -- repository object
 
         Raises:
             Exception if an object with same name already exists.
         """
+
         cursor = self._conn.cursor()
         try:
             uid_time = _time_from_version(
@@ -236,6 +277,18 @@ class RepoObjectDiskStorage(RepoStore):
             self._conn.rollback()
 
     def get_version_condition(self, name, versions, version_column, time_column):
+        """ returns the condition part of the versions for the sql statement
+        
+        Arguments:
+            name {str} -- not used
+            versions {str or list of str} -- a or the versions to condition on
+            version_column {str} -- version column name
+            time_column {str} -- time column name
+        
+        Returns:
+            str -- the condition for the versions
+        """
+
         version_condition = ''
         if versions is not None:
             version_condition = ' and '
@@ -257,7 +310,7 @@ class RepoObjectDiskStorage(RepoStore):
 
     def _get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None,
              throw_error_not_exist=True, throw_error_not_unique=True):
-        """Get a dictionary/list of dictionaries fulffilling the conditions.
+        """ Get a dictionary/list of dictionaries fulffilling the conditions.
 
             Returns a list of objects matching the name and whose
                 -version is in the given list of versions
@@ -276,6 +329,7 @@ class RepoObjectDiskStorage(RepoStore):
             repo_info_fields {list of strings or string} -- list of strings identifying the fields of the repo_info dict which will be returned in the dictionary,
                                                         if None, no fields are returned, if set to 'all', all fields will be returned (default: {None})
         """
+
         category = None
         cursor = self._conn.cursor()
         for row in execute(cursor, 'select category from mapping where name = ' + "'" + name + "'"):
@@ -308,6 +362,21 @@ class RepoObjectDiskStorage(RepoStore):
         return objects
 
     def get_latest_version(self, name, throw_error_not_exist=True):
+        """ Determine the latest version of the object
+        
+        Arguments:
+            name {str} -- identifier of the object
+        
+        Keyword Arguments:
+            throw_error_not_exist {bool} -- true - throw error if not exists, else return [] (default: {True})
+        
+        Raises:
+            Exception -- Raises an exception if the object does not exists
+        
+        Returns:
+            str -- the latest version string of the object
+        """
+
         cursor = self._conn.cursor()
         for row in execute(cursor, "select version from versions where name = '" + name + "' order by uuid_time DESC LIMIT 1"):
             return row[0]
@@ -318,6 +387,21 @@ class RepoObjectDiskStorage(RepoStore):
             return []
 
     def get_first_version(self, name, throw_error_not_exist=True):
+        """ Determine the first version of the object
+        
+        Arguments:
+            name {str} -- identifier of the object
+        
+        Keyword Arguments:
+            throw_error_not_exist {bool} -- true - throw error if not exists, else return [] (default: {True})
+        
+        Raises:
+            Exception -- Raises an exception if the object does not exists
+        
+        Returns:
+            str -- the first version string of the object
+        """
+
         cursor = self._conn.cursor()
         for row in execute(cursor, "select version from versions where name = '" + name + "' order by uuid_time ASC LIMIT 1"):
             return row[0]
@@ -328,6 +412,22 @@ class RepoObjectDiskStorage(RepoStore):
             return []
 
     def get_version(self, name, offset, throw_error_not_exist=True):
+        """ Return the newest version up to offset versions
+        
+        Arguments:
+            name {str} -- the identifier of the object
+            offset {int} -- the offset
+        
+        Keyword Arguments:
+            throw_error_not_exist {bool} -- true - throw error if not exists, else return [] (default: {True})
+        
+        Raises:
+            Exception -- raises an exception if the object does not exists and throw_error_not_exist == True
+        
+        Returns:
+            str -- the version
+        """
+
         cursor = self._conn.cursor()
         if offset > 0:
             inner_select = "(select version, uuid_time from versions where name = '" + \
@@ -350,11 +450,12 @@ class RepoObjectDiskStorage(RepoStore):
             return []
 
     def replace(self, obj):
-        """Overwrite existing object without incrementing version
-
-        Args:
-            obj (RepoObject): repo object to be overwritten
+        """ Overwrite existing object without incrementing version
+        
+        Arguments:
+            obj {RepoObject} --  repo object to be overwritten
         """
+
         logger.info('Replacing ' + obj["repo_info"][RepoInfoKey.NAME.value] +
                     ', version ' + str(obj["repo_info"][RepoInfoKey.VERSION.value]))
         select_statement = "select path, file from versions where name = '" +\
@@ -374,16 +475,17 @@ class RepoObjectDiskStorage(RepoStore):
                         + obj["repo_info"][RepoInfoKey.NAME.value] + "','" + str(obj["repo_info"][RepoInfoKey.VERSION.value]) + "','" + k + "','" + str(v) + "','" + str(tmp) + "')")
 
     def close_connection(self):
-        """Closes the database connection
+        """ Closes the database connection
         """
         self._conn.close()
 
     def _get_all_files(self):
-        """Returns set of all files in directory
-
+        """ Returns set of all files in directory
+        
         Returns:
-            set: set with all filenames (including relative paths)
+            set -- set with all filenames (including relative paths)
         """
+
         f = set()
         for path, subdirs, files in os.walk(self._main_dir):
             if '.git' in subdirs:
@@ -398,10 +500,10 @@ class RepoObjectDiskStorage(RepoStore):
         return f
 
     def check_integrity(self):
-        """Checks if files are missing or have not yet been added
-
+        """ Checks if files are missing or have not yet been added
+        
         Returns:
-            dictionary: contains sets of missing files and/or set of files not yet added
+            dictionary -- contains sets of missing files and/or set of files not yet added
         """
 
         # first get list of all files
@@ -421,5 +523,8 @@ class RepoObjectDiskStorage(RepoStore):
         return result
 
     def _cleanup(self):
+        """ Checks the integrity of the files
+        """
+        
         files = self.check_integrity()
         print(files)
