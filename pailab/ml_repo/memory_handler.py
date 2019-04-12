@@ -9,9 +9,25 @@ logger = logging.getLogger(__name__)
 
 
 class RepoObjectMemoryStorage(RepoStore):
+    """ The repo object memory storage. 
+    This class is used to store repo object (excluding large objects) in the memory.
+    The importance of the handler is mostly for testing purposes.
+    """
+
     # region private
 
     def _is_in_versions(self, version, versions):
+        """ Check whether the version exists between the dates of the two versions
+        
+        Arguments:
+            version {str} -- the version to check whether it is here
+            versions {list of str} -- a list of possible two versions, 
+                                takes the date of the first version as a start date and the second as the end date
+        
+        Returns:
+            bool -- returns true if the version is in between the two dates
+        """
+
         if version is None:
             return True
         if versions is None:
@@ -33,14 +49,14 @@ class RepoObjectMemoryStorage(RepoStore):
         return version == v
 
     def _is_in_modifications(self, obj, modifications):
-        """Check if dictionary contains all modifications as given and if their version is in the respective version spec
+        """ Check if dictionary contains all modifications as given and if their version is in the respective version spec
 
         Arguments:
             obj {dict} -- object dictionary
             modifications {dict} -- [description]
 
         Returns:
-            [bool] -- either True or False depending if given modification criteria is met
+            bool -- either True or False depending if given modification criteria is met
         """
         if modifications is None:
             return True
@@ -55,12 +71,23 @@ class RepoObjectMemoryStorage(RepoStore):
         return result
 
     def _get_object_list(self, name, throw_error_not_exist=True, throw_error_not_unique=True):
-        """Return list of all versions of an object.
-
-        :param name: name of object
-
-        :return list of versions of object
+        """ Return list of all versions of an object.
+        
+        Arguments:
+            name {str} -- name of the object
+        
+        Keyword Arguments:
+            throw_error_not_exist {bool} -- true - throw error if not exists, else return [] (default: {True})
+            throw_error_not_unique {bool} -- true - throw error if item is not unique, else return [] (default: {True})
+        
+        Raises:
+            Exception -- raises an exception if no object with the name is found
+            Exception -- raises an exception if no object in the category with the name is found
+        
+        Returns:
+            list of str -- list of versions of object
         """
+
         if not name in self._name_to_category.keys():
             if throw_error_not_exist:
                 logger.error('No object with name ' + name + ' in store.')
@@ -84,11 +111,21 @@ class RepoObjectMemoryStorage(RepoStore):
 # endregion
 
     def __init__(self):
+        """ Initializes the handler
+        """
+
         self._store={}
         self._name_to_category={}
         self._categories={}
 
     def _delete(self, name, version):
+        """ Delete an object from the repo
+
+        Arguments:
+            name {str} -- the identifier of the object
+            version {str} -- the version of the object to delete
+        """
+
         category = self._name_to_category[name]
         objs = self._store[category][name]
         counter = -1
@@ -103,14 +140,14 @@ class RepoObjectMemoryStorage(RepoStore):
                 del self._name_to_category[name]
         
     def _add(self, obj):
-        """ Add an object of given category to the storage.
+        """ Adds an object to the storage
 
         The objects version will be set to the latest version+1.
 
-        :param obj: The object added.
-
-        :return: version number of added object
+        Arguments:
+            obj {RepoObject} -- the repo object to add to git
         """
+
         category=obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value]
         if not isinstance(category, str):
             category=category.value
@@ -132,6 +169,31 @@ class RepoObjectMemoryStorage(RepoStore):
 
     def _get(self, name, versions = None, modifier_versions = None, obj_fields = None,  repo_info_fields = None,
              throw_error_not_exist=True, throw_error_not_unique=True):
+        """ Get a dictionary/list of dictionaries fulffilling the conditions.
+
+            Returns a list of objects matching the name and whose
+                -version is in the given list of versions
+                -modifiers match the version number/are in the list of version numbers of the given modifiers
+        Arguments:
+            name {string} -- object id
+
+        Keyword Arguments:
+            versions {list, version_number, tuple} -- either a list of versions or a single version of the objects to be returned (default: {None}),
+                    if None, the condition on version is ignored. If a tuple is given, this tuple defines a version intervall, i.e.
+                    all versions between the first and last entry (both including) are returned. In addition FIRST_VERSION and LAST_VERSION can be used for versions to access
+                    the last/first version.
+            modifier_versions {dictionary} -- modifier ids together with version specs which are matched by the returned object (default: {None}).
+            obj_fields {list of strings or string} -- list of strings identifying the fields which will be returned in the dictionary,
+                                                        if None, no fields are returned, if set to 'all', all fields will be returned  (default: {None})
+            repo_info_fields {list of strings or string} -- list of strings identifying the fields of the repo_info dict which will be returned in the dictionary,
+                                                        if None, no fields are returned, if set to 'all', all fields will be returned (default: {None})
+            throw_error_not_exist {bool} -- true - throw error if not exists, else return [] (default: {True})
+            throw_error_not_unique {bool} -- true - throw error if item is not unique, else return [] (default: {True})
+
+        Returns:
+            RepoObject or list thereof -- The repo object
+        """
+
         tmp=self._get_object_list(name, throw_error_not_exist, throw_error_not_unique)
         result=[]
         for x in tmp:
@@ -141,6 +203,23 @@ class RepoObjectMemoryStorage(RepoStore):
         return result
 
     def get_version(self, name, offset, throw_error_not_exist=True):
+        """ Return the newest version up to offset versions
+        
+        Arguments:
+            name {str} -- the identifier of the object
+            offset {int} -- the offset
+        
+        Keyword Arguments:
+            throw_error_not_exist {bool} -- true - throw error if not exists, else return [] (default: {True})
+        
+        Raises:
+            Exception -- raises an error if the offset is higher than the number of versions available
+            Exception -- raises an exception if the object does not exists and throw_error_not_exist == True
+        
+        Returns:
+            str -- the version
+        """
+
         tmp=self._get_object_list(name, throw_error_not_exist)
         if (offset < 0 and abs(offset) > len(tmp)) or offset >= len(tmp):
             if throw_error_not_exist:
@@ -156,10 +235,21 @@ class RepoObjectMemoryStorage(RepoStore):
         return self._get_object_list(name)[offset]['repo_info'][repo_objects.RepoInfoKey.VERSION.value]
 
     def get_latest_version(self, name, throw_error_not_exist=True):
-        """Return latest version number of an object.
-
-        :param name: name of object
+        """ Determine the latest version of the object
+        
+        Arguments:
+            name {str} -- identifier of the object
+        
+        Keyword Arguments:
+            throw_error_not_exist {bool} -- true - throw error if not exists, else return [] (default: {True})
+        
+        Raises:
+            Exception -- Raises an exception if the object does not exists
+        
+        Returns:
+            str -- the latest version string of the object
         """
+
         tmp=self._get_object_list(name, throw_error_not_exist)
         if len(tmp) == 0:
             if throw_error_not_exist:
@@ -170,10 +260,21 @@ class RepoObjectMemoryStorage(RepoStore):
         return tmp[-1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value]
 
     def get_first_version(self, name, throw_error_not_exist=True):
-        """Return latest version number of an object.
-
-        :param name: name of object
+        """ Determine the first version of the object
+        
+        Arguments:
+            name {str} -- identifier of the object
+        
+        Keyword Arguments:
+            throw_error_not_exist {bool} -- true - throw error if not exists, else return [] (default: {True})
+        
+        Raises:
+            Exception -- Raises an exception if the object does not exists
+        
+        Returns:
+            str -- the first version string of the object
         """
+
         tmp=self._get_object_list(name, throw_error_not_exist)
         if len(tmp) == 0:
             if throw_error_not_exist:
@@ -184,23 +285,27 @@ class RepoObjectMemoryStorage(RepoStore):
         return tmp[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value]
 
     def get_names(self, category):
-        """Return object names of all object in a category.
-
-        :param category: category name
-
-        :return: list of object names belonging to the category
+        """ Return the names of all objects belonging to the given category.
+        
+        Arguments:
+            ml_obj_type {str} -- Value of MLObjectType-Enum specifying the category for which all names will be returned
+        
+        Returns:
+            list of str -- a list of all objects in the category
         """
+
         if not category in self._store.keys():
             return []
             # raise Exception('Category ' + category + ' not in storage.')
         return [x for x in self._store[category].keys()]
 
     def replace(self, obj):
-        """Overwrite existing object without incrementing version
-
-        Args:
-            obj (RepoObject): repo object to be overwritten
+        """ Overwrite existing object without incrementing version
+        
+        Arguments:
+            obj {RepoObject} --  repo object to be overwritten
         """
+
         category=obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value]
         if not isinstance(category, str):
             category=category.value
@@ -231,12 +336,13 @@ class NumpyMemoryStorage(NumpyStore):
         self._store = {}
 
     def _delete(self, name, version):
-        """Delete an object with a predefined version
+        """ Delete an object from the repo
 
-        Args:
-            name (str): name of object
-            version (str): object version
+        Arguments:
+            name {str} -- the identifier of the object
+            version {str} -- the version of the object to delete
         """
+
         if name in self._store.keys():
             if version in self._store[name].keys():
                 del self._store[name][version]
@@ -245,12 +351,13 @@ class NumpyMemoryStorage(NumpyStore):
 
     def add(self, name, version, numpy_dict):
         """ Add numpy data from an object to the storage.
-
-        :param name: Name (as string) of object
-        :param version: object version
-        :param numpy_dict: numpy dictionary
-
+        
+        Arguments:
+            name {str} -- identifier (as string) of object
+            version {str} -- object version
+            numpy_dict {numpy dict} -- numpy dictionary
         """
+
         logger.debug('Adding data for ' + name + ' an version ' + str(version))
         if not name in self._store.keys():
             self._store[name] = {version: numpy_dict}
@@ -258,6 +365,18 @@ class NumpyMemoryStorage(NumpyStore):
             self._store[name][version] = numpy_dict
 
     def append(self, name, version_old, version_new, numpy_dict):
+        """ appends an numpy dictionary to an existing object
+        
+        Arguments:
+            name {str} -- identifier of the object
+            version_old {str} -- the old version of the object
+            version_new {str} -- the new version of the object
+            numpy_dict {numpy dict} -- the numpy dictionary to append
+        
+        Raises:
+            Exception -- raises an exception if the object does not exist
+        """
+
         if not name in self._store.keys():
             logger.error("Cannot append data because " +
                          name + " does not exist.")
@@ -267,8 +386,24 @@ class NumpyMemoryStorage(NumpyStore):
             'previous': version_old,  'numpy_dict': numpy_dict}
 
     def get(self, name, version, from_index=0, to_index=None):
+        """ get the numpy object for a name and a version, rows can be used
+        
+        Arguments:
+            name {str} -- identifier of the object
+            version {str} -- version of the object
+        
+        Keyword Arguments:
+            from_index {int} -- the index from which the data should be taken (default: {0})
+            to_index {int or None} -- the index to which the data is returned (None means till the end) (default: {None})
+        
+        Raises:
+            Exception -- raises an exception if no object with the name exists
+            Exception -- raises an exception if no object and with the version exists 
+        
+        Returns:
+            numpy array -- the numpy object to return
         """
-        """
+
         logger.debug('Get data for ' + name + ' and version ' + str(version))
         if not name in self._store.keys():
             raise Exception('No numpy data for object ' +
