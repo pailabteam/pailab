@@ -4,7 +4,7 @@ such as axes labels, titles, additional info which may be shown on hover in the 
 
 import logging
 from pailab.ml_repo.repo import MLObjectType, MLRepo, NamingConventions  # pylint: disable=E0401,E0611
-from pailab.ml_repo.repo_objects import RepoInfoKey  # pylint: disable=E0401
+from pailab.ml_repo.repo_objects import RepoInfoKey, RawData  # pylint: disable=E0401
 from pailab.ml_repo.repo_store import RepoStore, LAST_VERSION, FIRST_VERSION, _time_from_version  # pylint: disable=E0401
 
 logger = logging.getLogger(__name__)
@@ -316,12 +316,13 @@ def project(ml_repo, model = None, labels = None, left = None, right=None,
         m  = ml_repo.get(model)
         model.append((model, m.repo_info.version, 'latest'))
         
+    data = RawData(x_data, [""]*x_data.shape[1])
     for model in models:
         tmp = ml_repo.get(model[0], version=model[1], full_object=True)
         model_name = model[0].split('/')[0]
         model_def = ml_repo.get(model_name, tmp.repo_info.modification_info[model_name])
         eval_func = ml_repo.get(model_def.eval_function)
-        tmp = eval_func.create()(tmp, x_data)
+        tmp = eval_func.create()(tmp, data)
         if len(tmp.shape) == 1:
             result[model[2]] = tmp
         elif len(tmp.shape) == 2:
