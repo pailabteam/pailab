@@ -38,7 +38,7 @@ It provides:
 - Versioning of all objects of the ML development cycle
 - Full transparency over the whole ML development cycle
 - Support to work in a team on the same AI projects, sharing data, algorithms and results
-- Consistency checks across
+- Consistency checks across the whole pipeline
 - Distributed execution of parallel jobs, e.g. for parameter studies
 - Standardized analysis plots
 - Jupyter widgets to administrate and control the ML repo
