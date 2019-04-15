@@ -4,11 +4,15 @@ from pailab.numpy_handler_hdf import NumpyHDFStorage
 
 
 def _get_all_files(directory):
-    """Returns set of all files in directory
+    """ Returns set of all files in directory
+
+    Arguments:
+        directory {str} -- the directory
 
     Returns:
-        set: set with all filenames (including relative paths)
+        set -- set with all filenames (including relative paths)
     """
+
     f = set()
     for path, subdirs, files in os.walk(directory):
         for name in files:
@@ -18,16 +22,19 @@ def _get_all_files(directory):
     return f
 
 
-def get_numpy_data(numpy_hdf_store: NumpyHDFStorage, gcs_bucket_name: str, update_new_only: bool =True):
-    """Get NumpyData for a given NumpyHDFStorage from gcs.
+def get_numpy_data(numpy_hdf_store: NumpyHDFStorage, gcs_bucket_name: str, update_new_only: bool = True):
+    """ Get NumpyData for a given NumpyHDFStorage from gcs.
 
     It only updates new files or files that have a different md5 checksum.
 
-    Args:
-        numpy_hdf_store (NumpyHDFStorage): [description]
-        gcs_bucket_name (str): [description]
-        update_new_only (bool): if True, only new files are loaded from gcs, otherwise also the files with diferent md5 checksum are loaded
+    Arguments:
+        numpy_hdf_store {NumpyHDFStorage} -- the numpy hdf storage
+        gcs_bucket_name {str} -- [description]
+
+    Keyword Arguments:
+        update_new_only {bool} -- if True, only new files are loaded from gcs, otherwise also the files with diferent md5 checksum are loaded (default: {True})
     """
+
     files_in_store = _get_all_files(numpy_hdf_store.main_dir)
     storage_client = storage.Client()
     bucket = storage_client.get_bucket(gcs_bucket_name)
