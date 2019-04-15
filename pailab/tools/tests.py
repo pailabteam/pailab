@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+"""This module contains all tests.
+
+
+"""
+
 import abc
 from collections import defaultdict
 import logging
@@ -15,10 +21,22 @@ class TestDefinition(RepoObject, abc.ABC):
     A test definition defines the framework such as models and data the tests are applied to. It also provides a create method
     which creates the test cases for a special model and data version.
 
+    Args:
+        models (iterable with str items, optional): Defaults to None. Iterable (e.g. list of str) returning names of the models to be tested.
+        data (iterable with str items, optional): Defaults to None. Iterable (e.g. list of str)  returning names of the data used for testing.
+        labels (iterable with str items, optional): Defaults to []. Iterable returning labels defining models to be tested.
+        repo_info (RepoInfo, optional): Defaults to RepoInfo(). 
+
+    Attributes:
+        models (list of str): List of strings defining the models to be tested.
+        labels (list of str): List of strings defining the labels to be tested.
+        data (list of str): List of strings defining the names of the data to be tested
+
     """
 
-    @repo_object_init()
     def __init__(self, models=None, data=None, labels=[], repo_info=RepoInfo()):
+        super(TestDefinition, self).__init__(repo_info)
+        self.repo_info.category = MLObjectType.TEST_DEFINITION
         self.models = models
         self.data = data
         self.labels = None
@@ -92,6 +110,37 @@ class TestDefinition(RepoObject, abc.ABC):
 
 
 class Test(Job):
+    """Base class for all tests.
+
+    Note: 
+        In general, tests are automatically constructed and run using :py:meth:`pailab.ml_repo.repo.run_tests`. As a user, there is nearly no need to
+        construct a test by hand.
+
+    Args:
+        model (str): Name of model for which the test is applied.
+        data (str): Name of dataset used in the test.
+        test_definition_version (str, optional): Defaults to latest version. Version of the tests's underlying :py:class:`pailab.tools.tests.TestDefinition` that is used as basis for the test.
+        model_version (str, optional): Defaults to latest version. Version of the model the test is applied to.
+        data_version (str, optional): Defaults to latest version. Version of the data used in the test.
+
+    Args:
+        model (str): Name of model for which the test is applied.
+        data (str): Name of dataset used in the test.
+        test_definition_version (str, optional): Defaults to latest version. Version of the tests's underlying :py:class:`pailab.tools.tests.TestDefinition` that is used as basis for the test.
+        model_version (str, optional): Defaults to latest version. Version of the model the test is applied to.
+        data_version (str, optional): Defaults to latest version. Version of the data used in the test.
+
+    Attributes:
+        test_definition (str): Name of underlying  :py:class:`pailab.tools.tests.TestDefinition`.
+        model (str): Name of model for which the test is applied.
+        data (str): Name of dataset used in the test.
+        test_definition_version (str): Version of the tests's underlying :py:class:`pailab.tools.tests.TestDefinition` that is used as basis for the test.
+        model_version (str): Version of the model the test is applied to.
+        data_version (str): Version of the data used in the test.
+        result (str, 'not run', 'failed', 'succeeded'):  Describes the state of the test.
+        details (dict): Contains details when test fails, otherwise empty dict.
+    """
+
     def __init__(self, model, data, test_definition_version=LAST_VERSION, model_version=LAST_VERSION, data_version=LAST_VERSION, repo_info=RepoInfo()):
         super(Test, self).__init__(repo_info)
         self.test_definition = None
@@ -104,6 +153,13 @@ class Test(Job):
         self.details = {}
 
     def _run(self, ml_repo: MLRepo, jobid):
+        """Method called from Job base class 
+
+        Args:
+            ml_repo (MLRepo): Repo used to retrieve and store data.
+            jobid (str): Id of job
+        """
+
         result = self._run_test(ml_repo, jobid)
         if len(result) > 0:
             self.result = 'failed'
@@ -130,20 +186,51 @@ class Test(Job):
 
 
 class RegressionTestDefinition(TestDefinition):
-    @repo_object_init()
-    def __init__(self, reference='prod', models=None, data=None, labels=None, measures=None,  tol=1e-3, repo_info=RepoInfo()):
-        """Regression test definition
+    """Definition of a regression test.
 
-        It defines a test where measures are compared against values from a reference model. The test fails if the new measure exceeds the reference measure
-        with 
+    A regression test compares a specified measure of a reference model described by a label to the respective measure of the model
+    to be tested. It fails, if the measure of the tested model is greater then a given tolerance of the reference measure, i.e. the test fails if
 
-        Args:
-            model (str, optional): Defaults to '.*'. Regular expression defining the models the test should be applied to.
-            data (str, optional): Defaults to '.*'. Regular expression defining the data the test should be applied to.
-            measures ([type], optional): Defaults to None. List of measures used in the test
-            reference (str, optional): Defaults to 'prod'. Label defining th reference model to which the measures are compared.
-            tol ([type], optional): Defaults to 1e-3. Tolerance, if new_value-ref_value < tol, the test fails.
-        """
+        - measure-measure_ref < tol and an absolute tolerance is defined,
+        - measure-measure_ref < tol*measure_ref if a relative tolerance is used.
+
+    Note:
+        The tests needs the chosen measure(s) to be computed, therefore you have to take care that the measure has 
+        been added to the repo (using :py:meth:`pailab.ml_repo.repo.MLRepo.add_measure`)
+
+    Examples:
+        Add a test for the model `'my_model'` on a data set named `'test_data'` which checks if the 
+        maximum error of the model is not greater than 10% in relation to the error of the reference model defined by the label `'production_model'`
+
+        >>> test_def = RegressionTestDefinition(models=['my_model'], reference ='production_model', data = ['test_data'], measures = ['max'], tol = 0.1, relative = True)
+        >>> ml_repo.add(test_def)
+
+        Add a test applied to all models in the repo (always the latest versions of the models are used within the tests)
+
+
+        >>> test_def = RegressionTestDefinition(models=None, reference ='production_model', data = ['test_data'], measures = ['max'], tol = 0.1, relative = True)
+        >>> ml_repo.add(test_def)
+
+    Args:
+        models (iterable with str items, optional): Defaults to None. Iterable (e.g. list of str) returning names of the models to be tested.
+        data (iterable with str items, optional): Defaults to None. Iterable (e.g. list of str)  returning names of the data used for testing.
+        labels (iterable with str items, optional): Defaults to []. Iterable returning labels defining models to be tested.
+        measures ([type], optional): Defaults to None. List of measures used in the test
+        reference (str, optional): Defaults to 'prod'. Label defining the reference model to which the measures are compared.
+        tol (float, optional): Defaults to 1e-3. Tolerance, if relative is False, the test fails if new_value-ref_value < tol, otherwise if new_value-ref_value < tol*ref_value.
+        relative (bool, optional): Defaults to False. 
+
+        repo_info (RepoInfo, optional): Defaults to RepoInfo(). 
+
+    Attributes:
+        models (list of str): List of strings defining the models to be tested.
+        labels (list of str): List of strings defining the labels to be tested.
+        data (list of str): List of strings defining the names of the data to be tested
+
+    """
+
+    def __init__(self, reference='prod', models=None, data=None, labels=None,
+                 measures=None,  tol=1e-3, repo_info=RepoInfo(), relative=False):
 
         super(RegressionTestDefinition, self).__init__(
             models, data, labels, repo_info=repo_info)
@@ -151,15 +238,48 @@ class RegressionTestDefinition(TestDefinition):
         self.reference = reference
         self.tol = tol
         self.repo_info.category = MLObjectType.TEST_DEFINITION
+        self.relative = relative
 
     def _create(self, model, data, model_version, data_version):
         return RegressionTest(model, data, self.repo_info[RepoInfoKey.VERSION], model_version, data_version, repo_info={})
 
 
 class RegressionTest(Test):
-    @repo_object_init()
-    def __init__(self,  model, data, test_definition_version=LAST_VERSION, model_version=LAST_VERSION, data_version=LAST_VERSION,
-                 repo_info=RepoInfo()):
+    """Regression test.
+
+    Note: 
+        In general, tests are automatically constructed and run using :py:meth:`pailab.ml_repo.repo.run_tests`. As a user, there is nearly no need to
+        construct a test by hand.
+
+    A regression test compares a specified measure of a reference model described by a label to the respective measure of the model
+    to be tested. It fails, if the measure of the tested model is greater then a given tolerance of the reference measure, i.e. the test fails if
+
+        - measure-measure_ref < tol and an absolute tolerance is defined,
+        - measure-measure_ref < tol*measure_ref if a relative tolerance is used.
+
+    All the attributes specific for the regression test (i.e. not contained in the base class) are retrieved during the run of the test
+    from the underlying testdefinition.
+
+    Args:
+        model (str): Name of model for which the test is applied.
+        data (str): Name of dataset used in the test.
+        test_definition_version (str, optional): Defaults to latest version. Version of the tests's underlying :py:class:`pailab.tools.tests.TestDefinition` that is used as basis for the test.
+        model_version (str, optional): Defaults to latest version. Version of the model the test is applied to.
+        data_version (str, optional): Defaults to latest version. Version of the data used in the test.
+
+    Attributes:
+        test_definition (str): Name of underlying  :py:class:`pailab.tools.tests.TestDefinition`.
+        model (str): Name of model for which the test is applied.
+        data (str): Name of dataset used in the test.
+        test_definition_version (str): Version of the tests's underlying :py:class:`pailab.tools.tests.TestDefinition` that is used as basis for the test.
+        model_version (str): Version of the model the test is applied to.
+        data_version (str): Version of the data used in the test.
+        result (str, 'not run', 'failed', 'succeeded'):  Describes the state of the test.
+        details (dict): Contains details when test fails, otherwise empty dict.
+    """
+
+    def __init__(self,  model, data, test_definition_version=LAST_VERSION,
+                 model_version=LAST_VERSION, data_version=LAST_VERSION, repo_info=RepoInfo()):
         super(RegressionTest, self).__init__(
             model, data, test_definition_version, model_version, data_version, repo_info=repo_info)
 
@@ -203,9 +323,14 @@ class RegressionTest(Test):
                                           modifier_versions={str(NamingConventions.CalibratedModel(
                                               label.name)): label.version,
                                               self.data: self.data_version}, adjust_modification_info=False)
-            if measure.value-reference_value.value > regression_test.tol:
-                result[measure_type] = {
-                    'reference_value': reference_value.value, 'value': measure.value}
+            if regression_test.relative:
+                if measure.value-reference_value.value < regression_test.tol*reference_value.value:
+                    result[measure_type] = {
+                        'reference_value': reference_value.value, 'value': measure.value}
+            else:
+                if measure.value-reference_value.value < regression_test.tol:
+                    result[measure_type] = {
+                        'reference_value': reference_value.value, 'value': measure.value}
         return result
 
     def get_modifier_versions(self, ml_repo):

@@ -97,8 +97,9 @@ class TensorflowKerasModelParameter:
         n_overall_units = 0
         counter = 0
         for i in range(len(self.param)):
-            if 'units' in  self.param[i]['config'].keys():
-                result['units layer_' + str(counter)] = self.param[i]['config']['units']
+            if 'units' in self.param[i]['config'].keys():
+                result['units layer_' +
+                       str(counter)] = self.param[i]['config']['units']
                 n_overall_units += self.param[i]['config']['units']
                 counter += 1
         result['n_overall_units'] = n_overall_units
@@ -117,13 +118,15 @@ def eval_keras_tensorflow(model, data):
     """
     backend.clear_session()
     with tf.Session() as sess:
-        result = model.get_model().predict(data)
+        result = model.get_model().predict(data.x_data)
         return result
 
 
-def train_keras_tensorflow(model_param, train_param, data_x, data_y, verbose=0):
+def train_keras_tensorflow(model_param, train_param, data, verbose=0):
     #sess = tf.Session()
     backend.clear_session()
+    data_x = data.x_data
+    data_y = data.y_data
     with tf.Session() as sess:
         cb = []
         if train_param.early_stopping != {}:

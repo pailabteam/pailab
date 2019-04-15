@@ -469,8 +469,9 @@ class EvalJob(Job):
                     x_data, x_coord_names = transforming_func.create()(prepro_param, x_data, x_coord_names, model.fitted_preprocessors[k])
                 else:
                     x_data, x_coord_names = transforming_func.create()(prepro_param, x_data, x_coord_names)
-
-        y = eval_func.create()(model, x_data)
+            data.x_data = x_data
+            data.x_coord_names = x_coord_names
+        y = eval_func.create()(model, data)
         
         result = repo_objects.RawData(y, data.y_coord_names, repo_info={
                             RepoInfoKey.NAME: MLRepo.get_eval_name(model_definition, data),
@@ -559,14 +560,13 @@ class TrainingJob(Job):
                 model.model_param, self.model_param_version)
 
         # preprocessing
-        x_data = train_data.x_data
-        x_coord_names = train_data.x_coord_names
-        y_data = train_data.y_data
         preprocessors_modification_info = {}
         if model.preprocessors is None:
             fitted_preprocessors = None
             list_preprocessors = None
         else:
+            x_data = train_data.x_data
+            x_coord_names = train_data.x_coord_names
             list_preprocessors = []
             fitted_preprocessors = []
             preprocessor_output_columns = []
@@ -627,15 +627,16 @@ class TrainingJob(Job):
                     x_coord_names = x_coord_names_new
                 #_add_modification_info(preprocessor, transforming_func, prepro_param, fitting_func)
                 list_preprocessors.append(preprocessor)
-        
+            train_data.x_data = x_data
+            train_data.x_coord_names = x_coord_names
         # calibration
         if model_param is None:
-            result = train_func.create()(train_param, x_data, y_data)
+            result = train_func.create()(train_param, train_data)
         else:
             if train_param is None:
-                result = train_func.create()(model_param, x_data, y_data)
+                result = train_func.create()(model_param, train_data)
             else:
-               result = train_func.create()(model_param, train_param, x_data, y_data)
+               result = train_func.create()(model_param, train_param, train_data)
 
         if isinstance(result, tuple):
             calibrated_model = result[0]

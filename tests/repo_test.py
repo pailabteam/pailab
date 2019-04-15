@@ -143,7 +143,7 @@ def eval_func_test(model, data):
     '''
     return np.zeros([data.shape[0],1])
 
-def train_func_test(model_param, training_param, data):
+def train_func_test(training_param, data):
     '''Dummy model training function for testing
     
         Function returns independent of data and model a simple numpy array with zeros
@@ -692,6 +692,21 @@ class NumpyHDFStorageTest(unittest.TestCase):
         test_data_get = self.store.get('test_3d', '1')
         self.assertEqual(test_data_get['test_data'].shape, test_data.shape)
         self.assertEqual(test_data[0,0,0], test_data_get['test_data'][0,0,0])
+
+
+from pailab.tools.tests import RegressionTestDefinition
+class RegressionTestTest(unittest.TestCase):
+    """Test tools.RegressionTestDefinition
+
+    """
+    def test_regression_test(self):
+        """Test the regression test framework
+        """
+        repo = MLRepo(user = 'unittestuser')
+        model_1 = TestClass(1.0, 2.0, repo_info={'name': 'model'})
+        model_1.repo_info.category = MLObjectType.CALIBRATED_MODEL.value
+        model_version = repo.add(model_1)
+        measure_1 = repo_objects.Measure(1.0, repo_info = {'name':'model/measure/test_data/max', 'modification_info': {'model'}})
 
 if __name__ == '__main__':
     unittest.main()

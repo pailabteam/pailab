@@ -301,6 +301,9 @@ class Tests:
             result = test._check(repo)
             if not result is None:
                 results[test_name] = result
+            if not test.result =='succeeded':
+                results[test_name] = 'Test for model ' + model + ', version ' + model_version +' on latest data ' + d + ' failed, details: ' + str(test.details)
+                
         return results
 
     @staticmethod

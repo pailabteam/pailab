@@ -162,7 +162,8 @@ class TutorialTest(unittest.TestCase):
         # test definition snippet
         import pailab.tools.tests
         reg_test = pailab.tools.tests.RegressionTestDefinition(
-            reference='prod', models=None, data=None, labels=None, measures=None,  tol=1e-3)
+            reference='prod', models=None, data=None, labels=None,
+            measures=[MeasureConfiguration.MAX],  tol=1000)
         reg_test.repo_info.name = 'reg_test'
         ml_repo.add(reg_test, message='regression test definition')
         # end test definition snippet
@@ -206,9 +207,9 @@ class TutorialTest(unittest.TestCase):
         ml_repo.run_evaluation(run_descendants=True)
         # end add second test data snippet
 
-        ml_repo.run_tests()
+        print(checker.Tests.run(ml_repo))
 
-        print(checker.run(ml_repo))
+        ml_repo.run_tests()
 
         # check tests
         print(checker.Tests.run(ml_repo))

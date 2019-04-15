@@ -42,9 +42,16 @@ for his project if it would make sense for his problems or not and pailab suppor
 
 A test basically consists of two parts: 
 
-- A definition of the principal test containing the type of test and a definition for what data and models the tests are created
-- the tests itself which are also jobs executed by the ``MLRepo``'s internal JobRunner
+- A definition of the principal test containing the type of test and a definition for what data and models the tests are created,
+- the tests itself which are also jobs executed by the ``MLRepo``'s internal JobRunner.
 
+.. NOTE::
+
+    As a user, you normally just define the test using the respective :py:class:`pailab.tools.tests.TestDefinition` and you do not instantiate 
+    an object from the :py:class:`pailab.tools.tests.Test` class on your own.
+
+Regression tests
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 We define a set of regression tests using :py:class:`pailab.tools.tests.RegressionTestDefinition`.
 Here, pailab's  RegressionTest compares specified error measures of a model with error measures of a 
 reference model (typically the one in production, maybe labeled 'prod' ;-) )
@@ -54,7 +61,7 @@ reference model (typically the one in production, maybe labeled 'prod' ;-) )
     :start-after:  test definition snippet
     :end-before: end test definition snippet
 
-We may run the test by calling :py:meth:`pailab.repo.MLRepo.run_test`
+We may run the test by calling :py:meth:`pailab.ml_repo.MLRepo.run_test`
 
 .. literalinclude:: ../../tests/tutorial_test.py
     :language: python
