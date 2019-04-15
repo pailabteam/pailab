@@ -84,7 +84,7 @@ def train(model_param, train_param, data):
         model_param (PailabCompatibleModelParameter): model parameter
         train_param (PailabCompatibleTrainingParameter): training parameter
         data (DataSet): the data used for training
-        
+
     Returns:
         PailabCompatibleModel: trained model
     """
