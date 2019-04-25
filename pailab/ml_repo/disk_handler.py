@@ -1,6 +1,7 @@
 
 
 import os
+from contextlib import closing
 import sqlite3
 from datetime import datetime, timedelta
 
@@ -12,21 +13,8 @@ from pailab.ml_repo.repo_store import RepoStore
 from shutil import copy
 import logging
 logger = logging.getLogger(__name__)
+logger_sql = logging.getLogger(__name__ + '_SQLITE')
 
-
-def execute(cursor, cmd):
-    """ Execute a sql statement (sqlite) with logging of the statement 
-    
-    Arguments:
-        cursor {[type]} -- cursor used to execute statement
-        cmd {str} -- sql statement which will be executed
-    
-    Returns:
-        [type] -- return the cursor return
-    """
-
-    logger.info('Executing: ' + cmd)
-    return cursor.execute(cmd)
 
 
 class RepoObjectDiskStorage(RepoStore):
@@ -59,25 +47,25 @@ class RepoObjectDiskStorage(RepoStore):
         self._conn = sqlite3.connect(self._sqlite_db_name())
         # three tables: one with category->name mapping, one with category, version, and one with modification info
         # mapping
-        cursor = self._conn.cursor()
-        try:
-            logger.info('Executing')
-            execute(cursor,
-                    '''CREATE TABLE mapping (name text PRIMARY KEY, category text)''')
-            # versions
-            execute(cursor,
-                    '''CREATE TABLE versions (name TEXT NOT NULL, version TEXT NOT NULL, path TEXT NOT NULL, file TEXT NOT NULL, uuid_time TIMESTAMP,
-                                        insert_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY(name, version) ) ''')
+        with closing(self._conn.cursor()) as cursor:
+            try:
+                logger.info('Executing')
+                cursor.execute(
+                        '''CREATE TABLE mapping (name text PRIMARY KEY, category text)''')
+                # versions
+                cursor.execute(
+                        '''CREATE TABLE versions (name TEXT NOT NULL, version TEXT NOT NULL, path TEXT NOT NULL, file TEXT NOT NULL, uuid_time TIMESTAMP,
+                                            insert_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY(name, version) ) ''')
 
-            # modification_info
-            execute(cursor,
-                    '''CREATE TABLE modification_info (name TEXT NOT NULL, version TEXT NOT NULL, modifier TEXT NOT NULL, modifier_version TEXT NOT NULL, modifier_uuid_time TIMESTAMP, PRIMARY KEY(name, version, modifier) ) ''')
-            self._conn.commit()
-        except:
-            logger.error(
-                'An error occured during creation of new db, rolling back.')
-            self._conn.rollback()
-
+                # modification_info
+                cursor.execute(
+                        '''CREATE TABLE modification_info (name TEXT NOT NULL, version TEXT NOT NULL, modifier TEXT NOT NULL, modifier_version TEXT NOT NULL, modifier_uuid_time TIMESTAMP, PRIMARY KEY(name, version, modifier) ) ''')
+                self._conn.commit()
+            except:
+                logger.error(
+                    'An error occured during creation of new db, rolling back.')
+                self._conn.rollback()
+        
     def _setup_new(self):
         """ Setup of the handler
         """
@@ -88,7 +76,7 @@ class RepoObjectDiskStorage(RepoStore):
             self._create_new_db()
         else:
             self._conn = sqlite3.connect(self._sqlite_db_name())
-
+        self._conn.set_trace_callback(logger_sql.info)
     # endregion
 
     def __init__(self, folder, file_format='pickle'):
@@ -177,24 +165,24 @@ class RepoObjectDiskStorage(RepoStore):
 
         condition = " where name='"+  name + "' and version='" + version + "'"
         delete_statement = "delete from modification_info " + condition
-        cursor = self._conn.cursor()
-        execute(cursor, delete_statement)
-        select_statement = "select path, file from versions " + condition
-        files = [row[0] + '/' + row[1]
-                 for row in execute(cursor, select_statement)]
-        if len(files) == 0:
-            raise Exception('Deletion failed: Object ' + name + " with version " + version +' does not exist.')
-        for filename in files:
-            os.remove(self._main_dir + '/' + filename + self._extension)
-        delete_statement = "delete from versions " + condition
-        execute(cursor, delete_statement)
-        #if there is no object with this name anymore, we have to remove it from mapping
-        select_statement = "select path, file from versions where name='"+  name + "'"
-        depp = [0 for r in execute(cursor, select_statement)]
-        if len(depp) == 0:
-            delete_statement = "delete from mapping where name='" + name + "'"
-            execute(cursor, delete_statement)        
-        self._conn.commit()
+        with closing(self._conn.cursor()) as cursor:
+            cursor.execute(delete_statement)
+            select_statement = "select path, file from versions " + condition
+            files = [row[0] + '/' + row[1]
+                    for row in cursor.execute(select_statement)]
+            if len(files) == 0:
+                raise Exception('Deletion failed: Object ' + name + " with version " + version +' does not exist.')
+            for filename in files:
+                os.remove(self._main_dir + '/' + filename + self._extension)
+            delete_statement = "delete from versions " + condition
+            cursor.execute(delete_statement)
+            #if there is no object with this name anymore, we have to remove it from mapping
+            select_statement = "select path, file from versions where name='"+  name + "'"
+            depp = [0 for r in cursor.execute(select_statement)]
+            if len(depp) == 0:
+                delete_statement = "delete from mapping where name='" + name + "'"
+                cursor.execute(delete_statement)        
+            self._conn.commit()
         
     def get_config(self):
         """ return the configuration
@@ -214,12 +202,11 @@ class RepoObjectDiskStorage(RepoStore):
         Returns:
             list of str -- a list of all objects in the category
         """
-
-        cursor = self._conn.cursor()
-        result = []
-        for row in execute(cursor, "select name, category from  mapping where category = '" + ml_obj_type + "'"):
-            result.append(row[0])
-        return result
+        with closing(self._conn.cursor()) as cursor: 
+            result = []
+            for row in cursor.execute("select name, category from  mapping where category = '" + ml_obj_type + "'"):
+                result.append(row[0])
+            return result
 
     def _add(self, obj):
         """Add an object to the storage.
@@ -230,51 +217,50 @@ class RepoObjectDiskStorage(RepoStore):
         Raises:
             Exception if an object with same name already exists.
         """
+        with closing(self._conn.cursor()) as cursor:    
+            try:
+                uid_time = _time_from_version(
+                    obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value])
+                name = obj['repo_info'][repo_objects.RepoInfoKey.NAME.value]
+                if isinstance(obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value], repo.MLObjectType):
+                    category = obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value].name
+                else:
+                    category = obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value]
+                exists = False
+                # region write mapping
+                for row in cursor.execute('select * from mapping where name = ' + "'" + name + "'"):
+                    exists = True
+                    break
+                if not exists:
+                    cursor.execute(
+                            "insert into mapping (name, category) VALUES ('" + name + "', '" + category + "')")
+                # endregion
+                # region write file info
+                version = obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value]
+                file_sub_dir = category + '/' + name + '/'
+                os.makedirs(self._main_dir + '/' + file_sub_dir, exist_ok=True)
+                filename = version
+                cursor.execute("insert into versions (name, version, path, file, uuid_time) VALUES('" +
+                        name + "', '" + version + "','" + file_sub_dir + "','" + filename + "','" + str(uid_time) + "')")
+                # endregion
+                # region write modification info
+                if repo_objects.RepoInfoKey.MODIFICATION_INFO.value in obj['repo_info']:
+                    for k, v in obj['repo_info'][repo_objects.RepoInfoKey.MODIFICATION_INFO.value].items():
+                        tmp = _time_from_version(v)
+                        cursor.execute("insert into modification_info (name, version, modifier, modifier_version, modifier_uuid_time) VALUES ('"
+                                + name + "','" + version + "','" + k + "','" + str(v) + "','" + str(tmp) + "')")
+                # endregion
+                self._conn.commit()
+                # region write file
+                logger.debug(
+                    'Write object as json file with filename ' + filename)
 
-        cursor = self._conn.cursor()
-        try:
-            uid_time = _time_from_version(
-                obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value])
-            name = obj['repo_info'][repo_objects.RepoInfoKey.NAME.value]
-            if isinstance(obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value], repo.MLObjectType):
-                category = obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value].name
-            else:
-                category = obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value]
-            exists = False
-            # region write mapping
-            for row in execute(cursor, 'select * from mapping where name = ' + "'" + name + "'"):
-                exists = True
-                break
-            if not exists:
-                execute(cursor,
-                        "insert into mapping (name, category) VALUES ('" + name + "', '" + category + "')")
-            # endregion
-            # region write file info
-            version = obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value]
-            file_sub_dir = category + '/' + name + '/'
-            os.makedirs(self._main_dir + '/' + file_sub_dir, exist_ok=True)
-            filename = version
-            execute(cursor, "insert into versions (name, version, path, file, uuid_time) VALUES('" +
-                    name + "', '" + version + "','" + file_sub_dir + "','" + filename + "','" + str(uid_time) + "')")
-            # endregion
-            # region write modification info
-            if repo_objects.RepoInfoKey.MODIFICATION_INFO.value in obj['repo_info']:
-                for k, v in obj['repo_info'][repo_objects.RepoInfoKey.MODIFICATION_INFO.value].items():
-                    tmp = _time_from_version(v)
-                    execute(cursor, "insert into modification_info (name, version, modifier, modifier_version, modifier_uuid_time) VALUES ('"
-                            + name + "','" + version + "','" + k + "','" + str(v) + "','" + str(tmp) + "')")
-            # endregion
-            self._conn.commit()
-            # region write file
-            logger.debug(
-                'Write object as json file with filename ' + filename)
-
-            self._save_function(self._main_dir + '/' +
-                                file_sub_dir + '/' + filename, obj)
-            # endregion
-        except Exception as e:
-            logger.error('Error: ' + str(e) + ', rolling back changes.')
-            self._conn.rollback()
+                self._save_function(self._main_dir + '/' +
+                                    file_sub_dir + '/' + filename, obj)
+                # endregion
+            except Exception as e:
+                logger.error('Error: ' + str(e) + ', rolling back changes.')
+                self._conn.rollback()
 
     def get_version_condition(self, name, versions, version_column, time_column):
         """ returns the condition part of the versions for the sql statement
@@ -331,34 +317,35 @@ class RepoObjectDiskStorage(RepoStore):
         """
 
         category = None
-        cursor = self._conn.cursor()
-        for row in execute(cursor, 'select category from mapping where name = ' + "'" + name + "'"):
-            category = repo.MLObjectType(row[0])
-        if category is None:
-            if throw_error_not_exist:
-                logger.error('no object ' + name + ' in storage.')
-                raise Exception('no object ' + name + ' in storage.')
-            else:
-                return []
+        with closing(self._conn.cursor()) as cursor:
+            for row in cursor.execute('select category from mapping where name = ' + "'" + name + "'"):
+                category = repo.MLObjectType(row[0])
+            if category is None:
+                if throw_error_not_exist:
+                    logger.error('no object ' + name + ' in storage.')
+                    raise Exception('no object ' + name + ' in storage.')
+                else:
+                    return []
 
-        version_condition = self.get_version_condition(
-            name, versions, 'version', 'uuid_time')
+            version_condition = self.get_version_condition(
+                name, versions, 'version', 'uuid_time')
 
-        select_statement = "select path, file from versions where name = '" + \
-            name + "'" + version_condition
-        if modifier_versions is not None:
-            for k, v in modifier_versions.items():
-                tmp = self.get_version_condition(
-                    k, v, 'modifier_version', 'modifier_uuid_time')
-                if tmp != '':
-                    select_statement += " and version in ( select version from modification_info where name ='" + \
-                        name + "' and modifier = '" + k + "'" + tmp + ")"
-        files = [row[0] + '/' + row[1]
-                 for row in execute(cursor, select_statement)]
-        objects = []
-        for filename in files:
-            objects.append(self._load_function(
-                self._main_dir + '/' + filename))
+            select_statement = "select path, file from versions where name = '" + \
+                name + "'" + version_condition
+            if modifier_versions is not None:
+                for k, v in modifier_versions.items():
+                    tmp = self.get_version_condition(
+                        k, v, 'modifier_version', 'modifier_uuid_time')
+                    if tmp != '':
+                        select_statement += " and version in ( select version from modification_info where name ='" + \
+                            name + "' and modifier = '" + k + "'" + tmp + ")"
+            files = [row[0] + '/' + row[1]
+                    for row in cursor.execute(select_statement)]
+            objects = []
+            for filename in files:
+                objects.append(self._load_function(
+                    self._main_dir + '/' + filename))
+            self._conn.commit()
         return objects
 
     def get_latest_version(self, name, throw_error_not_exist=True):
@@ -377,9 +364,10 @@ class RepoObjectDiskStorage(RepoStore):
             str -- the latest version string of the object
         """
 
-        cursor = self._conn.cursor()
-        for row in execute(cursor, "select version from versions where name = '" + name + "' order by uuid_time DESC LIMIT 1"):
-            return row[0]
+        with closing(self._conn.cursor()) as cursor:
+            for row in cursor.execute("select version from versions where name = '" + name + "' order by uuid_time DESC LIMIT 1"):
+                result = row[0]
+                return result
         if throw_error_not_exist:
             logger.error('No object with name ' + name + ' exists.')
             raise Exception('No object with name ' + name + ' exists.')
@@ -401,10 +389,10 @@ class RepoObjectDiskStorage(RepoStore):
         Returns:
             str -- the first version string of the object
         """
-
-        cursor = self._conn.cursor()
-        for row in execute(cursor, "select version from versions where name = '" + name + "' order by uuid_time ASC LIMIT 1"):
-            return row[0]
+        with closing(self._conn.cursor()) as cursor:
+            for row in cursor.execute("select version from versions where name = '" + name + "' order by uuid_time ASC LIMIT 1"):
+                result = row[0]
+                return result
         if throw_error_not_exist:
             logger.error('No object with name ' + name + ' exists.')
             raise Exception('No object with name ' + name + ' exists.')
@@ -427,27 +415,28 @@ class RepoObjectDiskStorage(RepoStore):
         Returns:
             str -- the version
         """
-
-        cursor = self._conn.cursor()
-        if offset > 0:
-            inner_select = "(select version, uuid_time from versions where name = '" + \
-                name + "' order by uuid_time ASC LIMIT " + str(offset) + ")"
-            stmt = "select version from " + inner_select + " order by uuid_time DESC LIMIT 1"
-            for row in execute(cursor, stmt):
-                return row[0]
-        elif offset < 0:
-            inner_select = "(select version, uuid_time from versions where name = '" + \
-                name + "' order by uuid_time DESC LIMIT " + str(-offset) + ")"
-            stmt = "select version from " + inner_select + " order by uuid_time ASC LIMIT 1"
-            for row in execute(cursor, stmt):
-                return row[0]
-        if offset == 0:
-            return self.get_first_version(name)
-        if throw_error_not_exist:
-            logger.error('No object with name ' + name + ' exists.')
-            raise Exception('No object with name ' + name + ' exists.')
-        else:
-            return []
+        with closing(self._conn.cursor()) as cursor:
+            if offset > 0:
+                inner_select = "(select version, uuid_time from versions where name = '" + \
+                    name + "' order by uuid_time ASC LIMIT " + str(offset) + ")"
+                stmt = "select version from " + inner_select + " order by uuid_time DESC LIMIT 1"
+                for row in cursor.execute(stmt):
+                    result = row[0]
+                    return result
+            elif offset < 0:
+                inner_select = "(select version, uuid_time from versions where name = '" + \
+                    name + "' order by uuid_time DESC LIMIT " + str(-offset) + ")"
+                stmt = "select version from " + inner_select + " order by uuid_time ASC LIMIT 1"
+                for row in cursor.execute(stmt):
+                    result = row[0]
+                    return result
+            if offset == 0:
+                return self.get_first_version(name)
+            if throw_error_not_exist:
+                logger.error('No object with name ' + name + ' exists.')
+                raise Exception('No object with name ' + name + ' exists.')
+            else:
+                return []
 
     def replace(self, obj):
         """ Overwrite existing object without incrementing version
@@ -461,19 +450,20 @@ class RepoObjectDiskStorage(RepoStore):
         select_statement = "select path, file from versions where name = '" +\
             obj["repo_info"][RepoInfoKey.NAME.value] + "' and version = '" +\
             str(obj["repo_info"][RepoInfoKey.VERSION.value]) + "'"
-        cursor = self._conn.cursor()
-        for row in execute(cursor, select_statement):
-            self._save_function(self._main_dir + '/' +
-                                str(row[0]) + '/' + str(row[1]), obj)
-        # delete all modification infos
-        execute(cursor, "delete from modification_info where name='" + obj["repo_info"][RepoInfoKey.NAME.value] + "' and version = '" +
-                str(obj["repo_info"][RepoInfoKey.VERSION.value]) + "'")
-        if repo_objects.RepoInfoKey.MODIFICATION_INFO.value in obj['repo_info']:
-            for k, v in obj['repo_info'][repo_objects.RepoInfoKey.MODIFICATION_INFO.value].items():
-                tmp = _time_from_version(v)
-                execute(cursor, "insert into modification_info (name, version, modifier, modifier_version, modifier_uuid_time) VALUES ('"
-                        + obj["repo_info"][RepoInfoKey.NAME.value] + "','" + str(obj["repo_info"][RepoInfoKey.VERSION.value]) + "','" + k + "','" + str(v) + "','" + str(tmp) + "')")
-
+        with closing(self._conn.cursor()) as cursor:
+            for row in cursor.execute(select_statement):
+                self._save_function(self._main_dir + '/' +
+                                    str(row[0]) + '/' + str(row[1]), obj)
+            # delete all modification infos
+            cursor.execute("delete from modification_info where name='" + obj["repo_info"][RepoInfoKey.NAME.value] + "' and version = '" +
+                    str(obj["repo_info"][RepoInfoKey.VERSION.value]) + "'")
+            if repo_objects.RepoInfoKey.MODIFICATION_INFO.value in obj['repo_info']:
+                for k, v in obj['repo_info'][repo_objects.RepoInfoKey.MODIFICATION_INFO.value].items():
+                    tmp = _time_from_version(v)
+                    cursor.execute("insert into modification_info (name, version, modifier, modifier_version, modifier_uuid_time) VALUES ('"
+                            + obj["repo_info"][RepoInfoKey.NAME.value] + "','" + str(obj["repo_info"][RepoInfoKey.VERSION.value]) + "','" + k + "','" + str(v) + "','" + str(tmp) + "')")
+            self._conn.commit()
+          
     def close_connection(self):
         """ Closes the database connection
         """
@@ -508,10 +498,10 @@ class RepoObjectDiskStorage(RepoStore):
 
         # first get list of all files
         f = self._get_all_files()
-        cursor = self._conn.cursor()
         repo_f = set()
-        for row in execute(cursor, "select file from versions"):
-            repo_f.add(row[0])
+        with closing(self._conn.cursor()) as cursor:
+            for row in cursor.execute("select file from versions"):
+                repo_f.add(row[0])
         tmp = f.copy()
         files_not_added = tmp-repo_f
         result = {}
