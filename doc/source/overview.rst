@@ -15,7 +15,32 @@ and cloned using::
 Examples and first steps
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 To learn how to work with pailab you may find the :ref:`overall_tutorial` useful. 
-In addition, you find jupyter notebooks in the examples directory.
+If you like working with jupyter, there are the following jupyter notebooks demonstrating pailab's functionality.
+Please note that the all plots in these notebooks are created using plotly. Therefore if you want to play around with the 
+plotting functionality you have to install this. However, even if you do not want to install plotly, the notebooks are nevertheless 
+a very good starting point.
+
+    +---------------------------------------------------+-----------------------------------------------------------------------+
+    | notebook                                          | description                                                           |
+    +===================================================+=======================================================================+
+    | `boston_housing.ipynb`_                           | shows pailab's basic functionality using the boston housing data      |
+    |                                                   | set and a regression tree from scikit learn (without preprocessing)   |
+    +---------------------------------------------------+-----------------------------------------------------------------------+
+    | `adult-census-income.ipynb`_                      | shows pailab's basic functionality using the boston housing data      |
+    |                                                   | set and a regression tree from scikit learn (including preprocessing) |
+    +---------------------------------------------------+-----------------------------------------------------------------------+
+    | `boston_housing_widgets.ipynb`_                   | similar to boston_housing.ipynb but using some jupyter widgets        |
+    +---------------------------------------------------+-----------------------------------------------------------------------+
+    | `boston_housing_distributed.ipynb`_               | similar to boston_housing.ipynb but using the                         |
+    |                                                   | :py:class:`pailab.job_runner.SQLiteJobRunner`                         |
+    |                                                   | job runner to execute jobs in a different thread or even on a         |
+    |                                                   | different machine                                                     |
+    +---------------------------------------------------+-----------------------------------------------------------------------+
+
+    .. _boston_housing.ipynb: https://nbviewer.jupyter.org/github/pailabteam/pailab/blob/develop/examples/boston_housing/boston_housing.ipynb
+    .. _adult-census-income.ipynb: https://nbviewer.jupyter.org/github/pailabteam/pailab/blob/develop/examples/adult-census-income/adult-census-income.ipynb
+    .. _boston_housing_widgets.ipynb: https://nbviewer.jupyter.org/github/pailabteam/pailab/blob/develop/examples/boston_housing/boston_housing_widgets.ipynb
+    .. _boston_housing_distributed.ipynb: https://nbviewer.jupyter.org/github/pailabteam/pailab/blob/develop/examples/boston_housing/boston_housing_distributed.ipynb
 
 Logging
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
