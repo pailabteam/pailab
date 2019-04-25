@@ -1382,7 +1382,7 @@ class MLRepo:
                                       throw_error_not_exist, throw_error_not_unique)
         if len(repo_dict) == 0:
             if throw_error_not_exist:
-                logger.error('No object found with name ' +  name + ' and version ' + str(version) + 'modifier_versions: ' + str(modifier_versions))
+                logger.error('No object found with name ' +  name + ' and version ' + str(version) + ', modifier_versions: ' + str(modifier_versions))
                 raise Exception('No object found with name ' +  name + ' and version ' + str(version))
             else:
                 return []
