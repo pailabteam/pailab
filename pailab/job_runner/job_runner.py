@@ -246,7 +246,7 @@ class SQLiteJobRunner(JobRunnerBase):
     def run(self, max_steps=None):
         wait = self._sleep
         step = 0
-        with closing(self._conn.cursor()) as cursor: #todo grosse transaction um alles rum
+        with closing(self._conn.cursor()) as cursor: 
             while True:
                 if max_steps is not None:
                     step += 1
@@ -255,17 +255,21 @@ class SQLiteJobRunner(JobRunnerBase):
                 if wait > self._steps_to_heartbeat:
                     logger.info('heartbeat')
                     wait = 0
-                rows = cursor.execute("select job_name, job_version from jobs where job_state = '"
-                                    + JobState.WAITING.value + "' order by insert_time desc") #todo hier sollte asc
-                run = False
+                row = None
+                with self._conn:
+                    cursor.execute("select job_name, job_version from jobs where job_state = '"
+                                        + JobState.WAITING.value + "' order by insert_time desc")
+                    row = cursor.fetchone()
+                    if row is not None:
+                        cursor.execute("update jobs SET start_time = '" + str(
+                            datetime.datetime.now()) + "', job_state='" + JobState.RUNNING.value + "' where job_name = '"
+                            + row[0] + "' and job_version='" + row[1] + "'")
+                        self._conn.commit()
+                    
                 #logger.error('len(rows): ' + str(len(rows)))
-                for row in rows:
+                if row is not None:
                     logger.info('Start running job ' +
                                 row[0] + ', version ' + row[1])
-                    cursor.execute("update jobs SET start_time = '" + str(
-                        datetime.datetime.now()) + "', job_state='" + JobState.RUNNING.value + "' where job_name = '"
-                        + row[0] + "' and job_version='" + row[1] + "'")
-                    self._conn.commit()
                     error, stack_trace = self._run_job(row[0], row[1])
                     self._set_finished(row[0], row[1], error, stack_trace)
                     if error == '' and stack_trace == '':
@@ -274,10 +278,8 @@ class SQLiteJobRunner(JobRunnerBase):
                     else:
                         logger.error('Finished running job ' + row[0] + ', version ' +
                                     row[1] + ' with errors: ' + error + '   stacktrace: ' + stack_trace)
-                    run = True
                     wait = 0
-                    break
-                if not run == True:
+                else:
                     time.sleep(self._sleep)
                     wait += self._sleep
         

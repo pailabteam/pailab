@@ -217,50 +217,51 @@ class RepoObjectDiskStorage(RepoStore):
         Raises:
             Exception if an object with same name already exists.
         """
-        with closing(self._conn.cursor()) as cursor:    
-            try:
-                uid_time = _time_from_version(
-                    obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value])
-                name = obj['repo_info'][repo_objects.RepoInfoKey.NAME.value]
-                if isinstance(obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value], repo.MLObjectType):
-                    category = obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value].name
-                else:
-                    category = obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value]
-                exists = False
-                # region write mapping
-                for row in cursor.execute('select * from mapping where name = ' + "'" + name + "'"):
-                    exists = True
-                    break
-                if not exists:
-                    cursor.execute(
-                            "insert into mapping (name, category) VALUES ('" + name + "', '" + category + "')")
-                # endregion
-                # region write file info
-                version = obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value]
-                file_sub_dir = category + '/' + name + '/'
-                os.makedirs(self._main_dir + '/' + file_sub_dir, exist_ok=True)
-                filename = version
-                cursor.execute("insert into versions (name, version, path, file, uuid_time) VALUES('" +
-                        name + "', '" + version + "','" + file_sub_dir + "','" + filename + "','" + str(uid_time) + "')")
-                # endregion
-                # region write modification info
-                if repo_objects.RepoInfoKey.MODIFICATION_INFO.value in obj['repo_info']:
-                    for k, v in obj['repo_info'][repo_objects.RepoInfoKey.MODIFICATION_INFO.value].items():
-                        tmp = _time_from_version(v)
-                        cursor.execute("insert into modification_info (name, version, modifier, modifier_version, modifier_uuid_time) VALUES ('"
-                                + name + "','" + version + "','" + k + "','" + str(v) + "','" + str(tmp) + "')")
-                # endregion
-                self._conn.commit()
-                # region write file
-                logger.debug(
-                    'Write object as json file with filename ' + filename)
+        with self._conn:
+            with closing(self._conn.cursor()) as cursor:    
+                try:
+                    uid_time = _time_from_version(
+                        obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value])
+                    name = obj['repo_info'][repo_objects.RepoInfoKey.NAME.value]
+                    if isinstance(obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value], repo.MLObjectType):
+                        category = obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value].name
+                    else:
+                        category = obj['repo_info'][repo_objects.RepoInfoKey.CATEGORY.value]
+                    exists = False
+                    # region write mapping
+                    for row in cursor.execute('select * from mapping where name = ' + "'" + name + "'"):
+                        exists = True
+                        break
+                    if not exists:
+                        cursor.execute(
+                                "insert into mapping (name, category) VALUES ('" + name + "', '" + category + "')")
+                    # endregion
+                    # region write file info
+                    version = obj['repo_info'][repo_objects.RepoInfoKey.VERSION.value]
+                    file_sub_dir = category + '/' + name + '/'
+                    os.makedirs(self._main_dir + '/' + file_sub_dir, exist_ok=True)
+                    filename = version
+                    cursor.execute("insert into versions (name, version, path, file, uuid_time) VALUES('" +
+                            name + "', '" + version + "','" + file_sub_dir + "','" + filename + "','" + str(uid_time) + "')")
+                    # endregion
+                    # region write modification info
+                    if repo_objects.RepoInfoKey.MODIFICATION_INFO.value in obj['repo_info']:
+                        for k, v in obj['repo_info'][repo_objects.RepoInfoKey.MODIFICATION_INFO.value].items():
+                            tmp = _time_from_version(v)
+                            cursor.execute("insert into modification_info (name, version, modifier, modifier_version, modifier_uuid_time) VALUES ('"
+                                    + name + "','" + version + "','" + k + "','" + str(v) + "','" + str(tmp) + "')")
+                    # endregion
+                    self._conn.commit()
+                    # region write file
+                    logger.debug(
+                        'Write object as json file with filename ' + filename)
 
-                self._save_function(self._main_dir + '/' +
-                                    file_sub_dir + '/' + filename, obj)
-                # endregion
-            except Exception as e:
-                logger.error('Error: ' + str(e) + ', rolling back changes.')
-                self._conn.rollback()
+                    self._save_function(self._main_dir + '/' +
+                                        file_sub_dir + '/' + filename, obj)
+                    # endregion
+                except Exception as e:
+                    logger.error('Error: ' + str(e) + ', rolling back changes.')
+                    self._conn.rollback()
 
     def get_version_condition(self, name, versions, version_column, time_column):
         """ returns the condition part of the versions for the sql statement
