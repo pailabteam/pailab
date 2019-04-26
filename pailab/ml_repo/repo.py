@@ -4,6 +4,7 @@ This module contains pailab's machine learning repository.
 """
 import abc
 import json
+import os
 from datetime import datetime
 from numpy import linalg
 from numpy import inf, load
@@ -991,7 +992,10 @@ class MLRepo:
         """
 
         if 'workspace' in self._config.keys():
+            
             if self._config['workspace']  is not None:
+                if not os.path.exists(self._config['workspace'] ):
+                 os.makedirs(self._config['workspace'])
                 with open(self._config['workspace']  + '/.config.json', 'w') as f:
                     json.dump(self._config, f, indent=4, separators=(',', ': '))
 
@@ -1015,6 +1019,9 @@ class MLRepo:
                     self._config = json.load(f)
             else:
                 self._config = MLRepo.__create_default_config(user, workspace)
+        else:
+            if 'workspace' in self._config.keys():
+                self._save_config() #we save the config 
         
         self._numpy_repo = NumpyStoreFactory.get(self._config['numpy_store']['type'], **self._config['numpy_store']['config'])
         self._ml_repo = RepoStoreFactory.get(self._config['repo_store']['type'], **self._config['repo_store']['config'])
@@ -1375,7 +1382,7 @@ class MLRepo:
                                       throw_error_not_exist, throw_error_not_unique)
         if len(repo_dict) == 0:
             if throw_error_not_exist:
-                logger.error('No object found with name ' +  name + ' and version ' + str(version) + 'modifier_versions: ' + str(modifier_versions))
+                logger.error('No object found with name ' +  name + ' and version ' + str(version) + ', modifier_versions: ' + str(modifier_versions))
                 raise Exception('No object found with name ' +  name + ' and version ' + str(version))
             else:
                 return []

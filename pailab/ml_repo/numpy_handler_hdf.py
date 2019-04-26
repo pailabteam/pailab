@@ -134,7 +134,7 @@ class NumpyHDFStorage(NumpyStore):
             os.makedirs(save_dir)
         with h5py.File(self.main_dir + '/' + self._create_file_name(name, version), 'a') as f:
             grp_name = '/data/' + version + '/'
-            logging.debug('Saving data ' + name +
+            logger.debug('Saving data ' + name +
                           ' in hdf5 to group ' + grp_name)
             grp = f.create_group(grp_name)
             ref_grp = f.create_group('/ref/' + str(version) + '/')
@@ -152,7 +152,7 @@ class NumpyHDFStorage(NumpyStore):
         """
 
         with h5py.File(self.main_dir + '/' + self._create_file_name(name, version_new), 'a') as f:
-            logging.debug('Appending data ' + name +
+            logger.debug('Appending data ' + name +
                           ' in hdf5 with version ' + str(version_new))
 
             try:
@@ -266,7 +266,7 @@ class NumpyHDFStorage(NumpyStore):
         with h5py.File(self.main_dir + '/' + self._create_file_name(name, version, change_if_not_exist=True), 'r') as f:
             grp_name = '/data/' + str(version) + '/'
             ref_grp = '/ref/' + str(version) + '/'
-            logging.debug('Reading object ' + name +
+            logger.debug('Reading object ' + name +
                           ' from hdf5, group ' + grp_name)
             grp = f[grp_name]
             ref_g = f[ref_grp]
