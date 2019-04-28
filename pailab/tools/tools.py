@@ -357,6 +357,138 @@ class ModelCollection(RepoObjectItem):
         setattr(self, name, ModelItem(name,self._repo))
 #endregion
 
+
+
+# the followng imports are needed to hash parameters
+import hashlib
+import json
+import functools
+
+#region caching
+class _CachedResults(repo_objects.RepoObject):
+    """Object to store results of functions for caching reasons in the repo.
+    
+    """
+
+    def __init__(self,repo_info, x):
+        """Object to store results of functions for caching reasons in the repo.
+        
+        Args:
+            repo_info (dict or RepoInfo object): repo info
+            x (objects or tuple of objects): return values of a function to be cached
+        """
+
+        super(_CachedResults, self).__init__(repo_info)
+        if isinstance(x,tuple):
+            self._tuple = []
+            for i in range(len(x)):
+                self._add_object(x[i], i)
+        else:
+            if hasattr(x, 'repo_info'):
+                self.repo_x = x
+            else:
+                self.x = x
+
+    def _add_object(self, obj, counter):
+        # repo objects are added separately to the repo
+        if hasattr(obj, 'repo_info'):
+            name = 'repo_obj_' + str(counter)
+            setattr(self, name, '')
+        else:
+            name = 'obj_' + str(counter)
+        setattr(self, name, obj)
+        self._tuple.append(name)
+        if isinstance(obj, np.ndarray):
+            self.repo_info[RepoInfoKey.BIG_OBJECTS].append(name)
+        
+    def _add_to_repo(self, ml_repo):
+        if hasattr(self, '_tuple'):
+            for name in self._tuple:
+                if name.startswith('repo'):
+                    obj = getattr(self, name)
+                    ml_repo.add(obj)
+                    delattr(self, name)
+                    setattr(self, name +'_version', obj.repo_info.version)
+                    setattr(self, name + '_name', obj.repo_info.name)
+        if hasattr(self,'repo_x'):
+            ml_repo.add(self.repo_x)
+            delattr('repo_x')
+            setattr(self,'repo_x_name', self.repo_x.repo_info.name)
+            setattr(self,'repo_x_version', self.repo_x.repo_info.version)
+        ml_repo.add(self)
+            
+    def _fill_from_repo(self, ml_repo):
+        if hasattr(self,'repo_x_name'):
+            obj = ml_repo.get(self.repo_x_name, self.repo_x_version)
+            setattr(self, 'repo_x', obj)
+            
+        if hasattr(self, '_tuple'):
+            for name in self._tuple:
+                if name.startswith('repo'):
+                    obj = ml_repo.get(getattr(self, name + '_name'), getattr(self, name + '_version'))
+                    setattr(self, name, obj)
+            
+    def _get(self):
+        if hasattr(self,'_tuple'):
+            tmp = [getattr(self, name) for name in self._tuple]
+            return tuple(tmp)
+        if hasattr(self,'repo_x'):
+            return self.repo_x
+        return self.x
+
+
+def cache_f(f, ml_repo, *args, **kwargs):
+    """Cache results of a function in the repo.
+
+    Caches results of a function in the repo. Here, it uses a hashkey generated as MD5 sum from the function
+    arguments that are not RepoObjects (serializing them as json). For RepoObjects it uses their version number to search if the function 
+    has already been executed with the given parameters. It stores the results in the repo as a CachedResult object where RepoObjects 
+    contained in the CachedResults are stored separately in the repo.
+    
+    Args:
+        f (function): function to be cached
+        ml_repo (MLRepo): repository used to store the results
+    
+    Returns:
+        the results of function f
+    """
+
+    tmp = []
+    modification_info = {}
+    for arg in args:
+        if hasattr(arg, 'repo_info'):
+            modification_info[arg.repo_info.name] = arg.repo_info.version
+        else:
+            tmp.append(arg)
+    param = {}
+    param['args'] = tmp
+    param['kwargs'] ={}
+    for k,v in kwargs.items():
+        if hasattr(v, 'repo_info'):
+            modification_info[v.repo_info.name: v.repo_info.version]
+        else:
+            param['kwargs'][k] = v
+            
+    param_hash = hashlib.md5(json.dumps(param, sort_keys=True).encode('utf-8')).hexdigest()
+    modification_info['param_hash'] = param_hash
+    hash_result_name = f.__name__
+    result = ml_repo.get(hash_result_name, version = None, modifier_versions=modification_info, full_object=True, throw_error_not_exist = False)
+    if result == []:
+        x = f(*args, **kwargs)
+        hash_results =  _CachedResults({RepoInfoKey.NAME: hash_result_name, RepoInfoKey.MODIFICATION_INFO: modification_info, RepoInfoKey.CATEGORY: MLObjectType.CACHED_VALUE}, x)
+        hash_results._add_to_repo(ml_repo)
+        return x
+    else:
+        result._fill_from_repo(ml_repo)
+        return result._get()
+    
+def ml_cache(f):
+    @functools.wraps(f)
+    def wrapper( ml_repo, *argv, **kwargs):
+        return cache_f(f, ml_repo, *argv, **kwargs)
+    return wrapper
+#endregion
+
 class MLTree:
 
     @staticmethod
@@ -395,24 +527,6 @@ class MLTree:
         # result.update(self.models.modifications())
         return result
 
-class ModelCompare:
-    @staticmethod
-    def get_model_differences(ml_repo:MLRepo, model1, version1, version2, data, model2 = None, n_points = 1, y_coordname = None):
-        if model2 is None:
-            model2 = model1
-        if isinstance(data,str):
-            data_sets = [data]
-        else:
-            data_sets = data
-        eval_data_model_1 = str(NamingConventions.EvalData(model=model1, data=data))
-        eval_data_1 = ml_repo.get(eval_data_model_1, version=None, modifier_versions={model1: version1}, full_object = True)
-        eval_data_model_2 = str(NamingConventions.EvalData(model=model2, data=data))
-        eval_data_2 = ml_repo.get(eval_data_model_2, version=None, modifier_versions={model2: version2}, full_object = True)
-        if y_coordname is None:
-            y_coord = 0
-        else:
-            y_coord = eval_data_1.y_coord_names.index(y_coordname)
-        #diff = eval_data_1[:,y_coord] - eval_data_2[:,y_coord]
         
 import numpy as np
 from sklearn.linear_model import LinearRegression
@@ -420,9 +534,6 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.metrics import mean_squared_error
 from sklearn.cluster import KMeans
 
-# the followng imports are needed to hash parameters
-import hashlib
-import json
 class ModelAnalyzer:
     def __init__(self, ml_repo):
         self._ml_repo = ml_repo
