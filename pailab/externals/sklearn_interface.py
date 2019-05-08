@@ -51,10 +51,10 @@ def eval_sklearn(model, data):
         [type]: [description]
     """
 
-    return model.model.predict(data)
+    return model.model.predict(data.x_data)
 
 
-def train_sklearn(model_param, data_x, data_y, preprocessors=None):
+def train_sklearn(model_param, data, preprocessors=None):
     def get_class(full_class_name):
         parts = full_class_name.split('.')
         module = ".".join(parts[:-1])
@@ -64,7 +64,8 @@ def train_sklearn(model_param, data_x, data_y, preprocessors=None):
         return m
     m = get_class(model_param.sklearn_module_name +
                   '.' + model_param.sklearn_class_name)
-
+    data_x = data.x_data
+    data_y = data.y_data
     model = m(**model_param.sklearn_params)
     model.fit(data_x, data_y)
     result = SKLearnModel(model, preprocessors=preprocessors, repo_info={})

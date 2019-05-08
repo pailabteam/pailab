@@ -1,16 +1,18 @@
-from setuptools import setup
+from setuptools import setup, find_packages
+
 
 def readme():
     with open('README.rst') as f:
         return f.read()
-		
+
+
 install_requirements = [
-	"numpy>=1.13",
-	"plotly>=3.5.0",
-	"h5py>=2.7",
-	"pandas>=0.20",
-	"nbformat",
-	"deepdiff",
+    "numpy>=1.13",
+    "plotly>=3.5.0",
+    "h5py>=2.7",
+    "pandas>=0.20",
+    "nbformat",
+    "deepdiff",
 ]
 
 
@@ -29,20 +31,20 @@ setup(name='pailab',
       description='Pailab the ai and large data platform',
       long_description=readme(),
       classifiers=[
-        'Development Status :: 3 - Alpha',
+          'Development Status :: 3 - Alpha',
       ],
       keywords='platform ai large data',
       url='',
       author='Pailab Inc',
       author_email='info@pailab.com',
-      license='Comming',
-      packages=setuptools.find_packages(exclude=['doc', 'examples', 'sandbox', 'tests']),
+      license='Apache 2.0',
+      packages=find_packages(exclude=['doc', 'examples', 'tests']),
       install_requires=install_requirements,
-	  extras_require={
-        'all': all_dependencies,
-        'sklearn': sklearn,
-        'tensorflow': tensorflow,
-        ':python_version>="3.4"': ['futures'],
-	  },
+          extras_require={
+          'all': all_dependencies,
+          'sklearn': sklearn,
+          'tensorflow': tensorflow,
+          ':python_version>="3.4"': ['futures'],
+      },
       include_package_data=True,
       zip_safe=False)

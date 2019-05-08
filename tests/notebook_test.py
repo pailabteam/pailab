@@ -41,6 +41,13 @@ class Test_notebooks(unittest.TestCase):
         self.assertTrue(test_ipynb(
             'boston_housing\\boston_housing.ipynb'))
 
+    # def test_boston_housing_widgets(self):
+    #    self.assertTrue(test_ipynb(
+    #        'boston_housing\\boston_housing_widgets.ipynb'))
+
+    def test_caching(self):
+        self.assertTrue(test_ipynb(
+            'caching_demo.ipynb'))
 
     def test_adult_census_income(self):
         self.assertTrue(test_ipynb(

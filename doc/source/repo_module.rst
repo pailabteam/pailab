@@ -1,47 +1,12 @@
-Machine Learning Repository
+API Reference
 ===========================================
 
-repo
------------------------------------
-.. automodule:: pailab.repo
-   :members:
+.. toctree::
+   :maxdepth: 2
+   :caption: Contents:
    
-repo objects
------------------------------------
-.. automodule:: pailab.ml_repo.repo_objects
-   :members:
-   
+   modules/ml_repo
+   modules/tools
+   modules/job_runner
+   modules/externals
 
-repo stores
------------------------------------
-
-.. automodule:: pailab.ml_repo.repo_store
-   :members:
-   
-   
-.. automodule:: pailab.memory_handler
-   :members:
-   
-
-.. automodule:: pailab.ml_repo.repo.disk_handler
-   :members:
-   
-
-job runner
------------------------------------
-.. automodule:: pailab.job_runner.job_runner
-    :members:
-    :show-inheritance:
-
-plotting
------------------------------------
-.. automodule:: pailab.plot
-    :members:
-    :show-inheritance:
-
-pailab.externals
-========================
-pailab.externals.sklearn_interface
------------------------------------
-.. automodule:: pailab.externals.sklearn_interface
-    :members:

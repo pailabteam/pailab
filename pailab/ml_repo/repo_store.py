@@ -6,18 +6,25 @@ from pailab.ml_repo.repo_objects import RepoInfoKey  # pylint: disable=E0401
 
 
 def _version_str():
+    """ returns the version as string
+
+    Returns:
+        str -- a new version
+    """
+
     return str(uuid.uuid1())
 
 
 def _time_from_version(v):
-    """Return the time included in uuid
+    """ Return the time included in uuid
 
-    Args:
-        :param v (str): string representin the uuid
+    Arguments:
+        v {str} -- string representin the uuid
 
     Returns:
-        datetime: the datetime
+        datetime -- the datetime
     """
+
     if isinstance(v, str):
         tmp = uuid.UUID(v)
         return datetime.datetime(1582, 10, 15) + datetime.timedelta(microseconds=tmp.time / 10)
@@ -31,13 +38,14 @@ LAST_VERSION = 'last'
 class RepoScriptStore(abc.ABC):
     @abc.abstractmethod
     def add(self, script_file):
-        """Add a script to the storage.
+        """ Add a script to the storage.
 
 
         Arguments:
             script_file {string} -- file (incluing path) of script
 
         """
+
         pass
 
     @abc.abstractmethod
@@ -53,11 +61,24 @@ class RepoStore(abc.ABC):
     FIRST_VERSION = FIRST_VERSION
     LAST_VERSION = LAST_VERSION
 
-    """Abstract base class for all storages which can be used in the ML repository
+    """ Abstract base class for all storages which can be used in the ML repository
 
     """
 
     def _replace_version_placeholder(self, name, versions, throw_error_not_exist=True):
+        """ replaces the version placeholder
+
+        Arguments:
+            name {str} -- identifier of the object
+            versions {str} -- the version identifier
+
+        Keyword Arguments:
+            throw_error_not_exist {bool} -- throw an error if not exists (default: {True})
+
+        Returns:
+            [type] -- list of versions
+        """
+
         def replace_version(name, version, throw_error_not_exist):
             if version == FIRST_VERSION:
                 return self.get_first_version(name, throw_error_not_exist)
@@ -78,7 +99,7 @@ class RepoStore(abc.ABC):
 
     @abc.abstractmethod
     def _add(self, obj):
-        """Add an object to the storage.
+        """ Add an object to the storage.
 
         This method is called internally by the method add that is setting a version if there has not version already been set.
 
@@ -91,7 +112,7 @@ class RepoStore(abc.ABC):
         pass
 
     def add(self, obj):
-        """Add an object to the storage.
+        """ Add an object to the storage.
 
 
         Arguments:
@@ -107,24 +128,28 @@ class RepoStore(abc.ABC):
 
     @abc.abstractmethod
     def replace(self, obj):
-        """Overwrite existing object without incrementing version
+        """ Overwrite existing object without incrementing version
 
-        Args:
-            obj (RepoObject): repo object to be overwritten
+        Arguments:
+            obj {RepoObject} -- repo object to be overwritten
         """
+
         pass
 
-    def _get_by_modification_info(self, modifier_name, modifier_version, object_types = []):
-        """Return list of all objects which were modified by a given object.
+    def _get_by_modification_info(self, modifier_name, modifier_version, object_types=[]):
+        """ Return list of all objects which were modified by a given object.
 
         This method may be overwritten by subclasses to enhance performance.
-        
-        Args:
-            modifier_name (str): name of object which modified th searched objects
-            modifier_version (str): version of object which modified th searched objects
-            object_types (list(str)): lit of strings defining the object types
+
+        Arguments:
+            modifier_name {str} -- name of object which modified th searched objects
+            modifier_version {str} -- version of object which modified th searched objects
+
+        Keyword Arguments:
+            object_types {list of str} -- list of strings defining the object types (default: {[]})
+
         Returns:
-            [list]: list of objects, empty if no such objects exist
+            list -- list of objects, empty if no such objects exist
         """
 
         result = []
@@ -132,7 +157,8 @@ class RepoStore(abc.ABC):
         for category in object_types:
             names = self.get_names(category)
             for n in names:
-                objs = self.get(n, modifier_versions=modifier, throw_error_not_exist=False, throw_error_not_unique=False)
+                objs = self.get(n, modifier_versions=modifier,
+                                throw_error_not_exist=False, throw_error_not_unique=False)
                 if isinstance(objs, list):
                     result.extend(objs)
                 else:
@@ -141,6 +167,31 @@ class RepoStore(abc.ABC):
 
     def get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None,
             throw_error_not_exist=True, throw_error_not_unique=True):
+        """ Get a dictionary/list of dictionaries fulffilling the conditions.
+
+            Returns a list of objects matching the name and whose
+                -version is in the given list of versions
+                -modifiers match the version number/are in the list of version numbers of the given modifiers
+        Arguments:
+            name {str} -- object id
+
+        Keyword Arguments:
+            versions {list, version_number, tuple} -- either a list of versions or a single version of the objects to be returned (default: {None}),
+                    if None, the condition on version is ignored. If a tuple is given, this tuple defines a version intervall, i.e.
+                    all versions between the first and last entry (both including) are returned. In addition FIRST_VERSION and LAST_VERSION can be used for versions to access
+                    the last/first version.
+            modifier_versions {dictionary} -- modifier ids together with version specs which are matched by the returned object (default: {None}).
+            obj_fields {list of str or str} -- list of strings identifying the fields which will be returned in the dictionary,
+                                                        if None, no fields are returned, if set to 'all', all fields will be returned  (default: {None})
+            repo_info_fields {list of str or str} -- list of strings identifying the fields of the repo_info dict which will be returned in the dictionary,
+                                                        if None, no fields are returned, if set to 'all', all fields will be returned (default: {None})
+            throw_error_not_exist {bool} -- true - throw error if not exists, else return [] (default: {True})
+            throw_error_not_unique {bool} -- true - throw error if item is not unique, else return [] (default: {True})
+
+        Returns:
+            RepoObject or list thereof -- The repo object
+        """
+
         versions = self._replace_version_placeholder(
             name, versions, throw_error_not_exist)
         if modifier_versions is not None:
@@ -152,99 +203,117 @@ class RepoStore(abc.ABC):
                          throw_error_not_exist, throw_error_not_unique)
 
     def push(self):
-        """Push changes to an eternal repo.
+        """ Push changes to an external repo.
         """
 
         pass
 
     def pull(self):
-        """Pull changes from an external repo
+        """ Pull changes from an external repo
         """
 
         pass
 
     @abc.abstractmethod
     def _delete(self, name, version):
-        """Delete an object with a predefined version
+        """ Delete an object with a predefined version
 
-        Args:
-            name (str): name of object
-            version (str): object version
+        Arguments:
+            name {str} -- identifier of the object
+            version {str} -- object version
         """
-        
+
         pass
 
     @abc.abstractmethod
     def _get(self, name, versions=None, modifier_versions=None, obj_fields=None,  repo_info_fields=None,
              throw_error_not_exist=True, throw_error_not_unique=True):
-        """Get a dictionary/list of dictionaries fulffilling the conditions.
+        """ Get a dictionary/list of dictionaries fulffilling the conditions.
 
             Returns a list of objects matching the name and whose
                 -version is in the given list of versions
                 -modifiers match the version number/are in the list of version numbers of the given modifiers
         Arguments:
-            name {string} -- object id
+            name {str} -- object id
 
         Keyword Arguments:
-            versions {list, version_number, string, tuple} -- either a list of versions or a single version of the objects to be returned (default: {None}),
+            versions {list, version_number, tuple} -- either a list of versions or a single version of the objects to be returned (default: {None}),
                     if None, the condition on version is ignored. If a tuple is given, this tuple defines a version intervall, i.e.
                     all versions between the first and last entry (both including) are returned. In addition FIRST_VERSION and LAST_VERSION can be used for versions to access
                     the last/first version.
             modifier_versions {dictionary} -- modifier ids together with version specs which are matched by the returned object (default: {None}).
-            obj_fields {list of strings or string} -- list of strings identifying the fields which will be returned in the dictionary,
+            obj_fields {list of str or str} -- list of strings identifying the fields which will be returned in the dictionary,
                                                         if None, no fields are returned, if set to 'all', all fields will be returned  (default: {None})
-            repo_info_fields {list of strings or string} -- list of strings identifying the fields of the repo_info dict which will be returned in the dictionary,
+            repo_info_fields {list of str or str} -- list of strings identifying the fields of the repo_info dict which will be returned in the dictionary,
                                                         if None, no fields are returned, if set to 'all', all fields will be returned (default: {None})
+            throw_error_not_exist {bool} -- true - throw error if not exists, else return [] (default: {True})
+            throw_error_not_unique {bool} -- true - throw error if item is not unique, else return [] (default: {True})
+
         Returns:
-            List of all objects fullfilling the conditions.
+            RepoObject or list thereof -- The repo object
         """
         pass
 
     @abc.abstractmethod
     def get_names(self, ml_obj_type):
-        """Return the names of all objects belonging to the given category.
+        """ Return the names of all objects belonging to the given category.
 
         Arguments:
-            ml_obj_type {string} -- Value of MLObjectType-Enum specifying the category for which all names will be returned
+            ml_obj_type {str} -- Value of MLObjectType-Enum specifying the category for which all names will be returned
         """
         pass
 
     @abc.abstractmethod
     def get_version(self, name, offset, throw_error_not_exist=True):
-        """Return versionnumber for the given offset
+        """ Return versionnumber for the given offset
 
         If offset >= 0 it returns the version number of the offset version, if <0 it returns according to the
         python list logic the version number of the (offset-1)-last version
 
         Arguments:
-            name {string} -- name of object
+            name {str} -- name of object
             offset {int} -- offset
+
+        Keyword Arguments:
+            throw_error_not_exist {bool} -- true - throw error if not exists, else return [] (default: {True})
+
         """
         pass
 
     @abc.abstractmethod
     def get_latest_version(self, name, throw_error_not_exist=True):
-        """Return latest version number of object in the storage
+        """ Return latest version number of object in the storage
 
         Arguments:
-            :param name {string} -- object name
+            name {str} -- object name
+
+        Keyword Arguments:
+            throw_error_not_exist {bool} -- true - throw error if not exists, else return [] (default: {True})
 
         Returns:
-            version number -- latest version number
+            str -- latest version number
         """
+
         return self.get(name, versions=RepoStore.LAST_VERSION, repo_info_fields=[RepoInfoKey.VERSION])[0]['repo_info'][RepoInfoKey.VERSION.value]
 
     @abc.abstractmethod
     def get_first_version(self, name, throw_error_not_exist=True):
-        """Return version number of first (in a temporal sense) object in storage
+        """ Return version number of first (in a temporal sense) object in storage
 
-        Args:
-            name (str): object name for which the version is returned
+        Arguments:
+            name {str} -- object name for which the version is returned
+
+        Keyword Arguments:
+            throw_error_not_exist {bool} -- true - throw error if not exists, else return [] (default: {True})
+
+        Raises:
+            NotImplementedError -- [description]
         """
+
         raise NotImplementedError()
 
     def object_exists(self, name, version=LAST_VERSION):
-        """Returns True if an object with the given name and version exists.
+        """ Returns True if an object with the given name and version exists.
 
         Arguments:
             name {string} -- object name
@@ -262,13 +331,18 @@ class RepoStore(abc.ABC):
 
 
 class NumpyStore(abc.ABC):
+    """ class to handle big objects
+    """
+
     @abc.abstractmethod
     def _delete(self, name, version):
-        """Delete an object with a predefined version
+        """ Delete an object with a predefined version.
 
-        Args:
-            name (str): name of object
-            version (str): object version
+        This method is only internally used by the MLRepo.
+
+        Arguments:
+            name {str} -- name of object
+            version {str} -- object version
         """
 
         pass
@@ -277,43 +351,51 @@ class NumpyStore(abc.ABC):
     def add(self, name, version, numpy_dict):
         """ Add numpy data from an object to the storage.
 
-        :param name: Name (as string) of object
-        :param version: object version
-        :param numpy_dict: numpy dictionary
-
+        Arguments:
+            name {str} -- Name (as string) of object
+            version {str} -- object version
+            numpy_dict {numpy dict} -- numpy dictionary
         """
+
         pass
 
     @abc.abstractmethod
     def append(self, name, version_old, version_new, numpy_dict):
-        """Append data
+        """ Append data to an existing object
 
-        Args:
-            name (string): name of data object to be returned
-            version_old (version): version of the object where the data will be appended
-            version_new (version): version of the new objct after appending the data
-            numpy_dict (dict): dictionary containign the values
-
+        Arguments:
+            name {str} -- name of data object to be returned
+            version_old {str} -- version of the object where the data will be appended
+            version_new {str} -- version of the new objct after appending the data
+            numpy_dict {dict} -- dictionary containing the values
         """
+
         pass
 
     @abc.abstractmethod
     def get(self, name, version, from_index=0, to_index=None):
-        """Get specific data
+        """ get the numpy object for a name and a version, rows can be used
 
-        Args:
-            name ([type]): [description]
-            version ([type]): [description]
+        Arguments:
+            name {str} -- identifier of the object
+            version {str} -- version of the object
+
+        Keyword Arguments:
+            from_index {int} -- the index from which the data should be taken (default: {0})
+            to_index {int or None} -- the index to which the data is returned (None means till the end) (default: {None})
+
+        Returns:
+            numpy array -- the numpy object to return
         """
 
     def push(self):
-        """Push changes to an eternal repo.
+        """ Push changes to an external repo.
         """
 
         pass
 
     def pull(self):
-        """Pull changes from an external repo
+        """ Pull changes from an external repo
         """
 
         pass
