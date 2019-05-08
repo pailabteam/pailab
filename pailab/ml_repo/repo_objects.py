@@ -1,3 +1,14 @@
+""" This module contains a bunch of different RepoObjects.
+
+In principal, all objects that can be stored within pailab's MLRepo are called a RepoObject. So, if you need a new object apart from those 
+documented here, you just have to implement the respective interfaces, so that the object can be processed by pailab. 
+This may be accomplished in three different ways:
+
+    - Inherit your class from the :py:class:`pailab.repo_objects.RepoObject` class. This may not be very pythonic, but it easily shows you which interfaces you definitively have to implement.
+    - If you have a very simple object you may use the decorator :py:class:`pailab.repo_objects.repo_object_init` in conjunction with your classe's constructor to make your class a  RepoObject.
+    - Just implement the methods needed (again look at :py:class:`pailab.repo_objects.RepoObject` to what has to be defined).
+
+"""
 import abc
 import datetime
 import importlib
@@ -69,6 +80,7 @@ class RepoInfo:
         self.modification_info = {}
         if modification_info is not None:
             self.modification_info = modification_info
+        self.modifiers = {}
         self.description = None
         self.category = category
         self.big_objects = []
@@ -618,10 +630,18 @@ class Result(RepoObject):
         self.big_data = repo_numpy_dict
 
 class CommitInfo(RepoObject):
+    """Stores each commit including the commit message and the objects commited.
+    
+    Args:
+        :param message {string} -- commit message
+        :param author {string} -- author
+        objects {dictionary} --  dictionary of names of committed objects and version numbers
+    
+    """
     def __init__(self, message, author, objects, repo_info = RepoInfo()):
         """Constructor
         
-        Arguments:
+        Args:
             message {string} -- commit message
             author {string} -- author
             objects {dictionary} --  dictionary of names of committed objects and version numbers
@@ -772,9 +792,21 @@ class Measure(RepoObject):
         return str(self.to_dict()) # pylint: disable=E1101
 
 class DataSet(RepoObject):
-    """ Class used to access training or test data.
+    """ Class used to define data used e.g. for training or testing.
 
-    This class refers to some RawData object and a start- and endindex 
+    This class refers to some RawData object and a start- and endindex. The repository 
+
+    Args:
+        raw_data {str} -- id of raw_data the dataset refers to
+    
+    Keyword Args:
+        start_index {int} -- index of first entry of the raw data used in the dataset (default: {0})
+        end_index {int or None} -- end_index of last entry of the raw data used in the dataset (if None, all including last element are used) (default: {None})
+        raw_data_version {str} -- version of RawData object the DataSet refers to (default: {'last'})
+        repo_info {RepoInfo} -- dictionary of the repo info (default: {RepoInfo()})
+    
+    Raises:
+        Exception -- raises an exception if the start index is after the end index
     """
     
     def __init__(self, raw_data, start_index=0, 
