@@ -27,16 +27,16 @@ tensorflow = [
 all_dependencies = sklearn + tensorflow
 
 setup(name='pailab',
-      version='0.0.1',
+      version='0.0.2',
       description='Pailab the ai and large data platform',
       long_description=readme(),
       classifiers=[
           'Development Status :: 3 - Alpha',
       ],
-      keywords='platform ai large data',
-      url='',
-      author='Pailab Inc',
-      author_email='info@pailab.com',
+      keywords='platform ml version-control neural-network ml-workbench ai large data',
+      url='https://github.com/pailabteam/pailab',
+      author='pailabteam',
+      author_email='pailab@rivacon.com',
       license='Apache 2.0',
       packages=find_packages(exclude=['doc', 'examples', 'tests']),
       install_requires=install_requirements,
