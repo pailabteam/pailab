@@ -27,7 +27,7 @@ tensorflow = [
 all_dependencies = sklearn + tensorflow
 
 setup(name='pailab',
-      version='0.0.1',
+      version='0.0.2',
       description='Pailab the ai and large data platform',
       long_description=readme(),
       classifiers=[
