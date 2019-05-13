@@ -323,8 +323,11 @@ def _get_all_files(directory):
     for path, subdirs, files in os.walk(directory):
         for name in files:
             p = path + '/' + name  # os.path.join(directory, name)
+            p = p.replace(directory, '')
             #path.replace(directory, "") + name
-            f.add(p.replace(directory, ''))
+            if p[0] == '\\' or p[0] == '/':
+                p = p[1:]
+            f.add(p)
     return f
 
 import time
@@ -337,12 +340,13 @@ def _lock_dir(main_dir, wait_time, timeout):
         try:
             file = open(main_dir + '/.lock', 'x')
             file.close()
-            return
+            break
         except:
             time.sleep(wait_time)
             _time += wait_time
-    raise Exception('Cannot obtain lock due to timeout. Either increase timeout or remove .lock in ' + main_dir + ' to make everything working.')
     yield
+    if _time >= timeout:
+        raise Exception('Cannot obtain lock due to timeout. Either increase timeout or remove .lock in ' + main_dir + ' to make everything working.')
     if os.path.exists(main_dir + '/.lock'):
         os.remove(main_dir + '/.lock')
 
@@ -377,7 +381,7 @@ class NumpyHDFRemoteStorage(NumpyHDFStorage):
             result = super(NumpyHDFRemoteStorage, self).get(name, version, from_index, to_index)
         except:
             with _lock_dir(self.main_dir, self._wait_time, self._timeout):
-                filename = self._create_file_name(name, version, change_if_not_exist=True)
+                filename = self._create_file_name(name, version, change_if_not_exist=False)
                 self._remote_store._download_file(self.main_dir + '/' + filename, filename)
                 result = super(NumpyHDFRemoteStorage, self).get(name, version, from_index, to_index)
         return result
@@ -391,9 +395,12 @@ class NumpyHDFRemoteStorage(NumpyHDFStorage):
     def push(self):
         """ Push changes to an external repo.
         """
+
         with _lock_dir(self.main_dir, self._wait_time, self._timeout):
-            remote_files = self._remote_store._remote_file_list()
+            remote_files = {x.name for x in self._remote_store._remote_file_list()}
             local_files = _get_all_files(self.main_dir)
+            if '.lock' in local_files:
+                local_files.remove('.lock')
             files_to_push = local_files-remote_files
             for f in files_to_push:
                 self._remote_store._upload_file(self.main_dir + '/' + f, f)
@@ -402,9 +409,10 @@ class NumpyHDFRemoteStorage(NumpyHDFStorage):
         """ Pull changes from an external repo
         """
         with _lock_dir(self.main_dir, self._wait_time, self._timeout):
-            remote_files = self._remote_store._remote_file_list()
+            remote_files = {x.name for x in self._remote_store._remote_file_list()}
             local_files = _get_all_files(self.main_dir)
+            local_files.remove('/.lock')
             files_to_pull = remote_files - local_files
-            for f in files_to_push:
+            for f in files_to_pull:
                 self._remote_store._download_file(self.main_dir + '/' + f, f)
 
