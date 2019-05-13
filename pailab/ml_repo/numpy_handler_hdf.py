@@ -135,7 +135,7 @@ class NumpyHDFStorage(NumpyStore):
         with h5py.File(self.main_dir + '/' + self._create_file_name(name, version), 'a') as f:
             grp_name = '/data/' + version + '/'
             logger.debug('Saving data ' + name +
-                          ' in hdf5 to group ' + grp_name)
+                         ' in hdf5 to group ' + grp_name)
             grp = f.create_group(grp_name)
             ref_grp = f.create_group('/ref/' + str(version) + '/')
             NumpyHDFStorage._save(grp, ref_grp, numpy_dict)
@@ -153,7 +153,7 @@ class NumpyHDFStorage(NumpyStore):
 
         with h5py.File(self.main_dir + '/' + self._create_file_name(name, version_new), 'a') as f:
             logger.debug('Appending data ' + name +
-                          ' in hdf5 with version ' + str(version_new))
+                         ' in hdf5 with version ' + str(version_new))
 
             try:
                 ref_grp = f['/ref/' + str(version_new) + '/']
@@ -219,8 +219,7 @@ class NumpyHDFStorage(NumpyStore):
                         layout = h5py.VirtualLayout(shape=shape)
                         layout[0:grp_old_k.shape[0]
                                ] = h5py.VirtualSource(grp_old_k)
-                        layout[grp_old_k.shape[0]
-                            :] = h5py.VirtualSource(grp_new_k)
+                        layout[grp_old_k.shape[0]:] = h5py.VirtualSource(grp_new_k)
                         tmp = grp.create_virtual_dataset(k, layout)
                         ref_grp.create_dataset(k, data=tmp.regionref[:])
                         #ref_grp.create_virtual_dataset(k, layout)
@@ -267,7 +266,7 @@ class NumpyHDFStorage(NumpyStore):
             grp_name = '/data/' + str(version) + '/'
             ref_grp = '/ref/' + str(version) + '/'
             logger.debug('Reading object ' + name +
-                          ' from hdf5, group ' + grp_name)
+                         ' from hdf5, group ' + grp_name)
             grp = f[grp_name]
             ref_g = f[ref_grp]
             result = {}
@@ -308,3 +307,104 @@ class NumpyHDFStorage(NumpyStore):
         except:
             pass
         return result
+
+
+def _get_all_files(directory):
+    """ Returns set of all files in directory
+
+    Arguments:
+        directory {str} -- the directory
+
+    Returns:
+        set -- set with all filenames (including relative paths)
+    """
+
+    f = set()
+    for path, subdirs, files in os.walk(directory):
+        for name in files:
+            p = path + '/' + name  # os.path.join(directory, name)
+            #path.replace(directory, "") + name
+            f.add(p.replace(directory, ''))
+    return f
+
+import time
+from contextlib import contextmanager
+
+@contextmanager
+def _lock_dir(main_dir, wait_time, timeout):
+    _time = 0
+    while _time < timeout:
+        try:
+            file = open(main_dir + '/.lock', 'x')
+            file.close()
+            return
+        except:
+            time.sleep(wait_time)
+            _time += wait_time
+    raise Exception('Cannot obtain lock due to timeout. Either increase timeout or remove .lock in ' + main_dir + ' to make everything working.')
+    yield
+    if os.path.exists(main_dir + '/.lock'):
+        os.remove(main_dir + '/.lock')
+
+class NumpyHDFRemoteStorage(NumpyHDFStorage):
+    """Storage to push and pull numpy data to and fron a remote
+
+    Args:
+       folder (string): folder where data is stored
+       remote_store (obj): object representing a remote storage
+       version_files (bool):
+    """
+
+    def __init__(self, folder, remote_store = None, version_files=False, sync_get = False, sync_add = False):
+        super(NumpyHDFRemoteStorage, self).__init__(folder, version_files = True)
+        self._remote_store = remote_store
+        # timeout in sec (waiting for another get/pull/push from another process)
+        self._timeout = 10
+        # time in seconds to wait if another process is currently pushing/pulling/getting
+        self._wait_time = 5
+        self._sync_get = sync_get
+        self._sync_add = sync_add
+
+    def set_remote(self, remote_store):
+        self._remote_store = remote_store
+
+    def get(self, name, version, from_index=0, to_index=None):
+        if not self._sync_get:
+            return super(NumpyHDFRemoteStorage, self).get(name, version, from_index, to_index)
+
+        result = None
+        try:
+            result = super(NumpyHDFRemoteStorage, self).get(name, version, from_index, to_index)
+        except:
+            with _lock_dir(self.main_dir, self._wait_time, self._timeout):
+                filename = self._create_file_name(name, version, change_if_not_exist=True)
+                self._remote_store._download_file(self.main_dir + '/' + filename, filename)
+                result = super(NumpyHDFRemoteStorage, self).get(name, version, from_index, to_index)
+        return result
+
+    def add(self, name, version, numpy_dict):
+        super(NumpyHDFRemoteStorage, self).add(name, version, numpy_dict)
+        if self._sync_add:
+            filename = self._create_file_name(name, version)
+            self._remote_store._upload_file( self.main_dir + '/' + filename, filename)
+
+    def push(self):
+        """ Push changes to an external repo.
+        """
+        with _lock_dir(self.main_dir, self._wait_time, self._timeout):
+            remote_files = self._remote_store._remote_file_list()
+            local_files = _get_all_files(self.main_dir)
+            files_to_push = local_files-remote_files
+            for f in files_to_push:
+                self._remote_store._upload_file(self.main_dir + '/' + f, f)
+
+    def pull(self):
+        """ Pull changes from an external repo
+        """
+        with _lock_dir(self.main_dir, self._wait_time, self._timeout):
+            remote_files = self._remote_store._remote_file_list()
+            local_files = _get_all_files(self.main_dir)
+            files_to_pull = remote_files - local_files
+            for f in files_to_push:
+                self._remote_store._download_file(self.main_dir + '/' + f, f)
+
