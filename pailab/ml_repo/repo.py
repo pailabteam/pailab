@@ -1646,7 +1646,6 @@ class MLRepo:
             if run_descendants:
                 self.run_evaluation(model + '/model', 'evaluation triggered as descendant of run_training', 
                     predecessors=[(train_job.repo_info[RepoInfoKey.NAME], train_job.repo_info[RepoInfoKey.VERSION])], run_descendants=True)
-            #self._job_runner.add(train_job.repo_info[RepoInfoKey.NAME], train_job.repo_info[RepoInfoKey.VERSION], self._user)
             return train_job.repo_info[RepoInfoKey.NAME], str(train_job.repo_info[RepoInfoKey.VERSION])
         else:
             return 'No new training started: A model has already been trained on the latest data.'
@@ -1759,7 +1758,6 @@ class MLRepo:
                 if run_descendants:
                     self.run_measures(job.model,  'run_measures started as predecessor of run_evaluation', model_version=job.model_version, datasets={job.data: repo_store.RepoStore.LAST_VERSION}, 
                         predecessors=[(job.repo_info[RepoInfoKey.NAME], job.repo_info[RepoInfoKey.VERSION])])
-                #self._job_runner.add(job.repo_info[RepoInfoKey.NAME], job.repo_info[RepoInfoKey.VERSION], self._user)
                 
         return job_ids
 
