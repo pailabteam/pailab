@@ -229,14 +229,6 @@ class RepoTest(unittest.TestCase):
         # add dummy calibrated model
         self._add_calibrated_model()
         
-
-    def test_adding_training_data_exception(self):
-        '''Tests if adding new training data leads to an exception
-        '''
-        with self.assertRaises(Exception):
-            test_obj = DataSet('raw_data', repo_info = {repo_objects.RepoInfoKey.CATEGORY: MLObjectType.TRAINING_DATA.value, 'name': 'test_object'})
-            self.repository.add(test_obj)
-
     def test_commit_increase_update(self):
         '''Check if updating an object in repository increases commit but does not change mapping
         '''

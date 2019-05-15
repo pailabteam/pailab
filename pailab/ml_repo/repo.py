@@ -153,10 +153,6 @@ class Mapping(RepoObject):
 
         category_name = MLObjectType._get_key(category)
         mapping = getattr(self, category_name)
-        # if name in mapping:
-        #    raise Exception('Cannot add object: A ' + category_name + ' object with name ' + name + ' already exists in repo, please use update to modify it.')
-        if category_name == MLObjectType.TRAINING_DATA.value and len(mapping) > 0 and mapping[0] != name:
-            raise Exception('Only one set of training data allowed.')
         if not name in mapping:
             mapping.append(name)
             return True
