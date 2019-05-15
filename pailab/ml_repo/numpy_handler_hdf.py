@@ -423,9 +423,9 @@ class NumpyHDFRemoteStorage(NumpyHDFStorage):
         """ Pull changes from an external repo
         """
         with _lock_dir(self.main_dir, self._wait_time, self._timeout):
-            remote_files = {x.name for x in self._remote_store._remote_file_list()}
+            remote_files = self._remote_store._remote_file_list()
             local_files = _get_all_files(self.main_dir)
-            local_files.remove('/.lock')
+            local_files.remove('.lock')
             files_to_pull = remote_files - local_files
             for f in files_to_pull:
                 self._remote_store._download_file(self.main_dir + '/' + f, f)

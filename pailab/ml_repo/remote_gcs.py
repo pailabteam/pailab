@@ -16,7 +16,7 @@ class RemoteGCS:
         return self._bucket
 
     def _remote_file_list(self):
-        return self._get_bucket().list_blobs()
+        return [x.name for x in self._get_bucket().list_blobs()]
 
     def _download_file(self, local_filename, remote_filename):
         bucket = self._get_bucket()
