@@ -24,7 +24,36 @@ logger = logging.getLogger(__name__)
 
 
 class MLObjectType(Enum):
-    """Enums describing all ml object types.
+    """Enum describing all ml object types.
+
+    The MLObjectType is assigned to each object in the MLRepo. It is used to structure all objects and to support consistency checks and 
+    automatic pipelines, the following types are defined:
+    
+        - EVAL_DATA: evaluation data (result from evaluation of a model)
+        - RAW_DATA: raw data, i.e. simple numpy structures most often used to derive test or training data from the RawData
+        - TRAINING_DATA: training data used for model training
+        - TEST_DATA: data used for model testing
+        - TEST: concrete test
+        - TEST_DEFINITION: definition of a test which is applied to respective data and models to obtain a test
+        - MODEL_PARAM: model parameter
+        - TRAINING_PARAM: training parameter
+        - TRAINING_FUNCTION: function to train e certain model
+        - MODEL_EVAL_FUNCTION: function to evaluate a certain model
+        - PREPROCESSOR_PARAM: preprocessing parameter
+        - PREPROCESSOR: definition of a preprocessor
+        - PREPROCESSING_FITTING_FUNCTION: function to fit the preprocessor
+        - PREPROCESSING_TRANSFORMING_FUNCTION: function to apply preprocessing to data
+        - LABEL: model label
+        - MODEL: definition of a model
+        - CALIBRATED_MODEL: object containing a calibrated instande of a model
+        - COMMIT_INFO: internally used to store commit messages
+        - MAPPING: internally used mapping object to map an object's name to the object's category
+        - MEASURE: computed measure (e.g. norm of error)
+        - MEASURE_CONFIGURATION: the configuration of all measures applied to the model
+        - RESULT: object holding results
+        - JOB: a job
+        - TRAINING_STATISTIC: object holding training statistics, e.g. training history
+        - CACHED_VALUE: cached return values of time consuming functions
     """
     EVAL_DATA = 'EVAL_DATA'
     RAW_DATA = 'RAW_DATA'
@@ -50,7 +79,8 @@ class MLObjectType(Enum):
     RESULT = 'RESULT'
     JOB = 'JOB'
     TRAINING_STATISTIC = 'TRAINING_STATISTIC'
-
+    CACHED_VALUE  = 'CACHED_VALUE'
+    
     @staticmethod
     def _get_key(category): 
         """ Returns a standardized key for the given category
@@ -205,7 +235,7 @@ class Job(RepoObject, abc.ABC):
                 for k,v in job.repo_info[RepoInfoKey.MODIFICATION_INFO].items():
                     self.versions[k] = v
             self.modification_info = {}
-
+            
         def _get_version(self, name, orig_version):
             """ Get the version of the object
             
@@ -362,7 +392,7 @@ class Job(RepoObject, abc.ABC):
         except Exception as e:
             self.finished = str(datetime.now())
             self.state = 'error'
-            self.repo_info[RepoInfoKey.MODIFICATION_INFO] = wrapper.modification_info
+            self.repo_info[RepoInfoKey.MODIFICATION_INFO] = wrapper.modification_info   
             self.error_message = str(e)
             ml_repo._update_job(self)
             raise e from None
@@ -962,7 +992,11 @@ class MLRepo:
             - best practice standardized plotting for investigating model performance and model behaviour
             - automated quality checks
 
-        The repository needs three different handlers/repositories 
+        Keyword Arguments:
+            workspace {[type]} -- [description] (default: {None})
+            user {str} -- the user (default: {None})
+            config {dict} -- the configuration to use (default: {None})
+            save_config {bool} -- determines whether to save the configuration or not (default: {False})
 
     """
     
@@ -1612,6 +1646,7 @@ class MLRepo:
             if run_descendants:
                 self.run_evaluation(model + '/model', 'evaluation triggered as descendant of run_training', 
                     predecessors=[(train_job.repo_info[RepoInfoKey.NAME], train_job.repo_info[RepoInfoKey.VERSION])], run_descendants=True)
+            #self._job_runner.add(train_job.repo_info[RepoInfoKey.NAME], train_job.repo_info[RepoInfoKey.VERSION], self._user)
             return train_job.repo_info[RepoInfoKey.NAME], str(train_job.repo_info[RepoInfoKey.VERSION])
         else:
             return 'No new training started: A model has already been trained on the latest data.'
@@ -1724,6 +1759,8 @@ class MLRepo:
                 if run_descendants:
                     self.run_measures(job.model,  'run_measures started as predecessor of run_evaluation', model_version=job.model_version, datasets={job.data: repo_store.RepoStore.LAST_VERSION}, 
                         predecessors=[(job.repo_info[RepoInfoKey.NAME], job.repo_info[RepoInfoKey.VERSION])])
+                #self._job_runner.add(job.repo_info[RepoInfoKey.NAME], job.repo_info[RepoInfoKey.VERSION], self._user)
+                
         return job_ids
 
     def run_measures(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, datasets={}, measures = {}, predecessors = [], labels=None):
