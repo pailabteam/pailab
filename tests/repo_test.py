@@ -10,7 +10,7 @@ import pailab.ml_repo.repo_objects as repo_objects
 import pailab.ml_repo.memory_handler as memory_handler
 import pailab.ml_repo.repo_store as repo_store
 from pailab.job_runner.job_runner import SimpleJobRunner # pylint: disable=E0401
-from pailab.ml_repo.numpy_handler_hdf import NumpyHDFStorage
+from pailab.ml_repo.numpy_handler_hdf import NumpyHDFStorage, NumpyHDFRemoteStorage, _get_all_files
 import logging
 logging.basicConfig(level=logging.FATAL) # since we also test for errors we switch off the logging in this level
 
@@ -692,6 +692,77 @@ class NumpyHDFStorageTest(unittest.TestCase):
         test_data_get = self.store.get('test_3d', '1')
         self.assertEqual(test_data_get['test_data'].shape, test_data.shape)
         self.assertEqual(test_data[0,0,0], test_data_get['test_data'][0,0,0])
+
+class NumpyHDFRemoteStorageTest(unittest.TestCase):
+    class RemoteDummy:
+        """Dummy remote class to test NumpyHDFRemoteStorage.
+        """
+        def __init__(self, directory):
+            self.directory = directory
+
+        def _remote_file_list(self):
+            return _get_all_files(self.directory)
+
+        def _download_file(self, local_filename, remote_filename):
+            shutil.copyfile(self.directory + '/' + remote_filename, local_filename)
+
+        def _upload_file(self,  local_filename, remote_filename):
+            shutil.copyfile(local_filename, self.directory + '/' + remote_filename)
+
+
+    def setUp(self):
+        try:
+            shutil.rmtree('test_numpy_hdf5_remote')
+            os.makedirs('test_numpy_hdf5_remote')
+        except OSError:
+            os.makedirs('test_numpy_hdf5_remote')
+        try:
+            shutil.rmtree('test_numpy_hdf5_remote_remote')
+            os.makedirs('test_numpy_hdf5_remote_remote')
+        except OSError:
+            os.makedirs('test_numpy_hdf5_remote_remote')
+        self.store = NumpyHDFRemoteStorage('test_numpy_hdf5_remote')
+        self.remote = NumpyHDFRemoteStorageTest.RemoteDummy('test_numpy_hdf5_remote_remote')
+        self.store.set_remote(self.remote)
+
+    def tearDown(self):
+        try:
+            shutil.rmtree('test_numpy_hdf5_remote')
+        except OSError:
+            pass
+        try:
+            shutil.rmtree('test_numpy_hdf5_remote_remote')
+        except OSError:
+            pass
+
+    def test_add(self):
+        test_data = np.full((1,5), 1.0)
+        self.store.add('test_1', '1', {'test_data': test_data})
+        self.assertTrue(os.path.exists('test_numpy_hdf5_remote/test_1_1.hdf5'))
+        self.assertFalse(os.path.exists('test_numpy_hdf5_remote_remote/test_1_1.hdf5'))
+        self.store.push()
+        self.assertTrue(os.path.exists('test_numpy_hdf5_remote_remote/test_1_1.hdf5'))
+        self.store._sync_add = True
+        self.store.add('test_2', '1', {'test_data': test_data})
+        self.assertTrue(os.path.exists('test_numpy_hdf5_remote_remote/test_2_1.hdf5'))
+
+    def test_get(self):
+        test_data = np.full((1,5), 1.0)
+        self.store._sync_add = True
+        self.store._sync_get = True
+        self.store.add('test_1', '1', {'test_data': test_data})
+        os.remove('test_numpy_hdf5_remote/test_1_1.hdf5')
+        self.assertFalse(os.path.exists('test_numpy_hdf5_remote/test_1_1.hdf5'))
+        self.assertTrue(os.path.exists('test_numpy_hdf5_remote_remote/test_1_1.hdf5'))
+        
+        self.store.pull()
+        self.assertTrue(os.path.exists('test_numpy_hdf5_remote/test_1_1.hdf5'))
+        
+        os.remove('test_numpy_hdf5_remote/test_1_1.hdf5')
+        self.assertFalse(os.path.exists('test_numpy_hdf5_remote/test_1_1.hdf5'))
+        self.store.get('test_1', '1')
+        self.assertTrue(os.path.exists('test_numpy_hdf5_remote/test_1_1.hdf5'))
+        
 
 
 from pailab.tools.tests import RegressionTestDefinition
