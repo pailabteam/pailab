@@ -10,6 +10,7 @@ import pailab.ml_repo.repo_objects as repo_objects
 import pailab.ml_repo.memory_handler as memory_handler
 import pailab.ml_repo.repo_store as repo_store
 from pailab.job_runner.job_runner import SimpleJobRunner # pylint: disable=E0401
+import pailab.ml_repo.repo_store_factory as repo_store_factory
 from pailab.ml_repo.numpy_handler_hdf import NumpyHDFStorage, NumpyHDFRemoteStorage, _get_all_files
 import logging
 logging.basicConfig(level=logging.FATAL) # since we also test for errors we switch off the logging in this level
@@ -721,7 +722,7 @@ class NumpyHDFRemoteStorageTest(unittest.TestCase):
             os.makedirs('test_numpy_hdf5_remote_remote')
         except OSError:
             os.makedirs('test_numpy_hdf5_remote_remote')
-        self.store = NumpyHDFRemoteStorage('test_numpy_hdf5_remote')
+        self.store = repo_store_factory.NumpyStoreFactory.get('hdf_remote_handler', folder = 'test_numpy_hdf5_remote')
         self.remote = NumpyHDFRemoteStorageTest.RemoteDummy('test_numpy_hdf5_remote_remote')
         self.store.set_remote(self.remote)
 
@@ -762,6 +763,7 @@ class NumpyHDFRemoteStorageTest(unittest.TestCase):
         self.assertFalse(os.path.exists('test_numpy_hdf5_remote/test_1_1.hdf5'))
         self.store.get('test_1', '1')
         self.assertTrue(os.path.exists('test_numpy_hdf5_remote/test_1_1.hdf5'))
+        
         
 
 
