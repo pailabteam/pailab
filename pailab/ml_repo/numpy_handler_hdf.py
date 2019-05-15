@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+"""Module defining classes to store numpy data in hdf5 files.
+
+This module provides implementations of the :py:class:`pailab.ml_repo.repo_store.NumpyStore` using hdf5 file format.
+"""
 import h5py
 import os
 import pathlib
@@ -24,25 +29,21 @@ def trace(aFunc):
 
 
 class NumpyHDFStorage(NumpyStore):
-    """ The Numpy HDF handler
+    """ Storage using hdf5 files to store numpy data.
+    
+    Example:
+        Setup storage using folder ``C:\\temp\\data``::
 
-    This handler is used to save and read data from hdf5.
-
+            >>> store = NumpyHDFStorage('C:\\temp\\data')
+    Args:
+        folder (str): main directory where the files will be stored
+        version_files (bool): If True, each version is contained in a separate file, otherwise all versions are in one file.
+            If you like to work in a distributed environmnt (e.g. multiple users working in parallel) you should set this parameter to True so that no file merge is necessary.
+             (default: {False})
+    
     """
 
     def __init__(self, folder, version_files=False):
-        """ the class constructor
-
-        Constructs the NumpyHDFStorage which stores numpy dictionaries in hdf5 files using h5py.
-
-        Arguments:
-            folder {str} -- main directory where the files will be stored
-
-        Keyword Arguments:
-            version_files {bool} -- If True, each version is contained in a separate file, otherwise all versions are in one file.
-                If you like to work in a distributed environmnt (e.g. multiple users working in parallel) you should set this parameter to True so that no file merge is necessary. (default: {False})
-        """
-
         self.main_dir = folder
         self._version_files = version_files
         if not os.path.exists(self.main_dir):
@@ -351,15 +352,28 @@ def _lock_dir(main_dir, wait_time, timeout):
         os.remove(main_dir + '/.lock')
 
 class NumpyHDFRemoteStorage(NumpyHDFStorage):
-    """Storage to push and pull numpy data to and fron a remote
+    """Storage working like NumpyHDFStorage locally but in addition provides synchronization with a remote.
+
+    This storage stores numpy data in hdf5 files in a directory. It works very similar to the :py:class:`NumpyHDFStorage` with the difference
+    that it synchronizes the data with a given remote (downloads and uploads the respective files).
+
+    Example:
+        This example shows how to setup the storage so that the data is stored in a 
+        local directory and it can be synchronized ith googl ecloud storage::
+
+            >>> numpy = NumpyHDFRemoteStorage('C:\\tmp\\data')
+            >>> from pailab.ml_repo.remote_gcs import RemoteGCS
+            >>> remote = RemoteGCS(bucket='my_data')
+            >>> numpy.set_remote(remote)
 
     Args:
-       folder (string): folder where data is stored
-       remote_store (obj): object representing a remote storage
-       version_files (bool):
+       folder (str): folder where data is stored
+       remote_store (obj): object representing a remote storage (e.g. :py:class:`pailab.ml_repo.remote_gcs.RemoteGCS` for the google cloud storage)
+       sync_get (bool): If True, tries to download data automatically if it does not exist locally, otherwise it checks only locally
+       sync_add (bool): If True, added data will be directly uploaded to the remote
     """
 
-    def __init__(self, folder, remote_store = None, version_files=False, sync_get = False, sync_add = False):
+    def __init__(self, folder, remote_store = None,  sync_get = False, sync_add = False):
         super(NumpyHDFRemoteStorage, self).__init__(folder, version_files = True)
         self._remote_store = remote_store
         # timeout in sec (waiting for another get/pull/push from another process)
