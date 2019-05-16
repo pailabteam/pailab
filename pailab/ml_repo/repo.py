@@ -505,6 +505,7 @@ class EvalJob(Job):
                             RepoInfoKey.CATEGORY: MLObjectType.EVAL_DATA.value
                             }
                             )
+        result.repo_info.category =  MLObjectType.EVAL_DATA.value
          # create modification info
         _add_modification_info(result, model, model_definition, data, eval_func)
         model_param_name = str(NamingConventions.ModelParam(model = model_definition_name))
@@ -1690,20 +1691,29 @@ class MLRepo:
         if len(names) > 1:
             raise Exception('More than one object of type ' + obj_category.value + ' exist, please specify a specific object name.')
         return names[0]
-            
-    def _create_evaluation_jobs(self, model=None, model_version=repo_store.RepoStore.LAST_VERSION, datasets={}, predecessors = [], labels = None):
-        def get_datasets(ml_repo, model, model_version=repo_store.RepoStore.LAST_VERSION):
-            result = {}
-            model_def = str(NamingConventions.Model(NamingConventions.CalibratedModel(model)))
-            train_data = ml_repo.get_training_data(model=model_def, model_version = model_version, full_object = False)
-            result[train_data.repo_info.name] = train_data.repo_info.version 
-            m = ml_repo.get(model_def, model_version, full_object = False)
-            test_data = m.get_test_data(ml_repo)
-            for t in test_data:
-                tmp = ml_repo.get(t, full_object = False)
-                result[tmp.repo_info.name] = tmp.repo_info.version
-            return result
 
+    def _get_datasets(self, model, model_version=repo_store.RepoStore.LAST_VERSION):
+        """Return name of datasets relevant for evaluation, measurement or tests.
+        
+        Args:
+            model (str): The name of the calibrated model for which the datasets will be returned.
+            model_version (str, optional): Version of model definition for which the dataset will be returned. Defaults to repo_store.RepoStore.LAST_VERSION.
+        
+        Returns:
+            [dictionary]: The dictionary from dataset name to latest dataset version.
+        """
+        result = {}
+        model_def = str(NamingConventions.Model(NamingConventions.CalibratedModel(model)))
+        train_data = self.get_training_data(model=model_def, model_version = model_version, full_object = False)
+        result[train_data.repo_info.name] = train_data.repo_info.version 
+        m = self.get(model_def, model_version, full_object = False)
+        test_data = m.get_test_data(self)
+        for t in test_data:
+            tmp = self.get(t, full_object = False)
+            result[tmp.repo_info.name] = tmp.repo_info.version
+        return result
+    
+    def _create_evaluation_jobs(self, model=None, model_version=repo_store.RepoStore.LAST_VERSION, datasets={}, predecessors = [], labels = None):
         models = [(self._get_default_object_name(model, MLObjectType.CALIBRATED_MODEL), model_version)]
         if model is None and labels is None:
             labels = self.get_names(MLObjectType.LABEL)
@@ -1717,7 +1727,7 @@ class MLRepo:
         jobs = []
         for m in models:
             if len(datasets) == 0:
-                datasets_ = get_datasets(self, m[0])
+                datasets_ = self._get_datasets(m[0])
             for n, v in datasets_.items():
                 eval_job = EvalJob(m[0], n, self._user, model_version=m[1], data_version=v,
                             repo_info = {RepoInfoKey.NAME: m[0] + '/jobs/eval_job/' + n,
@@ -1813,12 +1823,6 @@ class MLRepo:
                 models.append((tmp.name, tmp.version) )
 
         datasets_ = deepcopy(datasets)
-        if len(datasets_) == 0:
-            names = self.get_names(MLObjectType.TEST_DATA)
-            names.extend(self.get_names(MLObjectType.TRAINING_DATA))
-            for n in names:
-                datasets_[n] = repo_store.RepoStore.LAST_VERSION
-
         measure_names =   self.get_names(MLObjectType.MEASURE_CONFIGURATION)
         if len(measure_names) == 0:
             logger.warning('No measures defined.')
@@ -1833,6 +1837,10 @@ class MLRepo:
                 measures_to_run[k] = v
         job_ids = []
         for mod in models:
+            if len(datasets) == 0:
+                datasets_ = self._get_datasets(mod[0])
+                for k in datasets_.keys():
+                    datasets_[k] = repo_store.RepoStore.LAST_VERSION
             for n, v in datasets_.items():
                 for m_name, m in measures_to_run.items():
                     measure_job = MeasureJob(m_name, m[0], m[1], n, mod[0], v, mod[1],
