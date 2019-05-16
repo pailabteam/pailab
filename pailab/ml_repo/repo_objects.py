@@ -522,6 +522,8 @@ class Model(RepoObject):
             test_data (str): Regular expression defining the test data used for the model within the repository. If None, all test data in the repo is used.
         """
         super(Model, self).__init__(repo_info)
+        if self.repo_info.category is None:
+            self.repo_info.category = 'MODEL'
         self.preprocessors = preprocessors
         self.eval_function = eval_function
         self.training_function = train_function
