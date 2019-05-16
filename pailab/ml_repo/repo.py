@@ -1200,10 +1200,10 @@ class MLRepo:
         if len(self._mapping[MLObjectType.TRAINING_DATA]) > 1:
             if model is None:
                 raise Exception("More then one training_data in repository, please use method get and specify the name of the training data.")
-                m = self.get(model, model_version)
-                if m.training_data is None:
-                    raise Exception("More then one training_data in repository and the model does not explicitely specify a training data set.")
-                training_data = m.training_data
+            m = self.get(model, model_version)
+            if m.training_data is None:
+                raise Exception("More then one training_data in repository and the model does not explicitely specify a training data set.")
+            training_data = m.training_data
         else:
             training_data =  self._mapping[MLObjectType.TRAINING_DATA][0]
         return self.get(training_data, version, full_object)
@@ -1429,8 +1429,10 @@ class MLRepo:
         Returns:
             RepoObject or list thereof -- The repo object
         """
-
-        logging.debug('Getting ' + name + ', version ' + str(version))
+        if version is not None:
+            logging.debug('Getting ' + name + ', version ' + str(version))
+        else:
+            logging.debug('Getting ' + name + ', version is None.')
         repo_dict = self._ml_repo.get(name, version, modifier_versions, obj_fields, repo_info_fields, 
                                       throw_error_not_exist, throw_error_not_unique)
         if len(repo_dict) == 0:
