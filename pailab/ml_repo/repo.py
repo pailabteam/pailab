@@ -1689,7 +1689,7 @@ class MLRepo:
                 models.append((tmp.name, tmp.version) )
         datasets_ = deepcopy(datasets)
         if len(datasets_) == 0: #if nothing is specified, add evaluation jobs on all training and test datasets
-            names = self.get_names(MLObjectType.TEST_DATA.value)
+            names = self.get_names(MLObjectType.TEST_DATA)
             for n in names:
                 v = self._ml_repo.get_version(n, -1)
                 datasets_[n] = v
