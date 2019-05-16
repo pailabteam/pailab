@@ -538,9 +538,9 @@ class Model(RepoObject):
         Returns:
             list of names of the test data that applied to this model
         """
-        if self.training_data is None:
+        if self.test_data is None:
             return ml_repo.get_names('TEST_DATA')
-        p = re.compile(self.training_data)
+        p = re.compile(self.test_data)
         result = []
         names = ml_repo.get_names('TEST_DATA')
         for n in names:
