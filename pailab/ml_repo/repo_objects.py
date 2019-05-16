@@ -10,6 +10,7 @@ This may be accomplished in three different ways:
 
 """
 import abc
+import re
 import datetime
 import importlib
 
@@ -507,7 +508,7 @@ class RawData(RepoObject):
 class Model(RepoObject):
     def __init__(self, preprocessors = None, 
                 eval_function = None, train_function = None, train_param = None, 
-                model_param = None, training_data = None, repo_info = RepoInfo()):
+                model_param = None, training_data = None, test_data = None, repo_info = RepoInfo()):
         """Defines all model relevant information
         
         Keyword Arguments:
@@ -518,6 +519,7 @@ class Model(RepoObject):
             model_param {string} -- name of model parameter object used for creating the model, i.e. network architecture (default: {None})
             repo_info {RepoInfo} -- dictionary of the repo info (default: {RepoInfo()})
             training_data (str): name of training data used to train the model
+            test_data (str): Regular expression defining the test data used for the model within the repository. If None, all test data in the repo is used.
         """
         super(Model, self).__init__(repo_info)
         self.preprocessors = preprocessors
@@ -526,6 +528,25 @@ class Model(RepoObject):
         self.training_param = train_param
         self.model_param = model_param
         self.training_data = training_data
+        self.test_data = test_data
+
+    def get_test_data(self, ml_repo):
+        """Returns all test data in the repo relevant for this model.
+        
+        Args:
+            ml_repo (MLRepo): The repository from which the test data is taken
+        Returns:
+            list of names of the test data that applied to this model
+        """
+        if self.training_data is None:
+            return ml_repo.get_names('TEST_DATA')
+        p = re.compile(self.training_data)
+        result = []
+        names = ml_repo.get_names('TEST_DATA')
+        for n in names:
+            if p.match(n) is not None:
+                result.append(n)
+        return result
 
 class Preprocessor(RepoObject):
     """ Preprocessor class
