@@ -575,7 +575,10 @@ class TrainingJob(Job):
         """
 
         model = repo.get(self.model, self.model_version)
-        train_data = repo.get_training_data(self.training_data_version, full_object = True)
+        if model.training_data is None:
+            train_data = repo.get_training_data(self.training_data_version, full_object = True)
+        else:
+            train_data = repo.get(model.training_data, self.training_data_version, full_object = True)
         train_func = repo.get(model.training_function,
                                self.training_function_version)
         train_param = None
@@ -703,7 +706,10 @@ class TrainingJob(Job):
         modifiers = {}
         modifiers[self.model] = self.model_version
         model = repo.get(self.model, self.model_version)
-        train_data = repo.get_training_data(self.training_data_version, full_object = False)
+        if model.training_data is None:
+            train_data = repo.get_training_data(self.training_data_version, full_object = False)
+        else:
+            train_data = repo.get(model.training_data, self.training_data_version, full_object = False)
         modifiers[train_data.repo_info.name] = self.training_data_version
         modifiers[model.training_function] = self.training_function_version
         if not model.training_param == '':
@@ -1183,6 +1189,8 @@ class MLRepo:
         
         if self._mapping[MLObjectType.TRAINING_DATA] is None:
             raise Exception("No training_data in repository.")
+        if len(self._mapping[MLObjectType.TRAINING_DATA]) > 1:
+            raise Exception("More then one training_data in repository, please use method get and specify the name of the training data.")
         return self.get(self._mapping[MLObjectType.TRAINING_DATA][0], version, full_object)
 
     def add_eval_function(self, f, repo_name = None):
