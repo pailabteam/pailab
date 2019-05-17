@@ -40,17 +40,19 @@ class RepoObjectGitStorage(RepoObjectDiskStorage):
         super(RepoObjectGitStorage, self).__init__(**kwargs)
         # initialize git repo if it does not exist
         if not RepoObjectGitStorage._is_git_repo(self._main_dir):
-            logger.info('Initialize new git repo.')
-            _ = Repo.init(self._main_dir)
-            if remote is not None:
-                #remov sqlite db to clone into directory
+            if remote is None:
+                logger.info('Initialize new git repo.')
+                _ = Repo.init(self._main_dir)
+            else:
+                # remove sqlite db to clone into directory
+                if self._conn is not None:
+                    self._conn.close()
                 os.remove(self._sqlite_db_name())
                 _ = Repo.clone_from(remote, self._main_dir)
-                # now check if cloned repository  contains sqlit db and if not create new one
-                if os.path.exists(self._sqlite_db_name()):
-                    if self._conn is not None:
-                        self._conn.close()
-                    self._setup_new()
+                # check if cloned repository  contains sqlite db and if not create new one
+                if not os.path.exists(self._sqlite_db_name()):
+                    self._conn.close()
+                self._setup_new()
         
     def _add(self, obj):
         """ Adds an object to the git repository
@@ -87,20 +89,21 @@ class RepoObjectGitStorage(RepoObjectDiskStorage):
         self.commit('Replace object ' + obj['repo_info']['name'] +
                     ', version ' + obj['repo_info']['version'] + '.')
 
-    def commit(self, message):
+    def commit(self, message, force = True):
         """ Commits the changes
 
         Arguments:
-            message {str} -- commit message
+            message (str): Commit message
+            force (bool): If False, objecs will only be commited if integrity check succeeded.
 
         Raises:
             Exception -- raises an exception if the integrity check fails
         """
-
-        check = self.check_integrity()
-        if len(check) > 0:
-            raise Exception(
-                "Integrity check fails, cannot commit: " + str(check))
+        if not force:
+            check = self.check_integrity()
+            if len(check) > 0:
+                raise Exception(
+                    "Integrity check fails, cannot commit: " + str(check))
         git_repo = Repo(self._main_dir)
         git_repo.git.add('-A')
         git_repo.git.commit('-m', message)
