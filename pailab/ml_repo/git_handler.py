@@ -27,20 +27,31 @@ class RepoObjectGitStorage(RepoObjectDiskStorage):
         except:
             return False
 
-    def __init__(self, **kwargs):
+    def __init__(self, remote = None, **kwargs):
         """ Constructor
-
+        Arguments:
+            remote (str): The remote git repository. Defaults to None which means that there is no remote. If given and the target directory is not under git control, the repo will try to clon from the remote.
         Keyword Arguments:
-            folder {str} -- directory used to store the objects in files as well as the sqlite database
-            save_function {} -- function used to save the objects to disk. (default: {pickle_save})
-            load_function {} -- function used to load the objects from disk. (default: {pickle_load})
-        """
+            folder (str): directory used to store the objects in files as well as the sqlite database
+            file_format (str: 'pickle'|'json'): The fileformat used to save the objects(default: {'pickle'})
 
+        """
+            
         super(RepoObjectGitStorage, self).__init__(**kwargs)
         # initialize git repo if it does not exist
         if not RepoObjectGitStorage._is_git_repo(self._main_dir):
+            logger.info('Initialize new git repo.')
             _ = Repo.init(self._main_dir)
-
+            if remote is not None:
+                #remov sqlite db to clone into directory
+                os.remove(self._sqlite_db_name())
+                _ = Repo.clone_from(remote, self._main_dir)
+                # now check if cloned repository  contains sqlit db and if not create new one
+                if os.path.exists(self._sqlite_db_name()):
+                    if self._conn is not None:
+                        self._conn.close()
+                    self._setup_new()
+        
     def _add(self, obj):
         """ Adds an object to the git repository
 
