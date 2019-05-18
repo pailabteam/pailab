@@ -142,7 +142,7 @@ def eval_func_test(model, data):
         model {} -- dummy model, not used
         data {} -- dummy data, not used
     '''
-    return np.zeros([data.shape[0],1])
+    return np.zeros([data.x_data.shape[0],1])
 
 def train_func_test(training_param, data):
     '''Dummy model training function for testing
@@ -229,14 +229,6 @@ class RepoTest(unittest.TestCase):
         # add dummy calibrated model
         self._add_calibrated_model()
         
-
-    def test_adding_training_data_exception(self):
-        '''Tests if adding new training data leads to an exception
-        '''
-        with self.assertRaises(Exception):
-            test_obj = DataSet('raw_data', repo_info = {repo_objects.RepoInfoKey.CATEGORY: MLObjectType.TRAINING_DATA.value, 'name': 'test_object'})
-            self.repository.add(test_obj)
-
     def test_commit_increase_update(self):
         '''Check if updating an object in repository increases commit but does not change mapping
         '''
@@ -338,11 +330,63 @@ class RepoTest(unittest.TestCase):
         '''Test running training with default arguments
         '''
         self.repository.run_training()
+        model_calib = self.repository.get(str(NamingConventions.CalibratedModel(NamingConventions.Model('model'))))
+        self.assertTrue('training_data_1' in model_calib.repo_info.modification_info.keys())
 
+    def test_run_train_defaults_two_training_data(self):
+        '''Test running training with default arguments where repo contains two models with different training data
+        '''
+        training_data = DataSet('raw_1', 0, None, 
+                                    repo_info = {repo_objects.RepoInfoKey.NAME.value: 'training_data_2', repo_objects.RepoInfoKey.CATEGORY: MLObjectType.TRAINING_DATA})
+
+        model =  self.repository.get('model')
+        model.training_data = 'training_data_2'
+        self.repository.add(model)
+        self.repository.add(training_data)
+        self.repository.run_training()
+        model_calib = self.repository.get(str(NamingConventions.CalibratedModel(NamingConventions.Model('model'))))
+        self.assertTrue('training_data_2' in model_calib.repo_info.modification_info.keys())
+
+    def test_run_model_on_model(self):
+        """Test model which is calibrated on output of another model.
+        """        
+        model =  self.repository.get('model')
+        model.training_data = 'training_data_1'
+        self.repository.add(model)
+        # define the training data of second model as the eval data of first model
+        training_data = DataSet('model/eval/training_data_1', 0, None, 
+                                    repo_info = {repo_objects.RepoInfoKey.NAME.value: 'training_data_2', repo_objects.RepoInfoKey.CATEGORY: MLObjectType.TRAINING_DATA})
+        self.repository.add(training_data)
+        model_2 = repo_objects.Model(repo_info = {})
+        model_2.training_data = 'training_data_2'
+        model_2.test_data = 'model/eval/.*'
+        model_2.repo_info.name = 'model_2'
+        model_2.eval_function = 'eval_func'
+        model_2.training_function = 'train_func'
+        self.repository.add(model_2)
+
+        # now run model 1
+        self.repository.run_training(model='model')
+        self.repository.run_evaluation(model='model/model')
+        # now train model 2 on th eval data of model 1
+        self.repository.run_training(model='model_2')
+        
     def test_run_measure_defaults(self):
         self.repository.run_evaluation() # run first the evaluation so that there is at least one evaluation
         self.repository.run_measures()
-    
+
+    def test_run_measure_defaults_restrict_testdata(self):
+        model =  self.repository.get('model')
+        model.test_data = 'test_data_2'
+        self.repository.add(model)
+        self.repository.run_evaluation() # run first the evaluation so that there is at least one evaluation
+        self.repository.run_measures()
+        evals = self.repository.get_names(MLObjectType.EVAL_DATA)
+        self.assertEqual(len(evals), 2)
+        measures = self.repository.get_names(MLObjectType.MEASURE)
+        self.assertEqual(len(measures), 2)
+        
+
     def test_repo_training_test_data(self):
         # init repository with sample in memory handler
         repository = MLRepo(user = 'unittestuser')
