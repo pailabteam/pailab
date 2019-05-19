@@ -351,6 +351,13 @@ def _lock_dir(main_dir, wait_time, timeout):
     if os.path.exists(main_dir + '/.lock'):
         os.remove(main_dir + '/.lock')
 
+def _create_remote(remote_type, **kwargs):
+    if remote_type == 'gcs':
+        from pailab.ml_repo.remote_gcs import RemoteGCS
+        return RemoteGCS(**kwargs)
+    raise Exception('Unknown remote type ' + remote_type)
+
+
 class NumpyHDFRemoteStorage(NumpyHDFStorage):
     """Storage working like NumpyHDFStorage locally but in addition provides synchronization with a remote.
 
@@ -368,14 +375,17 @@ class NumpyHDFRemoteStorage(NumpyHDFStorage):
 
     Args:
        folder (str): folder where data is stored
-       remote_store (obj): object representing a remote storage (e.g. :py:class:`pailab.ml_repo.remote_gcs.RemoteGCS` for the google cloud storage)
+       remote_store (obj or dict): object representing a remote storage (e.g. :py:class:`pailab.ml_repo.remote_gcs.RemoteGCS` for the google cloud storage) or dictionary defining the remote params so that it can be created 
        sync_get (bool): If True, tries to download data automatically if it does not exist locally, otherwise it checks only locally
        sync_add (bool): If True, added data will be directly uploaded to the remote
     """
 
     def __init__(self, folder, remote_store = None,  sync_get = False, sync_add = False):
         super(NumpyHDFRemoteStorage, self).__init__(folder, version_files = True)
-        self._remote_store = remote_store
+        if isinstance(remote_store, dict):
+            self._remote_store = _create_remote(remote_store['type'], **remote_store['config'])
+        else:
+            self._remote_store = remote_store
         # timeout in sec (waiting for another get/pull/push from another process)
         self._timeout = 10
         # time in seconds to wait if another process is currently pushing/pulling/getting
