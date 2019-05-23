@@ -1,4 +1,18 @@
-import numpy
+# -*- coding: utf-8 -*-
+"""Module with interfaces for using PyTorch in pailab.
+
+This module provides some useful methods and code snippets to integrate PyTorch projects into pailab.
+The main entry point is the method `add_model` that setups all methods and objects needed to train the individual 
+PyTorch model. 
+
+Note:
+    Currently, pailab supports only numpy data which is connected via a DataSet object to the training and test functions 
+    in the repository. Pailab's DataSet object has nothing to do with PyTorch's DataSet object and to use all functionality out of the box 
+    one has to convert the given PyTorch DataSet object into a numpy array (this module provides the method `convert_to_numpy` to do this for simple DataSets).
+    It may not be difficult to integrate PyTorch DataSets (e.g. using a specialization of class NumpyStore) in a more clever and adapted way which will be subject 
+    of future work.
+"""
+import numpy as np
 from collections import OrderedDict
 
 import torch
@@ -36,12 +50,12 @@ def _get_object_from_classname(classname, data):
 class PytorchModelWrapper:
     @repo_object_init(['state_dict'])
     def __init__(self, pytorch_model, param):
-        self.state_dict = pytorch_model.state_dict()
         self.classname = pytorch_model.__class__.__module__ + \
             '.' + pytorch_model.__class__.__name__
         self.state_dict_order = []
+        self.state_dict = {}
         self.model_param = param
-        for k, v in pytorch_model.items():
+        for k, v in pytorch_model.state_dict().items():
             self.state_dict_order.append(k)
             self.state_dict = v.numpy()
 
@@ -133,21 +147,25 @@ def train_pytorch(model_param: PytorchModelParameter, train_param: PytorchTraini
         raise Exception('Unknown loss function ' + train_param.loss)
 
     # specify loss function
-
+    logger.debug('Setting up data loader.')
     train_data = _PytorchDataset(data)
     train_loader = torch.utils.data.DataLoader(
         train_data, batch_size=train_param.batch_size, num_workers=0)
-
+    logger.debug('Finished setting up data loader.')
     # create model
+    logger.debug('Setting up model.')
     model = model_param.create_model()
+    logger.debug('Finished setting up model.')
+
     optim_args = {'params': model.parameters()}
     optim_args.update(train_param.optim_param)
     optimizer = _get_object_from_classname('torch.optim.'+train_param.optimizer,
                                            optim_args)
-
+    logger.info('Start training with ' + str(train_param.epochs) + ' epochs.')
     for epoch in range(1, train_param.epochs+1):
         train_loss = 0.0
         for data in train_loader:
+            #logger.debug('Start training')
             target = data
             optimizer.zero_grad()
             outputs = model(target)
@@ -164,12 +182,30 @@ def train_pytorch(model_param: PytorchModelParameter, train_param: PytorchTraini
             train_loss
         ))
 
+    logger.info('Finished training.')
     result = PytorchModelWrapper(model, model_param.get_param(), repo_info={})
     return result
 
 
 def add_model(repo, pytorch_model, model_param, model_name,
               batch_size, epochs, loss='MSE', optimizer='Adam', optim_param={}):
+    """Add a PyTorch model.
+
+    This method adds all relevant objects to train the PyTorch model: The training and evaluation functions as well as training- and model parameter.
+    The objects created for the training and model parameter are instances of the internally defined  PytorchTrainingParameter and PytorchModelParameter
+    classes.
+
+    Args:
+        repo ([type]): [description]
+        pytorch_model ([type]): [description]
+        model_param ([type]): [description]
+        model_name ([type]): [description]
+        batch_size ([type]): [description]
+        epochs ([type]): [description]
+        loss (str, optional): [description]. Defaults to 'MSE'.
+        optimizer (str, optional): [description]. Defaults to 'Adam'.
+        optim_param (dict, optional): [description]. Defaults to {}.
+    """
     repo.add_eval_function(eval_pytorch,
                            repo_name='eval_pytorch')
     repo.add_training_function(
@@ -185,3 +221,26 @@ def add_model(repo, pytorch_model, model_param, model_name,
     repo.add([train_param, model_param])
     repo.add_model(model_name, model_eval='eval_pytorch',
                    model_training='train_pytorch', model_param=model_name + '/model_param', training_param=model_name + '/training_param')
+
+
+def convert_to_numpy(pt_data, tuple_index=0):
+    """Convert a PyTorch DataSet into a numpy array.
+
+    Args:
+        pt_data (torch.utils.data.DataSet): The DataSet to be converted to numpy.
+        tuple_index (int): If each item of the dataset is a tuple (e.g. for images there may be the image and a label), 
+            this index describes which of the tuple elements enters into the resulting numpy array.
+
+    Returns:
+        nparray: numpy array containing the data
+    """
+    if isinstance(pt_data[0], tuple):
+        result = np.empty((len(pt_data), ) +
+                          tuple(pt_data[0][tuple_index].shape))
+        for i in range(len(pt_data)):
+            result[i] = pt_data[i][tuple_index]
+            return result
+    else:
+        result = np.empty((len(pt_data), ) + tuple(pt_data[0].shape))
+        for i in range(len(pt_data)):
+            result[i] = pt_data[i]
