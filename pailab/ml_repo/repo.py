@@ -1151,7 +1151,7 @@ class MLRepo:
             full_object {bool} -- if True, the complete data is returned including numpy data (default: {True})
         """
         
-        if self._mapping[MLObjectType.TRAINING_DATA] is None:
+        if self._mapping[MLObjectType.TRAINING_DATA] is None or len(self._mapping[MLObjectType.TRAINING_DATA])==0:
             raise Exception("No training_data in repository.")
         return self.get(self._mapping[MLObjectType.TRAINING_DATA][0], version, full_object)
 
