@@ -447,7 +447,7 @@ class EvalJob(Job):
             repo {MLrepository} -- repository used to get and store the data
             jobid {str} -- the job id to be executed
         """
-
+        
         logging.info('Start evaluation job ' + str(jobid) +' on model ' + self.model + ' ' + str(self.model_version) + ' ')
         model = repo.get(self.model, self.model_version, full_object = True)
         model_definition_name = self.model.split('/')[0]
@@ -473,13 +473,18 @@ class EvalJob(Job):
             data.x_data = x_data
             data.x_coord_names = x_coord_names
         y = eval_func.create()(model, data)
-        
-        result = repo_objects.RawData(y, data.y_coord_names, repo_info={
+        y_name = data.y_coord_names
+        if y_name is None:
+            if len(x_coord_names) == y.shape[1]: # if y_name is None, we just use the x-coord names (maybe we have an autoencoder?)
+                y_name = x_coord_names
+            else:
+                raise Exception('No y_coord_names defined.')
+        result = repo_objects.RawData(y, y_name, repo_info={
                             RepoInfoKey.NAME: MLRepo.get_eval_name(model_definition, data),
                             RepoInfoKey.CATEGORY: MLObjectType.EVAL_DATA.value
                             }
                             )
-         # create modification info
+        # create modification info
         _add_modification_info(result, model, model_definition, data, eval_func)
         model_param_name = str(NamingConventions.ModelParam(model = model_definition_name))
         if model_param_name in model.repo_info.modification_info.keys():
