@@ -358,7 +358,7 @@ class NumpyMemoryStorage(NumpyStore):
             numpy_dict {numpy dict} -- numpy dictionary
         """
 
-        logger.debug('Adding data for ' + name + ' an version ' + str(version))
+        logger.debug('Adding data for ' + name + ' and version ' + str(version))
         if not name in self._store.keys():
             self._store[name] = {version: numpy_dict}
         else:
