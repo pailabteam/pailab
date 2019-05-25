@@ -57,7 +57,7 @@ class PytorchModelWrapper:
         self.model_param = param
         for k, v in pytorch_model.state_dict().items():
             self.state_dict_order.append(k)
-            self.state_dict = v.numpy()
+            self.state_dict[k] = v.numpy()
 
     def get_model(self):
         state_dict = OrderedDict()
@@ -65,7 +65,7 @@ class PytorchModelWrapper:
             state_dict[k] = torch.from_numpy(self.state_dict[k])
         model = _get_object_from_classname(self.classname, self.model_param)
         model.load_state_dict(state_dict)
-        model.eval()
+        # model.eval()
         return model
 
 
@@ -131,13 +131,33 @@ class PytorchModelParameter:
         return model
 
 
-def eval_pytorch(model: PytorchModelWrapper, data, batch_size=1, num_workers=0):
+def eval_pytorch(model: PytorchModelWrapper, data, num_workers=0):
     d = _PytorchDataset(data)
     loader = torch.utils.data.DataLoader(
-        d, batch_size=batch_size, num_workers=num_workers)
+        d, batch_size=1, num_workers=num_workers)
     m = model.get_model()
-    output = m(loader)
-    return torch.to_numpy(output)
+    m.eval()
+    # determine number of data
+    n_data = len(loader)
+    result = None
+    is_tuple = False
+    for x in loader:
+        output = m(x)
+        if isinstance(output, tuple):
+            result = np.empty((n_data, ) + tuple(output[0].shape[1:]))
+            is_tuple = True
+        else:
+            result = np.empty((n_data, ) + tuple(output.shape[1:]))
+        break
+    if is_tuple:
+        for i, x in enumerate(loader):
+            output = m(x)
+            result[i] = output.data[0]
+    else:
+        for i, x in enumerate(loader):
+            output = m(x)
+            result[i] = output.data  # .detach.numpy()
+    return result
 
 
 def train_pytorch(model_param: PytorchModelParameter, train_param: PytorchTrainingParameter, data):
@@ -155,6 +175,7 @@ def train_pytorch(model_param: PytorchModelParameter, train_param: PytorchTraini
     # create model
     logger.debug('Setting up model.')
     model = model_param.create_model()
+    model.train()
     logger.debug('Finished setting up model.')
 
     optim_args = {'params': model.parameters()}
@@ -166,14 +187,14 @@ def train_pytorch(model_param: PytorchModelParameter, train_param: PytorchTraini
         train_loss = 0.0
         for data in train_loader:
             #logger.debug('Start training')
-            target = data
+            target = data  # todo BUG!!!!!:    das kann eg, data direkt rein
             optimizer.zero_grad()
             outputs = model(target)
             # calculate the loss
             loss = criterion(outputs, target)
             loss.backward()
             optimizer.step()
-            train_loss += loss.item()*target.size(0)
+            train_loss += loss.item()*target.size(0)  # funktioniert nur für mean-values
 
         # print avg training statistics
         train_loss = train_loss/len(train_loader)
@@ -244,3 +265,4 @@ def convert_to_numpy(pt_data, tuple_index=0):
         result = np.empty((len(pt_data), ) + tuple(pt_data[0].shape))
         for i in range(len(pt_data)):
             result[i] = pt_data[i]
+        return result
