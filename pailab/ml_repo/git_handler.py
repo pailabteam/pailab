@@ -27,20 +27,33 @@ class RepoObjectGitStorage(RepoObjectDiskStorage):
         except:
             return False
 
-    def __init__(self, **kwargs):
+    def __init__(self, remote = None, **kwargs):
         """ Constructor
-
+        Arguments:
+            remote (str): The remote git repository. Defaults to None which means that there is no remote. If given and the target directory is not under git control, the repo will try to clon from the remote.
         Keyword Arguments:
-            folder {str} -- directory used to store the objects in files as well as the sqlite database
-            save_function {} -- function used to save the objects to disk. (default: {pickle_save})
-            load_function {} -- function used to load the objects from disk. (default: {pickle_load})
-        """
+            folder (str): directory used to store the objects in files as well as the sqlite database
+            file_format (str: 'pickle'|'json'): The fileformat used to save the objects(default: {'pickle'})
 
+        """
+            
         super(RepoObjectGitStorage, self).__init__(**kwargs)
         # initialize git repo if it does not exist
         if not RepoObjectGitStorage._is_git_repo(self._main_dir):
-            _ = Repo.init(self._main_dir)
-
+            if remote is None:
+                logger.info('Initialize new git repo.')
+                _ = Repo.init(self._main_dir)
+            else:
+                # remove sqlite db to clone into directory
+                if self._conn is not None:
+                    self._conn.close()
+                os.remove(self._sqlite_db_name())
+                _ = Repo.clone_from(remote, self._main_dir)
+                # check if cloned repository  contains sqlite db and if not create new one
+                if not os.path.exists(self._sqlite_db_name()):
+                    self._conn.close()
+                self._setup_new()
+        
     def _add(self, obj):
         """ Adds an object to the git repository
 
@@ -76,20 +89,21 @@ class RepoObjectGitStorage(RepoObjectDiskStorage):
         self.commit('Replace object ' + obj['repo_info']['name'] +
                     ', version ' + obj['repo_info']['version'] + '.')
 
-    def commit(self, message):
+    def commit(self, message, force = True):
         """ Commits the changes
 
         Arguments:
-            message {str} -- commit message
+            message (str): Commit message
+            force (bool): If False, objecs will only be commited if integrity check succeeded.
 
         Raises:
             Exception -- raises an exception if the integrity check fails
         """
-
-        check = self.check_integrity()
-        if len(check) > 0:
-            raise Exception(
-                "Integrity check fails, cannot commit: " + str(check))
+        if not force:
+            check = self.check_integrity()
+            if len(check) > 0:
+                raise Exception(
+                    "Integrity check fails, cannot commit: " + str(check))
         git_repo = Repo(self._main_dir)
         git_repo.git.add('-A')
         git_repo.git.commit('-m', message)

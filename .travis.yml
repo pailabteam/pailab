@@ -7,11 +7,9 @@ install:
 script: 
   - python tests/repo_test.py
   - cd tests
-  - coverage run --source=pailab --omit=*/tools_gc.py,*/analysis/*,*/externals/*,*/tools/* ./repo_test.py
-  - coverage run --source=pailab -a --omit=*/tools_gc.py,*/analysis/*,*/externals/*,*/tools/* ./repo_disk_storage_test.py
-  - coverage run --source=pailab -a --omit=*/tools_gc.py,*/analysis/*,*/externals/*,*/tools/* ./SQLiteJobRunner_test.py
-  - coverage run --source=pailab -a --omit=*/tools_gc.py,*/analysis/*,*/externals/*,*/tools/* ./repo_git_handler_test.py
-  - coverage run --source=pailab -a --omit=*/tools_gc.py,*/analysis/*,*/externals/*,*/tools/* ./tutorial_test.py
-  #- coverage run --source=pailab -a ./notebook_test.py
-  #- coverage html --omit=*/tools_gc.py,*/analysis/*,*/externals/*,*/tools/*
+  - coverage run --source=pailab --omit=*/analysis/*,*/externals/*,*/tools/*,*/ml_repo/remote_gcs.py,*/__main__.py ./repo_test.py
+  - coverage run --source=pailab -a --omit=*/analysis/*,*/externals/*,*/tools/*,*/ml_repo/remote_gcs.py,*/__main__.py ./repo_disk_storage_test.py
+  - coverage run --source=pailab -a --omit=*/analysis/*,*/externals/*,*/tools/*,*/ml_repo/remote_gcs.py,*/__main__.py ./SQLiteJobRunner_test.py
+  - coverage run --source=pailab -a --omit=*/analysis/*,*/externals/*,*/tools/*,*/ml_repo/remote_gcs.py,*/__main__.py ./repo_git_handler_test.py
+  - coverage run --source=pailab -a --omit=*/analysis/*,*/externals/*,*/tools/*,*/ml_repo/remote_gcs.py,*/__main__.py ./tutorial_test.py
   - codecov

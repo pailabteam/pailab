@@ -61,7 +61,7 @@ class NumpyStoreFactory:
             list of str -- list of supported big data handler types
         """
 
-        return ['memory_handler', 'hdf_handler']
+        return ['memory_handler', 'hdf_handler', 'hdf_remote_handler']
 
     @staticmethod
     def get(numpy_store_type, **kwargs):
@@ -87,5 +87,8 @@ class NumpyStoreFactory:
         elif numpy_store_type == 'hdf_handler':
             from pailab.ml_repo.numpy_handler_hdf import NumpyHDFStorage
             return NumpyHDFStorage(**kwargs)
+        elif numpy_store_type == 'hdf_remote_handler':
+            from pailab.ml_repo.numpy_handler_hdf import NumpyHDFRemoteStorage
+            return NumpyHDFRemoteStorage(**kwargs)
         raise Exception('Cannot create NumpyStore: Unknown  type ' + numpy_store_type +
                         '. Use only types from the list returned by NumpyStoreFactory.get_numpy_stores().')

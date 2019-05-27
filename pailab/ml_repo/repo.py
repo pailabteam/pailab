@@ -153,10 +153,6 @@ class Mapping(RepoObject):
 
         category_name = MLObjectType._get_key(category)
         mapping = getattr(self, category_name)
-        # if name in mapping:
-        #    raise Exception('Cannot add object: A ' + category_name + ' object with name ' + name + ' already exists in repo, please use update to modify it.')
-        if category_name == MLObjectType.TRAINING_DATA.value and len(mapping) > 0 and mapping[0] != name:
-            raise Exception('Only one set of training data allowed.')
         if not name in mapping:
             mapping.append(name)
             return True
@@ -316,7 +312,7 @@ class Job(RepoObject, abc.ABC):
             else:     
                 self.modification_info[obj.repo_info[RepoInfoKey.NAME]] = obj.repo_info[RepoInfoKey.VERSION]
 
-        def get_training_data(self, obj_version, full_object):
+        def get_training_data(self, obj_version, full_object, model = None, model_version = repo_store.RepoStore.LAST_VERSION):
             """ Get the training data
             
             Arguments:
@@ -327,7 +323,7 @@ class Job(RepoObject, abc.ABC):
                 [type] -- training data
             """
 
-            tmp = self.ml_repo.get_training_data(obj_version, full_object = False) # TODO: replace get_trainign data by get using the training data name
+            tmp = self.ml_repo.get_training_data(obj_version, full_object = False, model = model, model_version=model_version) # TODO: replace get_training data by get using the training data name
             return self.get(tmp.repo_info[RepoInfoKey.NAME], obj_version, full_object=full_object)    
         
         def get_names(self, ml_obj_type):
@@ -477,7 +473,7 @@ class EvalJob(Job):
             repo {MLrepository} -- repository used to get and store the data
             jobid {str} -- the job id to be executed
         """
-
+        
         logging.info('Start evaluation job ' + str(jobid) +' on model ' + self.model + ' ' + str(self.model_version) + ' ')
         model = repo.get(self.model, self.model_version, full_object = True)
         model_definition_name = self.model.split('/')[0]
@@ -503,12 +499,19 @@ class EvalJob(Job):
             data.x_data = x_data
             data.x_coord_names = x_coord_names
         y = eval_func.create()(model, data)
-        
-        result = repo_objects.RawData(y, data.y_coord_names, repo_info={
+        y_name = data.y_coord_names
+        if y_name is None:
+            if len(x_coord_names) == y.shape[1]: # if y_name is None, we just use the x-coord names (maybe we have an autoencoder?)
+                y_name = x_coord_names
+            else:
+                raise Exception('No y_coord_names defined.')
+        result = repo_objects.RawData(y, y_name, repo_info={
                             RepoInfoKey.NAME: MLRepo.get_eval_name(model_definition, data),
                             RepoInfoKey.CATEGORY: MLObjectType.EVAL_DATA.value
                             }
                             )
+
+        result.repo_info.category =  MLObjectType.EVAL_DATA.value
          # create modification info
         _add_modification_info(result, model, model_definition, data, eval_func)
         model_param_name = str(NamingConventions.ModelParam(model = model_definition_name))
@@ -579,7 +582,10 @@ class TrainingJob(Job):
         """
 
         model = repo.get(self.model, self.model_version)
-        train_data = repo.get_training_data(self.training_data_version, full_object = True)
+        if model.training_data is None:
+            train_data = repo.get_training_data(self.training_data_version, full_object = True)
+        else:
+            train_data = repo.get(model.training_data, self.training_data_version, full_object = True)
         train_func = repo.get(model.training_function,
                                self.training_function_version)
         train_param = None
@@ -707,7 +713,10 @@ class TrainingJob(Job):
         modifiers = {}
         modifiers[self.model] = self.model_version
         model = repo.get(self.model, self.model_version)
-        train_data = repo.get_training_data(self.training_data_version, full_object = False)
+        if model.training_data is None:
+            train_data = repo.get_training_data(self.training_data_version, full_object = False)
+        else:
+            train_data = repo.get(model.training_data, self.training_data_version, full_object = False)
         modifiers[train_data.repo_info.name] = self.training_data_version
         modifiers[model.training_function] = self.training_function_version
         if not model.training_param == '':
@@ -1177,17 +1186,33 @@ class MLRepo:
                 return result[repo_object.repo_info[RepoInfoKey.NAME]]
         return result
 
-    def get_training_data(self, version=repo_store.RepoStore.LAST_VERSION, full_object=True):
-        """ Returns training data 
+    def get_training_data(self, version=repo_store.RepoStore.LAST_VERSION, full_object=True, model = None, model_version = repo_store.RepoStore.LAST_VERSION):
+        """ Returns training data for a model.
+
+        It returns the training data in the repo for a specified model. If there is only one set of training data in the repo, this set will be returned.
+        Otherwise, the model is loaded and the training data is used as defined in the model. If in this case a model is not specified the
+        method throws an exception.
 
         Keyword Arguments:
-            version {integer} -- version of data object (default: {repo_store.RepoStore.LAST_VERSION})
-            full_object {bool} -- if True, the complete data is returned including numpy data (default: {True})
+            version (str): version of data object (default: {repo_store.RepoStore.LAST_VERSION})
+            full_object (bool): if True, the complete data is returned including numpy data (default: {True})
+            model (str): Name of model definition for which the training data will be returned.
+            model_version (str): Version of model definition for which teh trainin data will be returned.
         """
         
-        if self._mapping[MLObjectType.TRAINING_DATA] is None:
+        if self._mapping[MLObjectType.TRAINING_DATA] is None or len(self._mapping[MLObjectType.TRAINING_DATA])==0:
             raise Exception("No training_data in repository.")
-        return self.get(self._mapping[MLObjectType.TRAINING_DATA][0], version, full_object)
+        training_data = None
+        if len(self._mapping[MLObjectType.TRAINING_DATA]) > 1:
+            if model is None:
+                raise Exception("More then one training_data in repository, please use method get and specify the name of the training data.")
+            m = self.get(model, model_version)
+            if m.training_data is None:
+                raise Exception("More then one training_data in repository and the model does not explicitely specify a training data set.")
+            training_data = m.training_data
+        else:
+            training_data =  self._mapping[MLObjectType.TRAINING_DATA][0]
+        return self.get(training_data, version, full_object)
 
     def add_eval_function(self, f, repo_name = None):
         """ Add the function to evaluate the model
@@ -1410,8 +1435,10 @@ class MLRepo:
         Returns:
             RepoObject or list thereof -- The repo object
         """
-
-        logging.debug('Getting ' + name + ', version ' + str(version))
+        if version is not None:
+            logging.debug('Getting ' + name + ', version ' + str(version))
+        else:
+            logging.debug('Getting ' + name + ', version is None.')
         repo_dict = self._ml_repo.get(name, version, modifier_versions, obj_fields, repo_info_fields, 
                                       throw_error_not_exist, throw_error_not_unique)
         if len(repo_dict) == 0:
@@ -1646,7 +1673,6 @@ class MLRepo:
             if run_descendants:
                 self.run_evaluation(model + '/model', 'evaluation triggered as descendant of run_training', 
                     predecessors=[(train_job.repo_info[RepoInfoKey.NAME], train_job.repo_info[RepoInfoKey.VERSION])], run_descendants=True)
-            #self._job_runner.add(train_job.repo_info[RepoInfoKey.NAME], train_job.repo_info[RepoInfoKey.VERSION], self._user)
             return train_job.repo_info[RepoInfoKey.NAME], str(train_job.repo_info[RepoInfoKey.VERSION])
         else:
             return 'No new training started: A model has already been trained on the latest data.'
@@ -1673,7 +1699,28 @@ class MLRepo:
         if len(names) > 1:
             raise Exception('More than one object of type ' + obj_category.value + ' exist, please specify a specific object name.')
         return names[0]
-            
+
+    def _get_datasets(self, model, model_version=repo_store.RepoStore.LAST_VERSION):
+        """Return name of datasets relevant for evaluation, measurement or tests.
+        
+        Args:
+            model (str): The name of the calibrated model for which the datasets will be returned.
+            model_version (str, optional): Version of model definition for which the dataset will be returned. Defaults to repo_store.RepoStore.LAST_VERSION.
+        
+        Returns:
+            [dictionary]: The dictionary from dataset name to latest dataset version.
+        """
+        result = {}
+        model_def = str(NamingConventions.Model(NamingConventions.CalibratedModel(model)))
+        train_data = self.get_training_data(model=model_def, model_version = model_version, full_object = False)
+        result[train_data.repo_info.name] = train_data.repo_info.version 
+        m = self.get(model_def, model_version, full_object = False)
+        test_data = m.get_test_data(self)
+        for t in test_data:
+            tmp = self.get(t, full_object = False)
+            result[tmp.repo_info.name] = tmp.repo_info.version
+        return result
+    
     def _create_evaluation_jobs(self, model=None, model_version=repo_store.RepoStore.LAST_VERSION, datasets={}, predecessors = [], labels = None):
         models = [(self._get_default_object_name(model, MLObjectType.CALIBRATED_MODEL), model_version)]
         if model is None and labels is None:
@@ -1685,15 +1732,10 @@ class MLRepo:
                 tmp = self.get(l)
                 models.append((tmp.name, tmp.version) )
         datasets_ = deepcopy(datasets)
-        if len(datasets_) == 0: #if nothing is specified, add evaluation jobs on all training and test datasets
-            names = self.get_names(MLObjectType.TEST_DATA.value)
-            for n in names:
-                v = self._ml_repo.get_version(n, -1)
-                datasets_[n] = v
-            training_data = self.get_training_data(full_object = False)
-            datasets_[training_data.repo_info[RepoInfoKey.NAME]] = training_data.repo_info[RepoInfoKey.VERSION] 
         jobs = []
         for m in models:
+            if len(datasets) == 0:
+                datasets_ = self._get_datasets(m[0])
             for n, v in datasets_.items():
                 eval_job = EvalJob(m[0], n, self._user, model_version=m[1], data_version=v,
                             repo_info = {RepoInfoKey.NAME: m[0] + '/jobs/eval_job/' + n,
@@ -1759,7 +1801,6 @@ class MLRepo:
                 if run_descendants:
                     self.run_measures(job.model,  'run_measures started as predecessor of run_evaluation', model_version=job.model_version, datasets={job.data: repo_store.RepoStore.LAST_VERSION}, 
                         predecessors=[(job.repo_info[RepoInfoKey.NAME], job.repo_info[RepoInfoKey.VERSION])])
-                #self._job_runner.add(job.repo_info[RepoInfoKey.NAME], job.repo_info[RepoInfoKey.VERSION], self._user)
                 
         return job_ids
 
@@ -1790,12 +1831,6 @@ class MLRepo:
                 models.append((tmp.name, tmp.version) )
 
         datasets_ = deepcopy(datasets)
-        if len(datasets_) == 0:
-            names = self.get_names(MLObjectType.TEST_DATA)
-            names.extend(self.get_names(MLObjectType.TRAINING_DATA))
-            for n in names:
-                datasets_[n] = repo_store.RepoStore.LAST_VERSION
-
         measure_names =   self.get_names(MLObjectType.MEASURE_CONFIGURATION)
         if len(measure_names) == 0:
             logger.warning('No measures defined.')
@@ -1810,6 +1845,10 @@ class MLRepo:
                 measures_to_run[k] = v
         job_ids = []
         for mod in models:
+            if len(datasets) == 0:
+                datasets_ = self._get_datasets(mod[0])
+                for k in datasets_.keys():
+                    datasets_[k] = repo_store.RepoStore.LAST_VERSION
             for n, v in datasets_.items():
                 for m_name, m in measures_to_run.items():
                     measure_job = MeasureJob(m_name, m[0], m[1], n, mod[0], v, mod[1],
