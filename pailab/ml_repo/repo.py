@@ -473,7 +473,7 @@ class EvalJob(Job):
             repo {MLrepository} -- repository used to get and store the data
             jobid {str} -- the job id to be executed
         """
-
+        
         logging.info('Start evaluation job ' + str(jobid) +' on model ' + self.model + ' ' + str(self.model_version) + ' ')
         model = repo.get(self.model, self.model_version, full_object = True)
         model_definition_name = self.model.split('/')[0]
@@ -499,12 +499,18 @@ class EvalJob(Job):
             data.x_data = x_data
             data.x_coord_names = x_coord_names
         y = eval_func.create()(model, data)
-        
-        result = repo_objects.RawData(y, data.y_coord_names, repo_info={
+        y_name = data.y_coord_names
+        if y_name is None:
+            if len(x_coord_names) == y.shape[1]: # if y_name is None, we just use the x-coord names (maybe we have an autoencoder?)
+                y_name = x_coord_names
+            else:
+                raise Exception('No y_coord_names defined.')
+        result = repo_objects.RawData(y, y_name, repo_info={
                             RepoInfoKey.NAME: MLRepo.get_eval_name(model_definition, data),
                             RepoInfoKey.CATEGORY: MLObjectType.EVAL_DATA.value
                             }
                             )
+
         result.repo_info.category =  MLObjectType.EVAL_DATA.value
          # create modification info
         _add_modification_info(result, model, model_definition, data, eval_func)
@@ -1194,7 +1200,7 @@ class MLRepo:
             model_version (str): Version of model definition for which teh trainin data will be returned.
         """
         
-        if self._mapping[MLObjectType.TRAINING_DATA] is None:
+        if self._mapping[MLObjectType.TRAINING_DATA] is None or len(self._mapping[MLObjectType.TRAINING_DATA])==0:
             raise Exception("No training_data in repository.")
         training_data = None
         if len(self._mapping[MLObjectType.TRAINING_DATA]) > 1:
