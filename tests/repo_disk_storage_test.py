@@ -51,7 +51,7 @@ class RepoDiskStorageTest(unittest.TestCase):
                 logger.info('Added obj with version ' +
                             str(self._object_versions[-1]) + ', time from version: ' + str(
                                 _time_from_version(self._object_versions[-1])) + ', time: ' +str(datetime.now()))
-                time.sleep(1)
+                time.sleep(2)
 
     def tearDown(self):
         try:
