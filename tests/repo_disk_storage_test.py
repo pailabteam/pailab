@@ -47,8 +47,8 @@ class RepoDiskStorageTest(unittest.TestCase):
                                                                                               'modifier_2': self._modifier2_versions[-1]}})
                 self._object_versions.append(self._storage.add(
                     repo_objects.create_repo_obj_dict(obj)))
-                logger.info('Added ' + obj + ' with version ' +
-                            self._object_versions[-1])
+                logger.info('Added obj with version ' +
+                            str(self._object_versions[-1]))
                 time.sleep(1)
 
     def tearDown(self):
