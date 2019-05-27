@@ -9,7 +9,7 @@ import pailab.ml_repo.disk_handler as disk_handler
 import time
 import logging
 # since we also test for errors we switch off the logging in this level
-logging.basicConfig(level=logging.FATAL)
+logging.basicConfig(level=logging.DEBUG)
 
 
 class TestClass:
