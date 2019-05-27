@@ -71,7 +71,7 @@ class RepoGitStorageTest(unittest.TestCase):
                                                                                               'modifier_2': self._modifier2_versions[-1]}})
                 self._object_versions.append(self._storage.add(
                     repo_objects.create_repo_obj_dict(obj)))
-                time.sleep(1.5)
+                time.sleep(2)
 
     def remove_git_repo(name):
         try:
@@ -83,7 +83,7 @@ class RepoGitStorageTest(unittest.TestCase):
     def tearDown(self):
         self._storage._conn.close()
         RepoGitStorageTest.remove_git_repo(self.git_dir)
-        
+
     def test_get_by_version(self):
         '''Test get interface where only version of object is specified
         '''
@@ -183,7 +183,8 @@ class RepoGitStorageTest(unittest.TestCase):
     def test_pull(self):
         '''test if pull works correctly
         '''
-        RepoGitStorageTest.remove_git_repo(self.git_dir + '_2') # remove directory of second repo
+        RepoGitStorageTest.remove_git_repo(
+            self.git_dir + '_2')  # remove directory of second repo
         cloned = Repo.clone_from(self.git_dir, self.git_dir + '_2')
         storage = git_handler.RepoObjectGitStorage(
             folder=self.git_dir)
@@ -195,13 +196,16 @@ class RepoGitStorageTest(unittest.TestCase):
         cloned_storage.pull()
         obj = cloned_storage.get('new_obj')
         cloned_storage._conn.close()
-        RepoGitStorageTest.remove_git_repo(self.git_dir + '_2') # remove directory of second repo
+        # remove directory of second repo
+        RepoGitStorageTest.remove_git_repo(self.git_dir + '_2')
 
     def test_push(self):
         '''test if push works correctly
         '''
-        RepoGitStorageTest.remove_git_repo(self.git_dir + '_2') # remove directory of second repo
-        RepoGitStorageTest.remove_git_repo('remote') # remove directory of second repo
+        RepoGitStorageTest.remove_git_repo(
+            self.git_dir + '_2')  # remove directory of second repo
+        # remove directory of second repo
+        RepoGitStorageTest.remove_git_repo('remote')
         remote = Repo.init('remote', bare=True)
         cloned = Repo.clone_from('remote', self.git_dir + '_2')
         cloned_storage = git_handler.RepoObjectGitStorage(
@@ -211,8 +215,11 @@ class RepoGitStorageTest(unittest.TestCase):
         cloned_storage.add(repo_objects.create_repo_obj_dict(obj))
         cloned_storage.push()
         cloned_storage._conn.close()
-        RepoGitStorageTest.remove_git_repo(self.git_dir + '_2') # remove directory of second repo
-        RepoGitStorageTest.remove_git_repo('remote') # remove directory of second repo
+        # remove directory of second repo
+        RepoGitStorageTest.remove_git_repo(self.git_dir + '_2')
+        # remove directory of second repo
+        RepoGitStorageTest.remove_git_repo('remote')
+
 
 if __name__ == '__main__':
     unittest.main()
