@@ -4,7 +4,7 @@ import os
 import shutil
 import pailab.ml_repo.repo as repo
 import pailab.ml_repo.repo_objects as repo_objects
-from pailab.ml_repo.repo_store import RepoStore
+from pailab.ml_repo.repo_store import RepoStore, _time_from_version
 import pailab.ml_repo.disk_handler as disk_handler
 import time
 import logging
@@ -48,7 +48,8 @@ class RepoDiskStorageTest(unittest.TestCase):
                 self._object_versions.append(self._storage.add(
                     repo_objects.create_repo_obj_dict(obj)))
                 logger.info('Added obj with version ' +
-                            str(self._object_versions[-1]))
+                            str(self._object_versions[-1]) + ', time from version: ' + str(
+                                _time_from_version(self._object_versions[-1])))
                 time.sleep(1)
 
     def tearDown(self):
@@ -94,17 +95,17 @@ class RepoDiskStorageTest(unittest.TestCase):
         '''
         # one fixed modifier version
         obj = self._storage.get('obj', modifier_versions={
-                                'modifier_1': self._modifier1_versions[0]})
+            'modifier_1': self._modifier1_versions[0]})
         self.assertEqual(len(obj), 2)
         self.assertEqual(
             obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[0])
         self.assertEqual(
             obj[1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[1])
         obj = self._storage.get('obj', modifier_versions={
-                                'modifier_1': self._modifier1_versions[0]})
+            'modifier_1': self._modifier1_versions[0]})
         # range of modifier versions
         obj = self._storage.get('obj', modifier_versions={
-                                'modifier_1': (self._modifier1_versions[0], self._modifier1_versions[1])})
+            'modifier_1': (self._modifier1_versions[0], self._modifier1_versions[1])})
         self.assertEqual(len(obj), 4)
         self.assertEqual(
             obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[0])
@@ -116,7 +117,7 @@ class RepoDiskStorageTest(unittest.TestCase):
             obj[3]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[3])
         # list of modifier versions
         obj = self._storage.get('obj', modifier_versions={
-                                'modifier_1': [self._modifier1_versions[0], self._modifier1_versions[2]]})
+            'modifier_1': [self._modifier1_versions[0], self._modifier1_versions[2]]})
         self.assertEqual(len(obj), 4)
         self.assertEqual(
             obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[0])
@@ -128,8 +129,8 @@ class RepoDiskStorageTest(unittest.TestCase):
             obj[3]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[5])
         # list of modifier versions for two different modifiers
         obj = self._storage.get('obj', modifier_versions={
-                                'modifier_1': [self._modifier1_versions[0], self._modifier1_versions[2]],
-                                'modifier_2': [self._modifier2_versions[0], self._modifier2_versions[1]]})
+            'modifier_1': [self._modifier1_versions[0], self._modifier1_versions[2]],
+            'modifier_2': [self._modifier2_versions[0], self._modifier2_versions[1]]})
         self.assertEqual(len(obj), 2)
         self.assertEqual(
             obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[0])
