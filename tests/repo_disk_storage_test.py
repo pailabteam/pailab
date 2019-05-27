@@ -7,6 +7,7 @@ import pailab.ml_repo.repo_objects as repo_objects
 from pailab.ml_repo.repo_store import RepoStore, _time_from_version
 import pailab.ml_repo.disk_handler as disk_handler
 import time
+from datetime import datetime
 import logging
 # since we also test for errors we switch off the logging in this level
 logging.basicConfig(level=logging.DEBUG)
@@ -49,7 +50,7 @@ class RepoDiskStorageTest(unittest.TestCase):
                     repo_objects.create_repo_obj_dict(obj)))
                 logger.info('Added obj with version ' +
                             str(self._object_versions[-1]) + ', time from version: ' + str(
-                                _time_from_version(self._object_versions[-1])))
+                                _time_from_version(self._object_versions[-1])) + ', time: ' +str(datetime.now()))
                 time.sleep(1)
 
     def tearDown(self):
