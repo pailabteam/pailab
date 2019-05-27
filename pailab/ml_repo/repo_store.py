@@ -27,8 +27,8 @@ def _time_from_version(v):
 
     if isinstance(v, str):
         tmp = uuid.UUID(v)
-        return datetime.datetime(1582, 10, 15) + datetime.timedelta(microseconds=tmp.time / 10)
-    return datetime.datetime(1582, 10, 15) + datetime.timedelta(microseconds=v.time / 10)
+        return datetime.datetime(1582, 10, 15) + datetime.timedelta(microseconds=tmp.time // 10)
+    return datetime.datetime(1582, 10, 15) + datetime.timedelta(microseconds=v.time // 10)
 
 
 FIRST_VERSION = 'first'
