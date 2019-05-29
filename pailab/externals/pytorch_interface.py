@@ -141,8 +141,11 @@ def eval_pytorch(model: PytorchModelWrapper, data, num_workers=0):
     result = None
     is_tuple = False
     for x in loader:
-        output = m(x)
-        if isinstance(output, tuple):
+        if isinstance(x, list):
+            output = m(x[0])
+        else:
+            output = m(x)
+        if isinstance(output, list):
             result = np.empty((n_data, ) + tuple(output[0].shape[1:]))
             is_tuple = True
         else:
@@ -150,11 +153,17 @@ def eval_pytorch(model: PytorchModelWrapper, data, num_workers=0):
         break
     if is_tuple:
         for i, x in enumerate(loader):
-            output = m(x)
-            result[i] = output.data[0]
+            if isinstance(x, list):
+                output = m(x[0])
+            else:
+                output = m(x)
+            result[i] = output.data
     else:
         for i, x in enumerate(loader):
-            output = m(x)
+            if isinstance(x, list):
+                output = m(x[0])
+            else:
+                output = m(x)
             result[i] = output.data  # .detach.numpy()
     return result
 
@@ -182,17 +191,18 @@ def train_pytorch(model_param: PytorchModelParameter, train_param: PytorchTraini
     optimizer = _get_object_from_classname('torch.optim.'+train_param.optimizer,
                                            optim_args)
     logger.info('Start training with ' + str(train_param.epochs) + ' epochs.')
+    train_loss = 0.0
     for epoch in range(1, train_param.epochs+1):
         train_loss = 0.0
         for data in train_loader:
             #logger.debug('Start training')
             if isinstance(data, list):
-                x, target = data 
+                x, target = data
             else:
                 x = data
                 target = data
             optimizer.zero_grad()
-            outputs = model(x) 
+            outputs = model(x)
             # calculate the loss
             loss = criterion(outputs, target)
             loss.backward()
@@ -206,7 +216,7 @@ def train_pytorch(model_param: PytorchModelParameter, train_param: PytorchTraini
             train_loss
         ))
 
-    logger.info('Finished training.')
+    logger.info('Finished training with train loss ' + str(train_loss))
     result = PytorchModelWrapper(model, model_param.get_param(), repo_info={})
     return result
 
