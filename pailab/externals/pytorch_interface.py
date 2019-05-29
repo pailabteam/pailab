@@ -74,8 +74,7 @@ class _PytorchDataset(Dataset):
         self.data = torch.from_numpy(data.x_data).float()
         self.target = None
         if hasattr(data, 'y_data'):
-            if data.y_data:
-                self.target = torch.from_numpy(data.y_data).float()
+            self.target = torch.from_numpy(data.y_data).float()
         self.transform = None
 
     def __getitem__(self, index):
@@ -187,9 +186,13 @@ def train_pytorch(model_param: PytorchModelParameter, train_param: PytorchTraini
         train_loss = 0.0
         for data in train_loader:
             #logger.debug('Start training')
-            target = data  # todo BUG!!!!!:    das kann eg, data direkt rein
+            if isinstance(data, list):
+                x, target = data 
+            else:
+                x = data
+                target = data
             optimizer.zero_grad()
-            outputs = model(target)
+            outputs = model(x) 
             # calculate the loss
             loss = criterion(outputs, target)
             loss.backward()
