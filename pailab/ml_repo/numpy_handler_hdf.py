@@ -192,6 +192,11 @@ class NumpyHDFStorage(NumpyStore):
                             data[old_size:new_shape[0], :, :] = v
                             ref_grp.create_dataset(
                                 k, data=data.regionref[0:new_shape[0], :, :])
+                        else:
+                            if len(data.shape) == 4:
+                                data[old_size:new_shape[0], :, :, :] = v
+                                ref_grp.create_dataset(
+                                    k, data=data.regionref[0:new_shape[0], :, :, :])
 
     def _append_different_file(self, name, version_old, version_new, numpy_dict):
         """ Append data to a different file
