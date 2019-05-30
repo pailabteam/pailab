@@ -114,10 +114,16 @@ class NumpyHDFStorage(NumpyStore):
                             tmp = data_grp.create_dataset(
                                 k, data=v, maxshape=(None, v.shape[1], v.shape[2]))
                             ref_grp.create_dataset(
-                                k, data=tmp.regionref[0:v.shape[0], 0:v.shape[1], 0:v.shape[1]])
+                                k, data=tmp.regionref[0:v.shape[0], 0:v.shape[1], 0:v.shape[2]])
                         else:
-                            raise NotImplementedException(
-                                'Not implemenet for dim>3.')
+                            if len(v.shape) == 4:
+                                tmp = data_grp.create_dataset(
+                                    k, data=v, maxshape=(None, v.shape[1], v.shape[2], v.shape[3]))
+                                ref_grp.create_dataset(
+                                    k, data=tmp.regionref[0:v.shape[0], 0:v.shape[1], 0:v.shape[2], 0:v.shape[3]])
+                            else:                                        
+                                raise NotImplementedException(
+                                    'Not implemenet for dim>3.')
 
     @trace
     def add(self, name, version, numpy_dict):
@@ -186,6 +192,11 @@ class NumpyHDFStorage(NumpyStore):
                             data[old_size:new_shape[0], :, :] = v
                             ref_grp.create_dataset(
                                 k, data=data.regionref[0:new_shape[0], :, :])
+                        else:
+                            if len(data.shape) == 4:
+                                data[old_size:new_shape[0], :, :, :] = v
+                                ref_grp.create_dataset(
+                                    k, data=data.regionref[0:new_shape[0], :, :, :])
 
     def _append_different_file(self, name, version_old, version_new, numpy_dict):
         """ Append data to a different file
