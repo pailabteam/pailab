@@ -59,6 +59,12 @@ class PytorchModelWrapper:
             self.state_dict_order.append(k)
             self.state_dict[k] = v.numpy()
 
+    def numpy_to_dict(self):
+        return self.state_dict
+
+    def numpy_from_dict(self, numpy_dict):
+        self.state_dict = numpy_dict
+
     def get_model(self):
         state_dict = OrderedDict()
         for k in self.state_dict_order:
