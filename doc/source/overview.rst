@@ -2,6 +2,12 @@
 
 Overview
 -------------------------------
+Install
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Install pailab using pip::
+
+    pip install pailab
+
 Source code
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 pailab's source code is available on GitHub:
@@ -23,28 +29,32 @@ Notebooks
 
 If you like working with jupyter, there are the following jupyter notebooks demonstrating pailab's functionality. 
 The notebooks are located in the  
-`examples <https://github.com/pailabteam/pailab/tree/develop/examples>`_ folder of pailab's github repo.
+`examples <https://github.com/pailabteam/pailab/tree/develop/examples>`_ folder of pailab's GitHub repo.
 Please note that the plots in these notebooks are created using plotly. Therefore if you want to play around with the 
 plotting functionality you have to install this. However, even if you do not want to install plotly, the notebooks are nevertheless 
 a very good starting point.
 
 **Introductionary**
 
-    - `boston_housing.ipynb`_: Shows pailab's basic functionality using the boston housing data  set and a regression tree from scikit learn (without preprocessing)
-    - `adult-census-income.ipynb`_: Shows pailab's basic functionality using the adult-census data set and a regression tree from scikit learn (including preprocessing)
-    - `boston_housing_widgets.ipynb`_:  Similar to boston_housing.ipynb but using some jupyter widgets
-    - `boston_housing_distributed.ipynb`_: Similar to boston_housing.ipynb but using the :py:class:`pailab.job_runner.SQLiteJobRunner` job runner to execute jobs in a different thread or even on a different machine
+    - `boston_housing.ipynb`_: Shows pailab's basic functionality using the boston housing data  set and a regression tree from scikit learn (without preprocessing).
+    - `adult-census-income.ipynb`_: Shows pailab's basic functionality using the adult-census data set and a regression tree from scikit learn (including preprocessing).
+    - `boston_housing_widgets.ipynb`_:  Similar to boston_housing.ipynb but using some jupyter widgets.
+    - `boston_housing_distributed.ipynb`_: Similar to boston_housing.ipynb but using the :py:class:`pailab.job_runner.SQLiteJobRunner` job runner to execute jobs in a different thread or even on a different machine.
     
 **Advanced**
     
     - `caching_demo.ipynb`_: Simple example demonstrating the caching of results of time consuming functions.
+    - `Convolutional_Autoencoder.ipynb`_: Notebook from `Udacity's Deep Learning Nanodegree program <https://github.com/udacity/deep-learning-v2-pytorch>`_ GitHub repository modified to use pailab. Here, an autoencoder for the MNIST dataset is built using PyTorch. 
+    - `Convolutional_Autoencoder_disk_store.ipynb`_: Same as `Convolutional_Autoencoder.ipynb`_ but using disk store and hdf5 files to persist all objects created during the analysis of the problem
 
     .. _boston_housing.ipynb: https://nbviewer.jupyter.org/github/pailabteam/pailab/blob/develop/examples/boston_housing/boston_housing.ipynb
     .. _adult-census-income.ipynb: https://nbviewer.jupyter.org/github/pailabteam/pailab/blob/develop/examples/adult-census-income/adult-census-income.ipynb
     .. _boston_housing_widgets.ipynb: https://nbviewer.jupyter.org/github/pailabteam/pailab/blob/develop/examples/boston_housing/boston_housing_widgets.ipynb
     .. _boston_housing_distributed.ipynb: https://nbviewer.jupyter.org/github/pailabteam/pailab/blob/develop/examples/boston_housing/boston_housing_distributed.ipynb
     .. _caching_demo.ipynb: https://nbviewer.jupyter.org/github/pailabteam/pailab/blob/develop/examples/caching_demo.ipynb
-
+    .. _Convolutional_Autoencoder.ipynb: https://nbviewer.jupyter.org/github/pailabteam/pailab/blob/develop/examples/pytorch/autoencoder/Convolutional_Autoencoder.ipynb
+    .. _Convolutional_Autoencoder_disk_store.ipynb: https://nbviewer.jupyter.org/github/pailabteam/pailab/blob/develop/examples/pytorch/autoencoder/Convolutional_Autoencoder_disk_store.ipynb
+    
 Logging
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 pailab uses the Python standard logging module :mod:`logging` making use of different 
@@ -63,6 +73,17 @@ See the ``logging`` modules documentation for further details.
 .. |bugy| image:: images/monster.png
     :height: 90
     :alt: Bugy
+
+How to File a Bug Report
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Bug reports are always welcome! The issue tracker is at:
+
+https://github.com/pailabteam/pailab/issues
+
+Please always include pailab's version into the issue::
+
+    import pailab
+    print(pailab.version.info)
 
 Laby and Bugy
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
