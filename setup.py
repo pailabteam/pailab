@@ -1,5 +1,7 @@
 from setuptools import setup, find_packages
 
+exec(open("pailab/version.py").read())
+
 
 def readme():
     with open('README.rst') as f:
@@ -27,13 +29,13 @@ tensorflow = [
 all_dependencies = sklearn + tensorflow
 
 setup(name='pailab',
-      version='0.0.3',
-      description='Pailab the ai and large data platform',
+      version=__version__,
+      description='pailab the integrated machine learning workbench',
       long_description=readme(),
       classifiers=[
           'Development Status :: 3 - Alpha',
       ],
-      keywords='platform ml version-control neural-network ml-workbench ai large data',
+      keywords='platform ml version-control neural-network ml-workbench ai big data',
       url='https://github.com/pailabteam/pailab',
       author='pailabteam',
       author_email='pailab@rivacon.com',
