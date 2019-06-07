@@ -6,5 +6,5 @@ deepdiff==3.3.0
 scikit-learn==0.20.0
 codecov==2.0.15
 GitPython==2.1.11
-tensorflow==1.13.1
+tensorflow
 collections2==0.3.0
