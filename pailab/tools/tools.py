@@ -49,6 +49,7 @@ class RepoObjectItem:
                 if hasattr(v,'load'):
                     v.load(version, full_object, modifier_versions, containing_str)
 
+    
     def modifications(self, commit=False, commit_message=''):
         result = {}
         if self._name is not None:
@@ -74,19 +75,30 @@ class RepoObjectItem:
                     result.update(tmp)
         return result
 
-    def history(self, version = (repo_store.FIRST_VERSION,repo_store.LAST_VERSION), repo_info = [RepoInfoKey.AUTHOR, RepoInfoKey.COMMIT_DATE, RepoInfoKey.COMMIT_MESSAGE], obj_data = []):
-        history = self._repo.get(self._name, version = version)
+    def history(self, version = (repo_store.FIRST_VERSION,repo_store.LAST_VERSION), 
+                repo_info = [RepoInfoKey.NAME, RepoInfoKey.AUTHOR, RepoInfoKey.COMMIT_DATE, RepoInfoKey.COMMIT_MESSAGE], 
+                obj_data = []):
+        history = self._repo.get(self._name, version = version,  throw_error_not_exist=False)
         if not isinstance(history, list):
             history = [history]
         result = {}
+        tmp = []
         for h in history:
             r = {}
             for r_info in repo_info:
                 r[str(r_info)] = h.repo_info[r_info]
             for o_info in obj_data:
                 r[o_info] = obj_data.__dict__[o_info]
-            result[h.repo_info[RepoInfoKey.VERSION]] = r
-        return result
+            tmp.append(r)
+        result[self._name] = tmp
+        for v in self.__dict__.values():
+            if isinstance(v, RepoObjectItem):
+                tmp2 = v.history(version, repo_info, obj_data)
+                if tmp2 is not None:
+                    result.update(tmp2)
+        if len(result) > 0:
+            return result
+        
 
     def __call__(self, containing_str=None):
         # if len(self.__dict__) == 1:
@@ -105,6 +117,7 @@ class RepoObjectItem:
         else:
             return self._name
         return result
+
 
 class RawDataItem(RepoObjectItem):
     def __init__(self, name, ml_repo, repo_obj = None):
@@ -280,10 +293,22 @@ class MeasureCollection(RepoObjectItem):
             path = n.split('/')[2:]
             items = [None] * len(path)
             for i in range(len(items)-1):
-                items[i] = RepoObjectItem(path[i], None)
+                items[i] = RepoObjectItem(path[i], ml_repo)
             items[-1] = MeasureItem(n, ml_repo)
             self._set(path, items)
             #items[-2] = MeasuresOnDataItem
+
+# class EvalCollection(RepoObjectItem):
+#     def __init__(self, name, ml_repo, model_name):
+#         super(EvalCollection, self).__init__('measures', ml_repo)
+#         names = ml_repo.get_names(MLObjectType.MEASURE)
+#         for n in names:
+#             path = n.split('/')[2:]
+#             items = [None] * len(path)
+#             for i in range(len(items)-1):
+#                 items[i] = RepoObjectItem(path[i], None)
+#             items[-1] = MeasureItem(n, ml_repo)
+#             self._set(path, items)
 
 class TestCollection(RepoObjectItem):
     def __init__(self, name, ml_repo, model_name):
