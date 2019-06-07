@@ -42,28 +42,27 @@ class RepoObjectItem:
     def load(self, version=repo_store.LAST_VERSION, full_object=False,
             modifier_versions=None, containing_str=None):
             if containing_str is None or containing_str in self._name:
-                self.obj = self._repo.get(self._name, version, full_object, modifier_versions, throw_error_not_exist = False)
-                if self.obj == []:
-                    pass
+                if self._repo is not None:
+                    self.obj = self._repo.get(self._name, version, full_object, modifier_versions, throw_error_not_exist = False)
             for v in self.__dict__.values():
                 if hasattr(v,'load'):
                     v.load(version, full_object, modifier_versions, containing_str)
 
-    
     def modifications(self, commit=False, commit_message=''):
         result = {}
         if self._name is not None:
             try:
-                obj_orig = self._repo.get(
-                    self.obj.repo_info[RepoInfoKey.NAME], version=self.obj.repo_info[RepoInfoKey.VERSION])
-                diff = DeepDiff(obj_orig, self.obj,
+                if self._repo is not None:
+                    obj_orig = self._repo.get(
+                        self.obj.repo_info[RepoInfoKey.NAME], version=self.obj.repo_info[RepoInfoKey.VERSION])
+                    diff = DeepDiff(obj_orig, self.obj,
                                 ignore_order=True)
             except AttributeError:
                 return None
             if len(diff) == 0:
                 return None
             else:
-                if commit:
+                if commit and (self._repo is not None):
                     version = self._repo.add(
                         self.obj, message=commit_message)
                     self.obj = self._repo.get(self._name, version=version)
@@ -78,7 +77,9 @@ class RepoObjectItem:
     def history(self, version = (repo_store.FIRST_VERSION,repo_store.LAST_VERSION), 
                 repo_info = [RepoInfoKey.NAME, RepoInfoKey.AUTHOR, RepoInfoKey.COMMIT_DATE, RepoInfoKey.COMMIT_MESSAGE], 
                 obj_data = []):
-        history = self._repo.get(self._name, version = version,  throw_error_not_exist=False)
+        history = []
+        if self._repo is not None:
+            history = self._repo.get(self._name, version = version,  throw_error_not_exist=False)
         if not isinstance(history, list):
             history = [history]
         result = {}
@@ -185,8 +186,7 @@ class RawDataCollection(RepoObjectItem):
         names = repo.get_names(MLObjectType.RAW_DATA)
         for n in names:
             setattr(self, RawDataCollection.__get_name_from_path(n), RawDataItem(n, repo))
-        self._repo = repo
-
+        
     def add(self, name, data, input_variables = None, target_variables = None):
         """Add raw data to the repository
 
@@ -239,21 +239,20 @@ class TrainingDataCollection(RepoObjectItem):
         return path.split('/')[-1]
     
     def __init__(self, repo):
-        super(TrainingDataCollection, self).__init__('training_data', repo)
-        
+        super(TrainingDataCollection, self).__init__('training_data', None)
+        self.__repo = repo # we store ml_repo in __repo to circumvent that obj is loaded from eneric base class
         names = repo.get_names(MLObjectType.TRAINING_DATA)
         for n in names:
             setattr(self, TrainingDataCollection.__get_name_from_path(n), RepoObjectItem(n, repo))
-        self._repo = repo
-
+        
     def add(self, name, raw_data, start_index=0, 
         end_index=None, raw_data_version='last'):
         #path = 'training_data/' + name
         data_set = repo_objects.DataSet(raw_data, start_index, end_index, 
                 raw_data_version, repo_info = {RepoInfoKey.NAME: name, RepoInfoKey.CATEGORY: MLObjectType.TRAINING_DATA})
-        v = self._repo.add(data_set)
-        tmp = self._repo.get(name, version=v)
-        item = RepoObjectItem(name, self._repo, tmp)
+        v = self.__repo.add(data_set)
+        tmp = self.__repo.get(name, version=v)
+        item = RepoObjectItem(name, self.__repo, tmp)
         setattr(self, name, item)
 
 class TestDataCollection(RepoObjectItem):
@@ -262,19 +261,19 @@ class TestDataCollection(RepoObjectItem):
         return path.split('/')[-1]
     
     def __init__(self, repo):
-        super(TestDataCollection, self).__init__('test_data', repo)
+        super(TestDataCollection, self).__init__('test_data', None)
+        self.__repo = repo # we store ml_repo in __repo to circumvent that obj is loaded from eneric base class
         names = repo.get_names(MLObjectType.TEST_DATA)
         for n in names:
             setattr(self, TestDataCollection.__get_name_from_path(n), RepoObjectItem(n,repo))
-        self._repo = repo
-
+        
     def add(self, name, raw_data, start_index=0, 
         end_index=None, raw_data_version='last'):
         data_set = repo_objects.DataSet(raw_data, start_index, end_index, 
                 raw_data_version, repo_info = {RepoInfoKey.NAME: name, RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA})
-        v = self._repo.add(data_set)
-        tmp = self._repo.get(name, version=v)
-        item = RepoObjectItem(name, self._repo, tmp)
+        v = self.__repo.add(data_set)
+        tmp = self.__repo.get(name, version=v)
+        item = RepoObjectItem(name, self.__repo, tmp)
         setattr(self, name, item)
 
 class MeasureItem(RepoObjectItem):
@@ -287,20 +286,20 @@ class JobItem(RepoObjectItem):
 
 class MeasureCollection(RepoObjectItem):
     def __init__(self, name, ml_repo):
-        super(MeasureCollection, self).__init__('measures', ml_repo)
+        super(MeasureCollection, self).__init__('measures', None)
         names = ml_repo.get_names(MLObjectType.MEASURE)
         for n in names:
             path = n.split('/')[2:]
             items = [None] * len(path)
             for i in range(len(items)-1):
-                items[i] = RepoObjectItem(path[i], ml_repo)
+                items[i] = RepoObjectItem(path[i], None)
             items[-1] = MeasureItem(n, ml_repo)
             self._set(path, items)
             #items[-2] = MeasuresOnDataItem
 
 class EvalCollection(RepoObjectItem):
     def __init__(self, name, ml_repo):
-        super(EvalCollection, self).__init__('eval', ml_repo)
+        super(EvalCollection, self).__init__('eval', None)
         names = ml_repo.get_names(MLObjectType.EVAL_DATA)
         for n in names:
             path = n.split('/')[2:]
@@ -312,19 +311,19 @@ class EvalCollection(RepoObjectItem):
 
 class TestCollection(RepoObjectItem):
     def __init__(self, name, ml_repo):
-        super(TestCollection, self).__init__('tests', ml_repo)
+        super(TestCollection, self).__init__('tests', None)
         names = ml_repo.get_names(MLObjectType.TEST)
         for n in names:
             path = n.split('/')[2:]
             items = [None] * len(path)
             for i in range(len(items)-1):
-                items[i] = RepoObjectItem(path[i], ml_repo)
+                items[i] = RepoObjectItem(path[i], None)
             items[-1] = RepoObjectItem(n, ml_repo)
             self._set(path, items)
 
 class JobCollection(RepoObjectItem):
     def __init__(self, name, ml_repo, model_name):
-        super(JobCollection, self).__init__('jobs', ml_repo)
+        super(JobCollection, self).__init__('jobs', None)
         names = ml_repo.get_names(MLObjectType.JOB)
         for n in names:
             if model_name in n:
@@ -350,16 +349,13 @@ class ModelItem(RepoObjectItem):
         if ml_repo._object_exists(name+'/training_param'):
             self.training_param = RepoObjectItem(name + '/training_param', ml_repo)
 
-        
-        #self.param = RepoObjectItem(name)
 
     def set_label(self, label_name, version = repo_store.RepoStore.LAST_VERSION, message=''):
         self._repo.set_label(label_name, self._name+ '/model', version, message)
 
-
 class LabelCollection(RepoObjectItem):
     def __init__(self, repo):
-        super(LabelCollection,self).__init__(None, repo)
+        super(LabelCollection,self).__init__('labels', None)
         names = repo.get_names(MLObjectType.LABEL)
         for n in names:
             #label = ml_repo.get()
@@ -371,15 +367,29 @@ class ModelCollection(RepoObjectItem):
         return name
 
     def __init__(self, repo):
-        super(ModelCollection,self).__init__('models', repo)
+        super(ModelCollection,self).__init__('models', None)
         names = repo.get_names(MLObjectType.MODEL)
         for n in names:
-            setattr(self, ModelCollection.__get_name_from_path(n), ModelItem(n,repo))
+            setattr(self, ModelCollection.__get_name_from_path(n), ModelItem(n, repo))
         self.labels = LabelCollection(repo)
-        self._repo = repo
-
+        
     def add(self, name):
         setattr(self, name, ModelItem(name,self._repo))
+
+
+
+class CacheDataCollection(RepoObjectItem):
+
+    @staticmethod
+    def __get_name_from_path(path):
+        return path.split('/')[-1]
+    
+    def __init__(self, repo):
+        super(CacheDataCollection, self).__init__('training_data', None)
+        self.__repo = repo # we store ml_repo in __repo to circumvent that obj is loaded from eneric base class
+        names = repo.get_names(MLObjectType.CACHED_VALUE)
+        for n in names:
+            setattr(self, TrainingDataCollection.__get_name_from_path(n), RepoObjectItem(n, repo))
 #endregion
 
 
