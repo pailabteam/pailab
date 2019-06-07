@@ -25,7 +25,7 @@ class TestDefinition(RepoObject, abc.ABC):
         models (iterable with str items, optional): Defaults to None. Iterable (e.g. list of str) returning names of the models to be tested.
         data (iterable with str items, optional): Defaults to None. Iterable (e.g. list of str)  returning names of the data used for testing.
         labels (iterable with str items, optional): Defaults to []. Iterable returning labels defining models to be tested.
-        repo_info (RepoInfo, optional): Defaults to RepoInfo(). 
+        repo_info (RepoInfo, optional). Defaults to RepoInfo().. 
 
     Attributes:
         models (list of str): List of strings defining the models to be tested.
@@ -220,7 +220,7 @@ class RegressionTestDefinition(TestDefinition):
         tol (float, optional): Defaults to 1e-3. Tolerance, if relative is False, the test fails if new_value-ref_value < tol, otherwise if new_value-ref_value < tol*ref_value.
         relative (bool, optional): Defaults to False. 
 
-        repo_info (RepoInfo, optional): Defaults to RepoInfo(). 
+        repo_info (RepoInfo, optional). Defaults to RepoInfo().. 
 
     Attributes:
         models (list of str): List of strings defining the models to be tested.

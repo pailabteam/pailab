@@ -30,9 +30,9 @@ logger = logging.getLogger(__name__)
 def _get_object_from_classname(classname, data):
     """ Returns an object instance for given classname and data dictionary.
 
-    Arguments:
-        classname {str} -- Full classname as string including the modules, e.g. repo.Y if class Y is defined in module repo.
-        data {dict} -- dictionary of data used to initialize the object instance.
+    Args:
+        classname (str): Full classname as string including the modules, e.g. repo.Y if class Y is defined in module repo.
+        data (dict): dictionary of data used to initialize the object instance.
 
     Returns:
         [type] -- Instance object of class.

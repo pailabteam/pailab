@@ -177,13 +177,11 @@ class RawDataCollection(RepoObjectItem):
     def add(self, name, data, input_variables = None, target_variables = None):
         """Add raw data to the repository
 
-        Arguments:
-            data_name {name of data} -- the name of the data added
-            data {pandas datatable} -- the data as pandas datatable
-        
-        Keyword Arguments:
-            input_variables {list of strings} -- list of column names defining the input variables for the machine learning (default: {None}). If None, all variables are used as input
-            target_variables {list of strings} -- list of column names defining the target variables for the machine learning (default: {None}). If None, no target data is added from the table.
+        Args:
+            data_name (name of data): the name of the data added
+            data (pandas datatable): the data as pandas datatable
+            input_variables (list of strings): list of column names defining the input variables for the machine learning. If None, all variables are used as input. Defaults to None.
+            target_variables (list of strings): list of column names defining the target variables for the machine learning. If None, no target data is added from the table.. Defaults to None.
         """
         path = 'raw_data/' + name
 

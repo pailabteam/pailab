@@ -89,7 +89,7 @@ class RepoObjectDiskStorage(RepoStore):
             file_format {str} -- the fileformat to save (default: {'pickle'})
         
         Raises:
-            Exception -- raise an exception if the file format is unknown (currently only pickle and json is supported)
+            Exception: raise an exception if the file format is unknown (currently only pickle and json is supported)
         
         Returns:
             [type] -- [description]
@@ -160,7 +160,7 @@ class RepoObjectDiskStorage(RepoStore):
             version {str} -- the version of the object
         
         Raises:
-            Exception -- an exception is raised if the object does not exists
+            Exception: an exception is raised if the object does not exists
         """
 
         condition = " where name='"+  name + "' and version='" + version + "'"
@@ -359,7 +359,7 @@ class RepoObjectDiskStorage(RepoStore):
             throw_error_not_exist {bool} -- true - throw error if not exists, else return [] (default: {True})
         
         Raises:
-            Exception -- Raises an exception if the object does not exists
+            Exception: Raises an exception if the object does not exists
         
         Returns:
             str -- the latest version string of the object
@@ -385,7 +385,7 @@ class RepoObjectDiskStorage(RepoStore):
             throw_error_not_exist {bool} -- true - throw error if not exists, else return [] (default: {True})
         
         Raises:
-            Exception -- Raises an exception if the object does not exists
+            Exception: Raises an exception if the object does not exists
         
         Returns:
             str -- the first version string of the object
@@ -411,7 +411,7 @@ class RepoObjectDiskStorage(RepoStore):
             throw_error_not_exist {bool} -- true - throw error if not exists, else return [] (default: {True})
         
         Raises:
-            Exception -- raises an exception if the object does not exists and throw_error_not_exist == True
+            Exception: raises an exception if the object does not exists and throw_error_not_exist == True
         
         Returns:
             str -- the version
