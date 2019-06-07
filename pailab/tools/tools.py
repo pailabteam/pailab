@@ -521,10 +521,20 @@ class MLTree:
 
     def modifications(self):
         result = {}
-        result.update(self.raw_data.modifications())
-        result.update(self.training_data.modifications())
-        result.update(self.test_data.modifications())
-        # result.update(self.models.modifications())
+        tmp = self.raw_data.modifications()
+        if tmp is not None:
+            result.update(tmp)
+        tmp = self.training_data.modifications()
+        if tmp is not None:
+            result.update(tmp)
+        tmp = self.test_data.modifications()
+        if tmp is not None:
+            result.update(stmp)
+        tmp = self.models.modifications()
+        if tmp is not None:
+            result.update(tmp)
+        if len(result) == 0:
+            return None
         return result
 
         
