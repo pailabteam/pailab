@@ -138,9 +138,9 @@ def eval_func_test(model, data):
     '''Dummy model eval function for testing
     
         Function retrns independent of data and model a simple numpy array with zeros
-    Arguments:
-        model {} -- dummy model, not used
-        data {} -- dummy data, not used
+    Args:
+        model ():dummy model, not used
+        data ():dummy data, not used
     '''
     return np.zeros([data.x_data.shape[0],1])
 
@@ -148,10 +148,10 @@ def train_func_test(training_param, data):
     '''Dummy model training function for testing
     
         Function returns independent of data and model a simple numpy array with zeros
-    Arguments:
-        model_param {} -- dummy model parameter
-        training_param {} -- dummy training parameter, not used
-        data {} -- dummy trainig data, not used
+    Args:
+        model_param ():dummy model parameter
+        training_param ():dummy training parameter, not used
+        data ():dummy trainig data, not used
     '''
     return TestClass(2,3, repo_info = {}) # pylint: disable=E1123
 
@@ -160,11 +160,11 @@ def preprocessor_transforming_function_test(preprocessor_param, data_x, x_coord_
     '''Dummy preprocessor transforming function for testing
     
         Function returns the input data
-    Arguments:
-        preprocessor_param {} -- dummy preprocessor parameter
-        data_x {} -- dummy input data for transforming
-        x_coord_names {} -- dummy coordinates names for transforming
-        fitted_preprocessor {} -- dummy for a fitted preprocessor
+    Args:
+        preprocessor_param ():dummy preprocessor parameter
+        data_x ():dummy input data for transforming
+        x_coord_names ():dummy coordinates names for transforming
+        fitted_preprocessor ():dummy for a fitted preprocessor
     ''' 
     return data_x, x_coord_names
 
