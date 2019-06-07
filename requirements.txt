@@ -8,3 +8,5 @@ codecov==2.0.15
 GitPython==2.1.11
 tensorflow==1.13.1
 collections2==0.3.0
+torch==1.1.0
+torchvision==0.3.0
