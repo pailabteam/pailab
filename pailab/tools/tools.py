@@ -286,7 +286,7 @@ class JobItem(RepoObjectItem):
         super(JobItem, self).__init__(name, ml_repo, repo_obj) 
 
 class MeasureCollection(RepoObjectItem):
-    def __init__(self, name, ml_repo, model_name):
+    def __init__(self, name, ml_repo):
         super(MeasureCollection, self).__init__('measures', ml_repo)
         names = ml_repo.get_names(MLObjectType.MEASURE)
         for n in names:
@@ -298,20 +298,20 @@ class MeasureCollection(RepoObjectItem):
             self._set(path, items)
             #items[-2] = MeasuresOnDataItem
 
-# class EvalCollection(RepoObjectItem):
-#     def __init__(self, name, ml_repo, model_name):
-#         super(EvalCollection, self).__init__('measures', ml_repo)
-#         names = ml_repo.get_names(MLObjectType.MEASURE)
-#         for n in names:
-#             path = n.split('/')[2:]
-#             items = [None] * len(path)
-#             for i in range(len(items)-1):
-#                 items[i] = RepoObjectItem(path[i], None)
-#             items[-1] = MeasureItem(n, ml_repo)
-#             self._set(path, items)
+class EvalCollection(RepoObjectItem):
+    def __init__(self, name, ml_repo):
+        super(EvalCollection, self).__init__('eval', ml_repo)
+        names = ml_repo.get_names(MLObjectType.EVAL_DATA)
+        for n in names:
+            path = n.split('/')[2:]
+            items = [None] * len(path)
+            for i in range(len(items)-1):
+                items[i] = RepoObjectItem(path[i], None)
+            items[-1] = MeasureItem(n, ml_repo)
+            self._set(path, items)
 
 class TestCollection(RepoObjectItem):
-    def __init__(self, name, ml_repo, model_name):
+    def __init__(self, name, ml_repo):
         super(TestCollection, self).__init__('tests', ml_repo)
         names = ml_repo.get_names(MLObjectType.TEST)
         for n in names:
@@ -340,10 +340,10 @@ class ModelItem(RepoObjectItem):
     def __init__(self, name, ml_repo, repo_obj = None):
         super(ModelItem,self).__init__(name, ml_repo, repo_obj)
         self.model = RepoObjectItem(name + '/model', ml_repo)
-        self.eval = RepoObjectItem(name + '/eval', ml_repo)
+        self.eval = EvalCollection(name + '/eval', ml_repo)
         self.model_param = RepoObjectItem(name + '/model_param', ml_repo)
-        self.tests = TestCollection(name + '/tests', ml_repo, name)
-        self.measures = MeasureCollection(name+ '/measure', ml_repo, name)
+        self.tests = TestCollection(name + '/tests', ml_repo)
+        self.measures = MeasureCollection(name+ '/measure', ml_repo)
         self.jobs = JobCollection(name+'/jobs', ml_repo, name)
         if ml_repo._object_exists(name+'/training_stat'):
             self.training_statistic = RepoObjectItem(name+'/training_stat', ml_repo)
