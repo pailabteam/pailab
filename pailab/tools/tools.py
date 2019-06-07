@@ -385,11 +385,11 @@ class CacheDataCollection(RepoObjectItem):
         return path.split('/')[-1]
     
     def __init__(self, repo):
-        super(CacheDataCollection, self).__init__('training_data', None)
+        super(CacheDataCollection, self).__init__('cache', None)
         self.__repo = repo # we store ml_repo in __repo to circumvent that obj is loaded from eneric base class
         names = repo.get_names(MLObjectType.CACHED_VALUE)
         for n in names:
-            setattr(self, TrainingDataCollection.__get_name_from_path(n), RepoObjectItem(n, repo))
+            setattr(self, CacheDataCollection.__get_name_from_path(n), RepoObjectItem(n, repo))
 #endregion
 
 
@@ -546,6 +546,7 @@ class MLTree:
         self.training_data = TrainingDataCollection(self.__ml_repo)
         self.test_data = TestDataCollection(self.__ml_repo)
         self.models = ModelCollection(self.__ml_repo)
+        self.cache = CacheDataCollection(self.__ml_repo)
 
     def __init__(self, ml_repo):
         self.__ml_repo = ml_repo
