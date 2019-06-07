@@ -59,7 +59,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'pailab'
-copyright = '2018, pailabteam'
+copyright = '2019, pailabteam'
 author = 'pailabteam'
 
 # The version info for the project you're documenting, acts as replacement for
