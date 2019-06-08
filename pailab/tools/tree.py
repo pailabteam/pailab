@@ -1,3 +1,32 @@
+# -*- coding: utf-8 -*-
+"""This module contains all functions and classes for the MLTree. The MLTree buils a tree-like
+structure of the objects in a given repository. This allows the user to access objects in a
+comfortable way allowing for autocompletion (i.e. in Jupyter notebooks).
+
+To use it one can simply call the :py:meth:`pailab.tools.tree.MLTree.add_tree` method to 
+add such a tree to the current repository::
+
+    >>from pailab.tools.tree import MLTree
+    >>MLTree.add_tree(ml_repo)
+
+After the tree has been added, one can simply use the tree. Here, using autocompletion makes the basic work wih repo objects quite simply.
+Each tree node provides useful functions that can be applied:
+
+- ``load`` loads the object of the given tree node or the child tree nodes of the current node. a
+  After calling load the respective nodes have a new attribute ``obj`` that contains the respective loaded object. To load all objects belonging to the models subtree like 
+  parameters, evaluations or measures one can call::
+
+   >> ml_repo.tree.models.load()
+
+- ``history`` lists the history of all objects of the respective subtree, where history excepts certain parameters such as a range of versions or 
+  which repo object information to include. To list th history of all training data just use::
+
+    >> ml_repo.tree.training_data.history()
+
+- ``modifications`` lists all objects of the respective subtree that have been modified and no yet been committed.
+
+There are also node dependent function (depending on what object the node represents).
+"""
 import logging
 from numpy import load
 from deepdiff import DeepDiff
@@ -10,16 +39,9 @@ logger = logging.getLogger(__name__)
 
 #region collections and items
 
-   
-def get_test_summary(repo:MLRepo):
-    """Return test summary for all labeled models and all latest models
-    
-    Args:
-        repo (MLRepo): repo
-    """
-    pass
 
-class RepoObjectItem:
+
+class _RepoObjectItem:
 
     def __init__(self, name, ml_repo, repo_obj = None):
         self._name = name
@@ -92,7 +114,7 @@ class RepoObjectItem:
             tmp.append(r)
         result[self._name] = tmp
         for v in self.__dict__.values():
-            if isinstance(v, RepoObjectItem):
+            if isinstance(v, _RepoObjectItem):
                 tmp2 = v.history(version, repo_info, obj_data)
                 if tmp2 is not None:
                     result.update(tmp2)
@@ -107,7 +129,7 @@ class RepoObjectItem:
             if containing_str in self._name:
                 result.append(self._name)
             for v in self.__dict__.values():
-                if isinstance(v, RepoObjectItem):
+                if isinstance(v, _RepoObjectItem):
                     d = v(containing_str)
                     if isinstance(d, str):
                         result.append(d)
@@ -119,9 +141,9 @@ class RepoObjectItem:
         return result
 
 
-class RawDataItem(RepoObjectItem):
+class _RawDataItem(_RepoObjectItem):
     def __init__(self, name, ml_repo, repo_obj = None):
-        super(RawDataItem,self).__init__(name, ml_repo, repo_obj)
+        super(_RawDataItem,self).__init__(name, ml_repo, repo_obj)
 
     def append(self, x_data, y_data = None):
         """Append data to a RawData object
@@ -175,16 +197,16 @@ class RawDataItem(RepoObjectItem):
             self.obj = self._repo.get(self._name, version=new_version)
         logger.info('Finished appending data to RawData' + self._name)
 
-class RawDataCollection(RepoObjectItem):
+class _RawDataCollection(_RepoObjectItem):
     @staticmethod
     def __get_name_from_path(path):
         return path.split('/')[-1]
 
     def __init__(self, repo):
-        super(RawDataCollection, self).__init__('raw_data', repo)
+        super(_RawDataCollection, self).__init__('raw_data', repo)
         names = repo.get_names(MLObjectType.RAW_DATA)
         for n in names:
-            setattr(self, RawDataCollection.__get_name_from_path(n), RawDataItem(n, repo))
+            setattr(self, _RawDataCollection.__get_name_from_path(n), _RawDataItem(n, repo))
         
     def add(self, name, data, input_variables = None, target_variables = None):
         """Add raw data to the repository
@@ -218,7 +240,7 @@ class RawDataCollection(RepoObjectItem):
             raw_data = repo_objects.RawData(data.loc[:, input_variables].values, input_variables, repo_info = {RepoInfoKey.NAME: path})
         v = self._repo.add(raw_data, 'data ' + path + ' added to repository' , category = MLObjectType.RAW_DATA)
         obj = self._repo.get(path, version=v, full_object = False)
-        setattr(self, name, RawDataItem(path, self._repo, obj))
+        setattr(self, name, _RawDataItem(path, self._repo, obj))
 
     def add_from_numpy_file(self, name, filename_X, x_names, filename_Y=None, y_names = None):
         path = name
@@ -229,20 +251,20 @@ class RawDataCollection(RepoObjectItem):
         raw_data =  repo_objects.RawData(X, x_names, Y, y_names, repo_info = {RepoInfoKey.NAME: path})
         v = self._repo.add(raw_data, 'data ' + path + ' added to repository' , category = MLObjectType.RAW_DATA)
         obj = self._repo.get(path, version=v, full_object = False)
-        setattr(self, name, RawDataItem(path, self._repo, obj))
+        setattr(self, name, _RawDataItem(path, self._repo, obj))
 
-class TrainingDataCollection(RepoObjectItem):
+class _TrainingDataCollection(_RepoObjectItem):
 
     @staticmethod
     def __get_name_from_path(path):
         return path.split('/')[-1]
     
     def __init__(self, repo):
-        super(TrainingDataCollection, self).__init__('training_data', None)
+        super(_TrainingDataCollection, self).__init__('training_data', None)
         self.__repo = repo # we store ml_repo in __repo to circumvent that obj is loaded from eneric base class
         names = repo.get_names(MLObjectType.TRAINING_DATA)
         for n in names:
-            setattr(self, TrainingDataCollection.__get_name_from_path(n), RepoObjectItem(n, repo))
+            setattr(self, _TrainingDataCollection.__get_name_from_path(n), _RepoObjectItem(n, repo))
         
     def add(self, name, raw_data, start_index=0, 
         end_index=None, raw_data_version='last'):
@@ -251,20 +273,20 @@ class TrainingDataCollection(RepoObjectItem):
                 raw_data_version, repo_info = {RepoInfoKey.NAME: name, RepoInfoKey.CATEGORY: MLObjectType.TRAINING_DATA})
         v = self.__repo.add(data_set)
         tmp = self.__repo.get(name, version=v)
-        item = RepoObjectItem(name, self.__repo, tmp)
+        item = _RepoObjectItem(name, self.__repo, tmp)
         setattr(self, name, item)
 
-class TestDataCollection(RepoObjectItem):
+class _TestDataCollection(_RepoObjectItem):
     @staticmethod
     def __get_name_from_path(path):
         return path.split('/')[-1]
     
     def __init__(self, repo):
-        super(TestDataCollection, self).__init__('test_data', None)
+        super(_TestDataCollection, self).__init__('test_data', None)
         self.__repo = repo # we store ml_repo in __repo to circumvent that obj is loaded from eneric base class
         names = repo.get_names(MLObjectType.TEST_DATA)
         for n in names:
-            setattr(self, TestDataCollection.__get_name_from_path(n), RepoObjectItem(n,repo))
+            setattr(self, _TestDataCollection.__get_name_from_path(n), _RepoObjectItem(n,repo))
         
     def add(self, name, raw_data, start_index=0, 
         end_index=None, raw_data_version='last'):
@@ -272,57 +294,57 @@ class TestDataCollection(RepoObjectItem):
                 raw_data_version, repo_info = {RepoInfoKey.NAME: name, RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA})
         v = self.__repo.add(data_set)
         tmp = self.__repo.get(name, version=v)
-        item = RepoObjectItem(name, self.__repo, tmp)
+        item = _RepoObjectItem(name, self.__repo, tmp)
         setattr(self, name, item)
 
-class MeasureItem(RepoObjectItem):
+class _MeasureItem(_RepoObjectItem):
     def __init__(self, name, ml_repo, repo_obj = None):
-        super(MeasureItem, self).__init__(name, ml_repo, repo_obj) 
+        super(_MeasureItem, self).__init__(name, ml_repo, repo_obj) 
 
-class JobItem(RepoObjectItem):
+class _JobItem(_RepoObjectItem):
     def __init__(self, name, ml_repo, repo_obj = None):
-        super(JobItem, self).__init__(name, ml_repo, repo_obj) 
+        super(_JobItem, self).__init__(name, ml_repo, repo_obj) 
 
-class MeasureCollection(RepoObjectItem):
+class _MeasureCollection(_RepoObjectItem):
     def __init__(self, name, ml_repo):
-        super(MeasureCollection, self).__init__('measures', None)
+        super(_MeasureCollection, self).__init__('measures', None)
         names = ml_repo.get_names(MLObjectType.MEASURE)
         for n in names:
             path = n.split('/')[2:]
             items = [None] * len(path)
             for i in range(len(items)-1):
-                items[i] = RepoObjectItem(path[i], None)
-            items[-1] = MeasureItem(n, ml_repo)
+                items[i] = _RepoObjectItem(path[i], None)
+            items[-1] = _MeasureItem(n, ml_repo)
             self._set(path, items)
             #items[-2] = MeasuresOnDataItem
 
-class EvalCollection(RepoObjectItem):
+class _EvalCollection(_RepoObjectItem):
     def __init__(self, name, ml_repo):
-        super(EvalCollection, self).__init__('eval', None)
+        super(_EvalCollection, self).__init__('eval', None)
         names = ml_repo.get_names(MLObjectType.EVAL_DATA)
         for n in names:
             path = n.split('/')[2:]
             items = [None] * len(path)
             for i in range(len(items)-1):
-                items[i] = RepoObjectItem(path[i], None)
-            items[-1] = MeasureItem(n, ml_repo)
+                items[i] = _RepoObjectItem(path[i], None)
+            items[-1] = _MeasureItem(n, ml_repo)
             self._set(path, items)
 
-class TestCollection(RepoObjectItem):
+class _TestCollection(_RepoObjectItem):
     def __init__(self, name, ml_repo):
-        super(TestCollection, self).__init__('tests', None)
+        super(_TestCollection, self).__init__('tests', None)
         names = ml_repo.get_names(MLObjectType.TEST)
         for n in names:
             path = n.split('/')[2:]
             items = [None] * len(path)
             for i in range(len(items)-1):
-                items[i] = RepoObjectItem(path[i], None)
-            items[-1] = RepoObjectItem(n, ml_repo)
+                items[i] = _RepoObjectItem(path[i], None)
+            items[-1] = _RepoObjectItem(n, ml_repo)
             self._set(path, items)
 
-class JobCollection(RepoObjectItem):
+class _JobCollection(_RepoObjectItem):
     def __init__(self, name, ml_repo, model_name):
-        super(JobCollection, self).__init__('jobs', None)
+        super(_JobCollection, self).__init__('jobs', None)
         names = ml_repo.get_names(MLObjectType.JOB)
         for n in names:
             if model_name in n:
@@ -330,65 +352,65 @@ class JobCollection(RepoObjectItem):
                 path = path[path.index('jobs')+1:]
                 items = [None] * len(path)
                 for i in range(len(items)-1):
-                    items[i] = RepoObjectItem(path[i], None)
-                items[-1] = JobItem(n, ml_repo)
+                    items[i] = _RepoObjectItem(path[i], None)
+                items[-1] = _JobItem(n, ml_repo)
                 self._set(path, items)
 
-class ModelItem(RepoObjectItem):
+class _ModelItem(_RepoObjectItem):
     def __init__(self, name, ml_repo, repo_obj = None):
-        super(ModelItem,self).__init__(name, ml_repo, repo_obj)
-        self.model = RepoObjectItem(name + '/model', ml_repo)
-        self.eval = EvalCollection(name + '/eval', ml_repo)
-        self.model_param = RepoObjectItem(name + '/model_param', ml_repo)
-        self.tests = TestCollection(name + '/tests', ml_repo)
-        self.measures = MeasureCollection(name+ '/measure', ml_repo)
-        self.jobs = JobCollection(name+'/jobs', ml_repo, name)
+        super(_ModelItem,self).__init__(name, ml_repo, repo_obj)
+        self.model = _RepoObjectItem(name + '/model', ml_repo)
+        self.eval = _EvalCollection(name + '/eval', ml_repo)
+        self.model_param = _RepoObjectItem(name + '/model_param', ml_repo)
+        self.tests = _TestCollection(name + '/tests', ml_repo)
+        self.measures = _MeasureCollection(name+ '/measure', ml_repo)
+        self.jobs = _JobCollection(name+'/jobs', ml_repo, name)
         if ml_repo._object_exists(name+'/training_stat'):
-            self.training_statistic = RepoObjectItem(name+'/training_stat', ml_repo)
+            self.training_statistic = _RepoObjectItem(name+'/training_stat', ml_repo)
         if ml_repo._object_exists(name+'/training_param'):
-            self.training_param = RepoObjectItem(name + '/training_param', ml_repo)
+            self.training_param = _RepoObjectItem(name + '/training_param', ml_repo)
 
 
     def set_label(self, label_name, version = repo_store.RepoStore.LAST_VERSION, message=''):
         self._repo.set_label(label_name, self._name+ '/model', version, message)
 
-class LabelCollection(RepoObjectItem):
+class _LabelCollection(_RepoObjectItem):
     def __init__(self, repo):
-        super(LabelCollection,self).__init__('labels', None)
+        super(_LabelCollection,self).__init__('labels', None)
         names = repo.get_names(MLObjectType.LABEL)
         for n in names:
             #label = ml_repo.get()
-            setattr(self, n, RepoObjectItem(n, repo))
+            setattr(self, n, _RepoObjectItem(n, repo))
         
-class ModelCollection(RepoObjectItem):
+class _ModelCollection(_RepoObjectItem):
     @staticmethod
     def __get_name_from_path(name):
         return name
 
     def __init__(self, repo):
-        super(ModelCollection,self).__init__('models', None)
+        super(_ModelCollection,self).__init__('models', None)
         names = repo.get_names(MLObjectType.MODEL)
         for n in names:
-            setattr(self, ModelCollection.__get_name_from_path(n), ModelItem(n, repo))
-        self.labels = LabelCollection(repo)
+            setattr(self, _ModelCollection.__get_name_from_path(n), _ModelItem(n, repo))
+        self.labels = _LabelCollection(repo)
         
     def add(self, name):
-        setattr(self, name, ModelItem(name,self._repo))
+        setattr(self, name, _ModelItem(name,self._repo))
 
 
 
-class CacheDataCollection(RepoObjectItem):
+class _CacheDataCollection(_RepoObjectItem):
 
     @staticmethod
     def __get_name_from_path(path):
         return path.split('/')[-1]
     
     def __init__(self, repo):
-        super(CacheDataCollection, self).__init__('cache', None)
+        super(_CacheDataCollection, self).__init__('cache', None)
         self.__repo = repo # we store ml_repo in __repo to circumvent that obj is loaded from eneric base class
         names = repo.get_names(MLObjectType.CACHED_VALUE)
         for n in names:
-            setattr(self, CacheDataCollection.__get_name_from_path(n), RepoObjectItem(n, repo))
+            setattr(self, _CacheDataCollection.__get_name_from_path(n), _RepoObjectItem(n, repo))
 #endregion
 
 
@@ -397,34 +419,37 @@ class MLTree:
 
     @staticmethod
     def add_tree(ml_repo):
-        """Adds a tree to a repository
+        """Adds an MLTree to a repository.
 
         Args:
             ml_repo (MLRepo): the repository the tre is added
         """
         setattr(ml_repo, 'tree', MLTree(ml_repo))
         ml_repo._add_triggers.append(ml_repo.tree.reload)
-        #setattr(ml_repo, 'raw_data', RawDataCollection(ml_repo))
-        #setattr(ml_repo, 'training_data', TrainingDataCollection(ml_repo))
-        #setattr(ml_repo, 'test_data', TestDataCollection(ml_repo))
-        #setattr(ml_repo, 'models', ModelCollection(ml_repo))
-        #setattr(ml_repo, 'reload_tree', MLTree._reload)
-
+        
     def __create(self):
-        self.raw_data = RawDataCollection(self.__ml_repo)
-        self.training_data = TrainingDataCollection(self.__ml_repo)
-        self.test_data = TestDataCollection(self.__ml_repo)
-        self.models = ModelCollection(self.__ml_repo)
-        self.cache = CacheDataCollection(self.__ml_repo)
+        self.raw_data = _RawDataCollection(self.__ml_repo)
+        self.training_data = _TrainingDataCollection(self.__ml_repo)
+        self.test_data = _TestDataCollection(self.__ml_repo)
+        self.models = _ModelCollection(self.__ml_repo)
+        self.cache = _CacheDataCollection(self.__ml_repo)
 
     def __init__(self, ml_repo):
         self.__ml_repo = ml_repo
         self.__create()
 
     def reload(self, **kwargs):
+        """Method to reload the tree after objects have been added or deleted from the repository.
+        """
         self.__create()  # todo make this more efficient by just updating collections and items which are affected by this
 
     def modifications(self):
+        """Return a dictionary of all objects that were modified but no yet 
+        commited to the repository.
+        
+        Returns:
+            dict: dictionary mapping object ids to dictionary of the modified attributes 
+        """
         result = {}
         tmp = self.raw_data.modifications()
         if tmp is not None:
