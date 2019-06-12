@@ -34,9 +34,9 @@ def eval_func_test(model, data):
     '''Dummy model eval function for testing
 
         Function retrns independent of data and model a simple numpy array with zeros
-    Arguments:
-        model {} -- dummy model, not used
-        data {} -- dummy data, not used
+    Args:
+        model ():dummy model, not used
+        data ():dummy data, not used
     '''
     return np.zeros([10, 1])
 
@@ -45,10 +45,10 @@ def train_func_test(training_param, data):
     '''Dummy model training function for testing
 
         Function retrns independent of data and model a simple numpy array with zeros
-    Arguments:
-        model_param {} -- dummy model parameter
-        training_param {} -- dummy training parameter, not used
-        data {} -- dummy trainig data, not used
+    Args:
+        model_param ():dummy model parameter
+        training_param ():dummy training parameter, not used
+        data ():dummy trainig data, not used
     '''
     return TestClass(2, 3, repo_info={})  # pylint: disable=E1123
 

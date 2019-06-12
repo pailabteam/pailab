@@ -25,14 +25,12 @@ class Model:
     def __check_model(repo, model_name, correct, model_version, check_for_latest=False):
         """Check if the model is calibrated and evaluated on the latest versions
 
-        Arguments:
-            repo {MLRepo} -- the ml repo
-            model_name {str} -- model name
-            model_version {version} -- model version to check
-
-        Keyword Arguments:
-            correct {bool} -- determine whether training, evaluations, measures and tests will be qutomatically triggered if check fails to correct (default: {False})
-            check_for_latest {bool} -- if true, some additional checks are performed to see whether the latest model is calibrated on th latest data
+        Args:
+            repo (MLRepo): the ml repo
+            model_name (str): model name
+            model_version (version): model version to check
+            correct (bool): determine whether training, evaluations, measures and tests will be qutomatically triggered if check fails to correct. Defaults to False.
+            check_for_latest (bool): if true, some additional checks are performed to see whether the latest model is calibrated on th latest data
 
         Returns:
             dict -- dictionary containing the modifier versions and the latest version of the objects, if dictionary is empty noc model inconsistencies could be found

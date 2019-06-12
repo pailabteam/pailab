@@ -26,11 +26,11 @@ class RepoStoreFactory:
         * git_handler
         * memory_handler
 
-        Arguments:
-            repo_store_type {str} -- the name of the repo store type
+        Args:
+            repo_store_type (str): the name of the repo store type
 
         Raises:
-            Exception -- raises an exception if the type is not supported
+            Exception: raises an exception if the type is not supported
 
         Returns:
             RepoStore -- the constructed handler
@@ -72,11 +72,11 @@ class NumpyStoreFactory:
         * memory_handler
         * hdf_handler
 
-        Arguments:
-            numpy_store_type {str} -- the name of the big data store type
+        Args:
+            numpy_store_type (str): the name of the big data store type
 
         Raises:
-            Exception -- raises an exception if the type is not supported
+            Exception: raises an exception if the type is not supported
 
         Returns:
             NumpyStore -- the constructed handler

@@ -1,6 +1,6 @@
 import logging
 import collections
-from numpy import load
+import numpy as np
 from deepdiff import DeepDiff
 from pailab.ml_repo.repo import MLObjectType, MLRepo, NamingConventions
 from pailab.ml_repo.repo_objects import RepoInfoKey, DataSet  # pylint: disable=E0401
@@ -147,12 +147,17 @@ def cache_f(f, ml_repo, *args, **kwargs):
     
 def ml_cache(f):
     @functools.wraps(f)
-    def wrapper( ml_repo, *argv, **kwargs):
-        return cache_f(f, ml_repo, *argv, **kwargs)
+    def wrapper(*argv, **kwargs):
+        if 'cache' in kwargs.keys():
+            ml_repo = kwargs['cache']
+            del kwargs['cache']
+            return cache_f(f, ml_repo, *argv, **kwargs)
+        else:
+            return f(*argv, **kwargs)
     return wrapper
+
 #endregion
         
-import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.metrics import mean_squared_error
@@ -269,114 +274,6 @@ class ModelAnalyzer:
         self._ml_repo.add(result)
         return result
 
-    @staticmethod
-    def _compute_ice(x_data, model_eval_function, model, 
-                        y_coordinate, x_coordinate,
-                        x_values, scale = True):
-        """Independent conditional expectation plot
-        
-        Args:
-            x_data ([type]): [description]
-            model_eval_function ([type]): [description]
-            model ([type]): [description]
-            direction ([type]): [description]
-            y_coordinate ([type]): [description]
-            x_coordinate ([type]): [description]
-            x_values ([type]): [description]
-            scale (bool, optional): Defaults to True. [description]
-        
-        Returns:
-            [type]: [description]
-        """
-
-        # compute input for evaluation
-        shape = (x_data.shape[0], len(x_values),) #x_data.shape[1:]
-        _x_data = np.empty(shape= (len(x_values), ) +  x_data.shape[1:]) 
-        result = np.empty(shape)
-        eval_f = model_eval_function.create()
-        for i in range(x_data.shape[0]):
-            for j in range(len(x_values)):
-                _x_data[j] = x_data[i]
-                _x_data[j,x_coordinate] = x_values[j]
-            y = eval_f(model, _x_data)[:,y_coordinate]
-            if scale:
-                denom = max(np.linalg.norm(y),1e-10)
-                result[i] = y / denom
-            else:
-                result[i] = y
-        return result
-    
-    def analyze_ice(self, model,  data, x_values, x_coordinate, version = RepoStore.LAST_VERSION, data_version = RepoStore.LAST_VERSION, 
-                    y_coordinate=None, start_index = 0, end_index= 100, full_object = True, n_steps = 20, 
-                    n_clusters=20, scale=True, random_state=42, percentile = 90):
-        if y_coordinate is None:
-            y_coordinate = 0
-        if isinstance(y_coordinate, str):
-            raise NotImplementedError()
-        if isinstance(x_coordinate, str):
-            raise NotImplementedError()
-        
-        param = {
-            'y_coordinate': y_coordinate, 'start_index': start_index, 'end_index': end_index, 
-            'n_steps': n_steps,
-            'x_values': x_values,
-            'x_coodrinate': x_coordinate,
-            'n_clusters': n_clusters, 
-            'scale' : scale, 'random_state': random_state,
-            'percentile': percentile}
-        param_hash = hashlib.md5(json.dumps(param, sort_keys=True).encode('utf-8')).hexdigest()
-        
-        # check if results of analysis are already stored in the repo
-        model_ = self._ml_repo.get(model, version, full_object = False)
-        data_ = self._ml_repo.get(data, data_version, full_object=False)
-        result_name = 'analyzer_ice_' + model_.repo_info.name + '_' + data_.repo_info.name
-        result = self._ml_repo.get(result_name, None, 
-                modifier_versions={model_.repo_info.name: model_.repo_info.version, 
-                                data_.repo_info.name: data_.repo_info.version, 
-                                'param_hash': param_hash},
-                throw_error_not_exist=False, full_object= full_object)
-        if result != []:
-            if isinstance(result,list):
-                return result[0]
-            else:
-                return result
-
-        model_definition_name = model.split('/')[0]
-        model = self._ml_repo.get(model, version, full_object = True)
-        model_def_version = model.repo_info[RepoInfoKey.MODIFICATION_INFO][model_definition_name]
-        model_definition = self._ml_repo.get(model_definition_name, model_def_version)
-        data = self._ml_repo.get(data, data_version, full_object=True)
-        
-        eval_func = self._ml_repo.get(model_definition.eval_function, RepoStore.LAST_VERSION)
-                    
-        data_ = data.x_data[start_index:end_index, :]
-        
-        x =  ModelAnalyzer._compute_ice(data_, eval_func, model,  y_coordinate, 
-                                                x_coordinate=x_coordinate, x_values = x_values, scale = scale)
-        big_obj = {}
-        big_obj['ice'] = x
-        big_obj['x_values'] = np.array(x_values)
-        # now apply a clustering algorithm to search for good representations of all ice results
-        k_means = KMeans(init='k-means++', n_clusters=n_clusters, n_init=10, random_state=42)
-        labels =  k_means.fit_predict(x)
-        big_obj['labels'] = labels
-        big_obj['cluster_centers'] = k_means.cluster_centers_
-        # now store for each data point the distance to the respectiv cluster center
-        tmp = k_means.transform(x)
-        distance_to_center = np.empty((x.shape[0],))
-
-        for i in range(x.shape[0]):
-            distance_to_center[i] = tmp[i,labels[i]]
-        big_obj['distance_to_center'] = distance_to_center
-        #perc = np.percentile(distance_to_center, percentile)
-        #percentile_ice = np.extract(distance_to_center > perc, )
-        #for i in range(distance_to_center.shape[0]):
-        #    if distance_to_center[i] > perc:
-        #        percentile_ice.append(distance_to_center[i])
-        #big_obj['percentiles'] = percentile_ice
-        result = ModelAnalyzer._create_result(result_name, model, data, param, {'param': param, 'data': data.repo_info.name, 'model': model.repo_info.name}, big_obj)
-        self._ml_repo.add(result)
-        return result
-
+   
     
 
