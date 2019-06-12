@@ -87,6 +87,7 @@ class RepoGitStorageTest(unittest.TestCase):
 
     def test_get_by_version(self):
         '''Test get interface where only version of object is specified
+        
         '''
         self.assertEqual(self._storage.get_latest_version(
             'obj'), self._object_versions[-1])
