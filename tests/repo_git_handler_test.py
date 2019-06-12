@@ -73,6 +73,7 @@ class RepoGitStorageTest(unittest.TestCase):
                     repo_objects.create_repo_obj_dict(obj)))
                 time.sleep(2)
 
+    @staticmethod
     def remove_git_repo(name):
         try:
             if os.path.exists(name):
