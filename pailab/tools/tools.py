@@ -150,6 +150,8 @@ def ml_cache(f):
     def wrapper(*argv, **kwargs):
         if 'cache' in kwargs.keys():
             ml_repo = kwargs['cache']
+            if ml_repo is None:
+                return f(*argv, **kwargs)    
             del kwargs['cache']
             return cache_f(f, ml_repo, *argv, **kwargs)
         else:
