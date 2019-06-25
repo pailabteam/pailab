@@ -101,6 +101,7 @@ class ICE_Results:
         self.ice = None
         self.x_values = None
         self.x_coord_name = ''
+        self.y_coord_name = ''
         self.labels = None
         self.cluster_centers = None
         self.distance_to_clusters = None
@@ -203,4 +204,5 @@ def compute_ice(ml_repo, x_values, data, model=None, model_label=None, model_ver
                      start_index = start_index, end_index = end_index, cache=cache_,
                      n_clusters=n_clusters, random_state=random_state)
     result.x_coord_name = data_.x_coord_names[x_coordinate]
+    result.y_coord_name = data_.y_coord_names[y_coordinate]
     return result
