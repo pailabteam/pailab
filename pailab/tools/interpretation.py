@@ -160,26 +160,29 @@ def _compute_and_cluster_ice(data, model_eval_function, model,
 
 def compute_ice(ml_repo, x_values, data, model=None, model_label=None, model_version=RepoStore.LAST_VERSION,
                 data_version=RepoStore.LAST_VERSION, y_coordinate=0, x_coordinate = 0,
-                start_index=0, end_index=-1, n_steps=20, scale='', cache = False,
+                start_index=0, end_index=-1, scale='', cache = False,
                 n_clusters=0, random_state=42):
     """Compute individual conditional expectation (ice) for a given dataset and model
     
     Args:
-        ml_repo (MLRepo): [description]
-        x_values ([type]): [description]
-        data ([type]): [description]
-        model ([type], optional): [description]. Defaults to None.
-        model_label ([type], optional): [description]. Defaults to None.
-        model_version ([type], optional): [description]. Defaults to RepoStore.LAST_VERSION.
-        data_version ([type], optional): [description]. Defaults to RepoStore.LAST_VERSION.
-        y_coordinate (int, optional): [description]. Defaults to 0.
-        x_coordinate (int, optional): [description]. Defaults to 0.
-        start_index (int, optional): [description]. Defaults to 0.
-        end_index (int, optional): [description]. Defaults to -1.
-        n_steps (int, optional): [description]. Defaults to 20.
-        scale (str, optional): [description]. Defaults to ''.
-        cache ([type], optional): [description]. Defaults to Falsen_clusters=20.
-        random_state (int, optional): [description]. Defaults to 42.
+        ml_repo (MLRepo): MLRepo used to retrieve model and data and be used in caching.
+        x_values (list): List of x values for the ICE.
+        data (str, DataSet, RawData): Either name of data or directly the data object which is used as basis for ICE (an ICE is computed at each datapoint of the data).
+        model (str, optional): Name of model in the MLRepo for which the ICE will be computed. If None, model_label must be specified, defining the model to be used. Defaults to None.
+        model_label (str, optional): Label defining the model to be used. Defaults to None.
+        model_version (str, optional): Version of model to be used for ICE. Only needed if model is specified. Defaults to RepoStore.LAST_VERSION.
+        data_version (str, optional): Version of data used. Defaults to RepoStore.LAST_VERSION.
+        y_coordinate (int or str, optional): Defines y-coordinate (either by name or coordinate index) for which the ICE is computed. Defaults to 0.
+        x_coordinate (int or str, optional): Defines x-coordinate (either by name or coordinate index) for which the ICE is computed. Defaults to 0.
+        start_index (int, optional): Defines the start index of the data to be used in ICE computation (data[start_index:end_index] will be used). Defaults to 0.
+        end_index (int, optional): Defines the end index of the data to be used in ICE computation (data[start_index:end_index] will be used). Defaults to -1.
+        n_clusters (int, optional): Number of clusters for the functional clustering of the ICE curves. Defaults to 0.
+        scale (str, optional): String defining the scaling for the functions before functional clustering is applied. Scaling is perfomred by
+                                dividing the vector of the y-values of the ICE by the respective vector norm defined by scaling.
+                                The scaling must be one of numpy's valid strings for linalg.norm's ord parameter. If string is empty, no scaling will be applied.
+                                Defaults to ''. 
+        cache (bool, optional): If True, results will be cached. Defaults to False.
+        random_state (int, optional): Random state for random generator used to initialize randam centroids. Defaults to 42.
         
     Returns:
         ICE_Results: result object containing all relevant data (including functional clustering)
