@@ -27,7 +27,7 @@ class RepoObjectGitStorage(RepoObjectDiskStorage):
         except:
             return False
 
-    def __init__(self, remote = None, **kwargs):
+    def __init__(self, remote=None, **kwargs):
         """ Constructor
         Args:
             remote (str): The remote git repository. Defaults to None which means that there is no remote. If given and the target directory is not under git control, the repo will try to clon from the remote.
@@ -35,7 +35,7 @@ class RepoObjectGitStorage(RepoObjectDiskStorage):
             file_format (str: 'pickle'|'json'): The fileformat used to save the objects. Defaults to 'pickle'.
 
         """
-            
+
         super(RepoObjectGitStorage, self).__init__(**kwargs)
         # initialize git repo if it does not exist
         if not RepoObjectGitStorage._is_git_repo(self._main_dir):
@@ -52,7 +52,7 @@ class RepoObjectGitStorage(RepoObjectDiskStorage):
                 if not os.path.exists(self._sqlite_db_name()):
                     self._conn.close()
                 self._setup_new()
-        
+
     def _add(self, obj):
         """ Adds an object to the git repository
 
@@ -88,7 +88,7 @@ class RepoObjectGitStorage(RepoObjectDiskStorage):
         self.commit('Replace object ' + obj['repo_info']['name'] +
                     ', version ' + obj['repo_info']['version'] + '.')
 
-    def commit(self, message, force = True):
+    def commit(self, message, force=True):
         """ Commits the changes
 
         Args:

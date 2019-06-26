@@ -1051,6 +1051,7 @@ class MLRepo:
         self._config = config
         if config is None:
             if workspace is not None:
+                logger.info('Reading config from workspace ' + workspace)
                 with open(workspace + '/.config.json', 'r') as f:
                     self._config = json.load(f)
             else:

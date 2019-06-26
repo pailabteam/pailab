@@ -428,7 +428,7 @@ class NumpyHDFRemoteStorage(NumpyHDFStorage):
         """
 
         with _lock_dir(self.main_dir, self._wait_time, self._timeout):
-            remote_files = {x.name for x in self._remote_store._remote_file_list()}
+            remote_files = {x for x in self._remote_store._remote_file_list()}
             local_files = _get_all_files(self.main_dir)
             if '.lock' in local_files:
                 local_files.remove('.lock')
