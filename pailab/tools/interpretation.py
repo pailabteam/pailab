@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+"""This module contains functions for model agnostic interpretation methods. 
+"""
+
 import numpy as np
 from pailab.ml_repo.repo_objects import RepoObject, RawData
 from pailab.tools.tools import ml_cache
@@ -98,6 +102,17 @@ def _get_model_eval(model, model_version, ml_repo, model_label=None):
 
 class ICE_Results:
     def __init__(self):
+        """Class holding the results of the compute_ice function.
+
+        Attributes:
+            ice (numpy matrix): Each row contains the ICE values at each datapoint.
+            x_values (list): List of the used x values for the ICE projection.
+            x_coord_name (str): Name of x-coordinate used for ICE.
+            y_coord_name (str): Name of y-coordinate used for ICE.
+            labels (numpy array): If functional clustering of ICE curves has been performed, it contains the cluster label for each datapoint.
+            cluster_centers (numpy matriy): Each row contains one cluster center of the functional clustering.
+            distance_to_clusters (numpy matrix): Each row contains the distance of the respective ICE graph to each of the clusters.
+        """
         self.ice = None
         self.x_values = None
         self.x_coord_name = ''
