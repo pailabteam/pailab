@@ -19,7 +19,7 @@ except ImportError:
 @ml_cache
 def _compute_ice(data, model_eval_function, model,
                  y_coordinate, x_coordinate,
-                 x_values, start_index = 0, end_index = -1, scale=True):
+                 x_values, start_index = 0, end_index = -1, scale=''):
     """Independent conditional expectation plot
 
     Args:
@@ -30,8 +30,10 @@ def _compute_ice(data, model_eval_function, model,
         y_coordinate ([type]): [description]
         x_coordinate ([type]): [description]
         x_values ([type]): [description]
-        scale (non-zero int, inf, -inf, ''): If specified, the scaling parameter is used to scale each projection by the respective numpy.linalg.norm.
-        Scaling may be useful to compare ice at different data points.
+        scale (str or int, optional): String defining the scaling for the functions before functional clustering is applied. Scaling is perfomred by
+                                dividing the vector of the y-values of the ICE by the respective vector norm defined by scaling.
+                                The scaling must be one of numpy's valid strings for linalg.norm's ord parameter. If string is empty, no scaling will be applied.
+                                Defaults to ''. 
     Returns:
         [type]: [description]
     """
@@ -79,8 +81,8 @@ def _get_model_eval(model, model_version, ml_repo, model_label=None):
     model_version_ = model_version
     if model_label is not None:
         label = ml_repo.get(model_label)
-        model_ = label.name
-        model_version_ = label.version
+        model = label.name
+        model_version = label.version
 
     if isinstance(model, str):
         if len(model.split('/')) == 1:
@@ -161,7 +163,7 @@ def functional_clustering(x, scale='',
 @ml_cache
 def _compute_and_cluster_ice(data, model_eval_function, model,
                  y_coordinate, x_coordinate,
-                 x_values, start_index = 0, end_index = -1, scale=True,
+                 x_values, start_index = 0, end_index = -1, scale='',
                  n_clusters=20, random_state=42, clustering_param = None):
     """[summary]
     
@@ -199,7 +201,7 @@ def _compute_and_cluster_ice(data, model_eval_function, model,
 def compute_ice(ml_repo, x_values, data, model=None, model_label=None, model_version=RepoStore.LAST_VERSION,
                 data_version=RepoStore.LAST_VERSION, y_coordinate=0, x_coordinate = 0,
                 start_index=0, end_index=-1, cache = False,
-                clustering_param = None):
+                clustering_param = None, scale=''):
     """Compute individual conditional expectation (ice) for a given dataset and model
     
     Args:
@@ -217,7 +219,11 @@ def compute_ice(ml_repo, x_values, data, model=None, model_label=None, model_ver
         cache (bool, optional): If True, results will be cached. Defaults to False.
         clustering_param (dict or None, optional): Dictionary of parameters for method functional_clustering that is called if the parameter is not None and applies 
             functional clustering to the ICE curves.
-        
+        scale (str or int, optional): String defining the scaling for the functions before functional clustering is applied. Scaling is perfomred by
+                                dividing the vector of the y-values of the ICE by the respective vector norm defined by scaling.
+                                The scaling must be one of numpy's valid strings for linalg.norm's ord parameter. If string is empty, no scaling will be applied.
+                                Defaults to ''. 
+
     Returns:
         ICE_Results: result object containing all relevant data (including functional clustering)
     """
@@ -239,7 +245,7 @@ def compute_ice(ml_repo, x_values, data, model=None, model_label=None, model_ver
     result.x_values, result.ice, result.labels, result.cluster_centers, result.distance_to_clusters = _compute_and_cluster_ice(data_, model_eval_f, model_,  y_coordinate,
                      x_coordinate=x_coordinate, x_values=x_values, 
                      start_index = start_index, end_index = end_index, cache=cache_,
-                     clustering_param=clustering_param)
+                     clustering_param=clustering_param, scale = scale)
     result.x_coord_name = data_.x_coord_names[x_coordinate]
     result.y_coord_name = data_.y_coord_names[y_coordinate]
     result.data_name = data_.repo_info.name
