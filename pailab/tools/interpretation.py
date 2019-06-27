@@ -112,6 +112,10 @@ class ICE_Results:
             labels (numpy array): If functional clustering of ICE curves has been performed, it contains the cluster label for each datapoint.
             cluster_centers (numpy matriy): Each row contains one cluster center of the functional clustering.
             distance_to_clusters (numpy matrix): Each row contains the distance of the respective ICE graph to each of the clusters.
+            data_name (str): Name of input data  used for ICE curves.
+            start_index (int): Start index of input data.
+            model (str): Name of model used for the ICE curves.
+            model_version (str): Version of model used for the ICE curves.
         """
         self.ice = None
         self.x_values = None
@@ -120,12 +124,45 @@ class ICE_Results:
         self.labels = None
         self.cluster_centers = None
         self.distance_to_clusters = None
+        self.data_name = ''
+        self.start_index = 0
+        self.model = ''
+        self.model_version = ''
+    
+def functional_clustering(x, scale='',
+                 n_clusters=20, random_state=42):
+    """Given a set of different 1D functions (represented in matrix form where each row contains the function values on a given grid), this
+        method clusters those functions and tries to find typical function structures.
+    
+    Args:
+        x (numpy matrix): Matrix containing in each row the function values at a datapoint.
+        n_clusters (int, optional): Number of clusters for the functional clustering of the ICE curves. Defaults to 0.
+        random_state (int, optional): [description]. Defaults to 42.
+        scale (str or int, optional): String defining the scaling for the functions before functional clustering is applied. Scaling is perfomred by
+                                dividing the vector of the y-values of the ICE by the respective vector norm defined by scaling.
+                                The scaling must be one of numpy's valid strings for linalg.norm's ord parameter. If string is empty, no scaling will be applied.
+                                Defaults to ''. 
+    Returns:
+        numpy vector: Vector where each value defines the corresponding cluster of the respective function (x[i] is the cluster the i-th function belongs to).
+        numpy matrix: Contains in each row th distance to each cluster for the respective function.
+        numpy matrix: Contains in each row a cluster centroid.
+    """
+    if not has_sklearn:
+        raise Exception('Cannot apply functional clustering: No sklearn installed. Please either install sklearn or set n_clusters to zero.')
+    k_means = KMeans(init='k-means++', n_clusters=n_clusters,
+                    n_init=10, random_state=random_state)
+    labels = k_means.fit_predict(x)
+    # now store for each data point the distance to the respectiv cluster center
+    distance_to_clusters = k_means.transform(x)
+    cluster_centers =  k_means.cluster_centers_
+    return labels, distance_to_clusters, cluster_centers
+
 
 @ml_cache
 def _compute_and_cluster_ice(data, model_eval_function, model,
                  y_coordinate, x_coordinate,
                  x_values, start_index = 0, end_index = -1, scale=True,
-                 n_clusters=20, random_state=42):
+                 n_clusters=20, random_state=42, clustering_param = None):
     """[summary]
     
     Args:
@@ -137,12 +174,10 @@ def _compute_and_cluster_ice(data, model_eval_function, model,
         x_values ([type]): [description]
         start_index (int, optional): [description]. Defaults to 0.
         end_index (int, optional): [description]. Defaults to -1.
-        scale (bool, optional): [description]. Defaults to True.
-        n_clusters (int, optional): [description]. Defaults to 20.
-        random_state (int, optional): [description]. Defaults to 42.
-    
+        clustering_param (dict or None, optional): Default to None
+        
     Returns:
-        list of double: the x-values used to compute ICE
+        list of doubles: the x-values used to compute ICE
         numpy matrix: Each row contains the ice values
         numpy vector: Each entry contains the cluster of the respective point
         numpy matrix: Each row contains a cluster center
@@ -157,26 +192,14 @@ def _compute_and_cluster_ice(data, model_eval_function, model,
     labels = None
     cluster_centers = None
     distance_to_clusters = None
-    if n_clusters > 0:
-        if not has_sklearn:
-            raise Exception('Cannot compute ice clusters: No sklearn installed. Please either install sklearn or set n_clusters to zero.')
-        k_means = KMeans(init='k-means++', n_clusters=n_clusters,
-                        n_init=10, random_state=random_state)
-        labels = k_means.fit_predict(ice)
-        # now store for each data point the distance to the respectiv cluster center
-        distance_to_clusters = k_means.transform(ice)
-        cluster_centers =  k_means.cluster_centers_
-        #distance_to_center = np.empty((x.shape[0],))
-
-    #for i in range(x.shape[0]):
-    #    distance_to_center[i] = distance_to_clusters[i, labels[i]]
-    #big_obj['distance_to_center'] = distance_to_center
+    if clustering_param is not None:
+        labels, distance_to_clusters, cluster_centers = functional_clustering(ice, **clustering_param)
     return x_values, ice, labels, cluster_centers, distance_to_clusters
 
 def compute_ice(ml_repo, x_values, data, model=None, model_label=None, model_version=RepoStore.LAST_VERSION,
                 data_version=RepoStore.LAST_VERSION, y_coordinate=0, x_coordinate = 0,
-                start_index=0, end_index=-1, scale='', cache = False,
-                n_clusters=0, random_state=42):
+                start_index=0, end_index=-1, cache = False,
+                clustering_param = None):
     """Compute individual conditional expectation (ice) for a given dataset and model
     
     Args:
@@ -191,13 +214,9 @@ def compute_ice(ml_repo, x_values, data, model=None, model_label=None, model_ver
         x_coordinate (int or str, optional): Defines x-coordinate (either by name or coordinate index) for which the ICE is computed. Defaults to 0.
         start_index (int, optional): Defines the start index of the data to be used in ICE computation (data[start_index:end_index] will be used). Defaults to 0.
         end_index (int, optional): Defines the end index of the data to be used in ICE computation (data[start_index:end_index] will be used). Defaults to -1.
-        n_clusters (int, optional): Number of clusters for the functional clustering of the ICE curves. Defaults to 0.
-        scale (str, optional): String defining the scaling for the functions before functional clustering is applied. Scaling is perfomred by
-                                dividing the vector of the y-values of the ICE by the respective vector norm defined by scaling.
-                                The scaling must be one of numpy's valid strings for linalg.norm's ord parameter. If string is empty, no scaling will be applied.
-                                Defaults to ''. 
         cache (bool, optional): If True, results will be cached. Defaults to False.
-        random_state (int, optional): Random state for random generator used to initialize randam centroids. Defaults to 42.
+        clustering_param (dict or None, optional): Dictionary of parameters for method functional_clustering that is called if the parameter is not None and applies 
+            functional clustering to the ICE curves.
         
     Returns:
         ICE_Results: result object containing all relevant data (including functional clustering)
@@ -218,9 +237,13 @@ def compute_ice(ml_repo, x_values, data, model=None, model_label=None, model_ver
 
     result = ICE_Results()
     result.x_values, result.ice, result.labels, result.cluster_centers, result.distance_to_clusters = _compute_and_cluster_ice(data_, model_eval_f, model_,  y_coordinate,
-                     x_coordinate=x_coordinate, x_values=x_values, scale=scale, 
+                     x_coordinate=x_coordinate, x_values=x_values, 
                      start_index = start_index, end_index = end_index, cache=cache_,
-                     n_clusters=n_clusters, random_state=random_state)
+                     clustering_param=clustering_param)
     result.x_coord_name = data_.x_coord_names[x_coordinate]
     result.y_coord_name = data_.y_coord_names[y_coordinate]
+    result.data_name = data_.repo_info.name
+    result.start_index = start_index
+    result.model = model_.repo_info.name
+    result.model_version = model_.repo_info.version
     return result
