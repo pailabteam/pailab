@@ -9,8 +9,15 @@ import pailab.analysis.plot_helper as plot_helper  # pylint: disable=E0611
 from pailab.ml_repo.repo_store import RepoStore, LAST_VERSION
 from pailab.ml_repo.repo import NamingConventions, MLObjectType  # pylint: disable=E0611,E0401
 from pailab import RepoInfoKey
-from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
-import plotly.graph_objs as go
+
+has_plotly = True
+try:
+    from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
+    from plotly import tools
+    import plotly.graph_objs as go
+except ImportError:
+    has_plotly = False
+
 logger = logging.getLogger(__name__)
 
 init_notebook_mode(connected=True)
@@ -324,5 +331,68 @@ def histogram_data_conditional_error(ml_repo, models, data, x_coordinate, y_coor
     plot_dict = {'data': plot_data, 'title': '', 'x0_name':x_coordinate}
     _histogram(plot_dict, n_bins=n_bins)
 
+def _ice_plotly(ice_results, ice_points = None, height = None, width = None, clusters = None):
+    data = []
+    if ice_points is None:
+        ice_points = range(ice_results.ice.shape[0])
+    if clusters is not None:
+        ice_points_tmp = []
+        for i in ice_points:
+            if ice_results.labels[i] in clusters:
+                ice_points_tmp.append(i)
+        _ice_plotly(ice_results, ice_points=ice_points_tmp, height=height, width=width)
+        return
 
+    # plot ice curves
+    for i in ice_points:
+        data.append(go.Scatter(x=ice_results.x_values, y = ice_results.ice[i,:], name = ice_results.data_name + '[' + str(ice_results.start_index +i) + ',:]'))
+    
+    layout = go.Layout(
+        title='ICE, model: ' + ice_results.model + ', version: ' + ice_results.model_version,
+        xaxis=dict(title=ice_results.x_coord_name),
+        yaxis=dict(title=ice_results.y_coord_name),
+        height = height,
+        width = width
+    )
+    fig = go.Figure(data=data, layout=layout)
+    iplot(fig)  # , filename='pandas/basic-line-plot')
+
+
+def _ice_clusters_plotly(ice_results, height = None, width = None):
+    data = []
+    # plot ice cluster curves
+    for i in range(ice_results.cluster_centers.shape[0]):
+        data.append(go.Scatter(x=ice_results.x_values, y = ice_results.cluster_centers[i,:], name = 'cluster ' + str(i)))
+    
+
+    layout = go.Layout(
+        title='ICE clusters, model: ' + ice_results.model + ', version: ' + ice_results.model_version,
+        xaxis=dict(title=ice_results.x_coord_name),
+        yaxis=dict(title=ice_results.y_coord_name),
+        height = height,
+        width = width
+    )
+    #fig = tools.make_subplots(rows=2, cols=2, subplot_titles=('Plot 1', 'Plot 2',
+    #                                                      'Plot 3', 'Plot 4'))#, layout = layout)
+    #fig['layout'].update(title='ICE, model: ' + ice_results.model + ', version: ' + ice_results.model_version, xaxis=dict(title=ice_results.x_coord_name),
+    #    yaxis=dict(title=ice_results.y_coord_name),
+    #    height = height,
+    #    width = width)
+    fig = go.Figure(data=data, layout=layout)
+    #fig.append_trace(data,1,1)
+    iplot(fig)  # , filename='pandas/basic-line-plot')
+
+
+
+def ice(ice_results, height = None, width = None, ice_points = None, clusters = None):
+    if has_plotly:
+        _ice_plotly(ice_results, height=height, width=width, ice_points = ice_points, clusters = clusters)
+    else:
+        raise Exception("Plot methods for matplotlib have not yet been implemented.")
      
+def ice_clusters(ice_results, height = None, width = None):
+    if has_plotly:
+        _ice_clusters_plotly(ice_results, height=height, width=width)
+    else:
+        raise Exception("Plot methods for matplotlib have not yet been implemented.")
+    
