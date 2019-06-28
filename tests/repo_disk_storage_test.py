@@ -75,16 +75,16 @@ class RepoDiskStorageTest(unittest.TestCase):
             self._object_versions[1], self._object_versions[3]))
         self.assertEqual(len(obj), 3)
         for i in range(1, 4):
-            self.assertEqual(
-                obj[i-1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[i])
+            self.assertTrue(
+                obj[i-1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
         # list of version number
         obj = self._storage.get(
             'obj', versions=[self._object_versions[1], self._object_versions[3]])
         self.assertEqual(len(obj), 2)
-        self.assertEqual(
-            obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[1])
-        self.assertEqual(
-            obj[1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[3])
+        self.assertTrue(
+            obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
+        self.assertTrue(
+            obj[1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
 
     def test_get_by_modifier_version(self):
         '''Test get interface where version of modifier objects are specified
