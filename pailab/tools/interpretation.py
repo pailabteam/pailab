@@ -101,7 +101,6 @@ def _get_model_eval(model, model_version, ml_repo, model_label=None):
     return result_model, result_eval_f
 
 
-
 class ICE_Results:
     def __init__(self):
         """Class holding the results of the compute_ice function.
@@ -118,6 +117,8 @@ class ICE_Results:
             start_index (int): Start index of input data.
             model (str): Name of model used for the ICE curves.
             model_version (str): Version of model used for the ICE curves.
+            data_name (str): Name of underlying data.
+            data_version (str): Version of underlying data.
         """
         self.ice = None
         self.x_values = None
@@ -127,10 +128,38 @@ class ICE_Results:
         self.cluster_centers = None
         self.distance_to_clusters = None
         self.data_name = ''
+        self.data_version = ''
         self.start_index = 0
         self.model = ''
         self.model_version = ''
+
+    def _validate_for_comparison(self, ice_results_2):
+        if self.data_name != ice_results_2.data_name:
+            raise Exception('Cannot compare two ice results on different data, ice_results_1 : ' + self.data_name + ', ice_results_2: ' + ice_results_2.data_name)
+        if self.data_version != ice_results_2.data_version:
+            raise Exception('Cannot compare two ice results on different data, ice_results_1 : ' + self.data_version + ', ice_results_2: ' + ice_results_2.data_version)
+        if self.start_index != ice_results_2.start_index:
+            raise Exception('Cannot compare two ice results with different start_index, ice_results_1 : ' + str(self.start_index) + ', ice_results_2: ' + str(ice_results_2.start_index))
     
+    def compute_cluster_average(self, ice_results_2,):
+        """[summary]
+        
+        Args:
+            ice_results_2 ([type]): [description]
+
+        Returns:
+            numpy matrix: Matrix containing the average of values from ice_results_2 over the different clusters from this result. 
+        """
+        self._validate_for_comparison(ice_results_2)
+        if self.cluster_centers is None:
+            raise Exception("No clusters have been computed yet.")
+        result = np.empty(self.cluster_centers.shape)
+        
+        for i in range(self.cluster_centers.shape[0]):
+            tmp = ice_results_2.ice[self.labels == i]
+            result[i] =  np.mean(tmp, axis = 0)
+        return result
+
 def functional_clustering(x, scale='',
                  n_clusters=20, random_state=42):
     """Given a set of different 1D functions (represented in matrix form where each row contains the function values on a given grid), this
@@ -252,4 +281,5 @@ def compute_ice(ml_repo, x_values, data, model=None, model_label=None, model_ver
     result.start_index = start_index
     result.model = model_.repo_info.name
     result.model_version = model_.repo_info.version
+    result.data_version = data_.repo_info.version
     return result
