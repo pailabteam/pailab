@@ -1237,6 +1237,8 @@ class MLRepo:
         _data_y = None
         # read from file
         if isinstance(data, str):
+            if file_format is None:
+                raise Exception('Please specify a file format.')
             # we assume that data represents a filename of the file containing the data
             if file_format == 'csv':
                 try:
@@ -1252,7 +1254,7 @@ class MLRepo:
                     data_y = np.load(data_y)
             else:
                 raise Exception('Unknown file format ' + file_format)
-            return self.add_rawData(name, data, input_names, data_y, target_names, axis=axis)
+            return self.add_raw_data(name, data, input_names, data_y, target_names, axis=axis)
         # use objects directly
         else:
             # check if pandas is installed and if the given data object is a DataFrame
@@ -1263,20 +1265,19 @@ class MLRepo:
                     if target_names is not None:
                         _data_y = data.loc[:, target_names].values
             except ImportError:
-                if isinstance(data, np.ndarray):
-                    if data_y is not None:
-                        _data_x = data
-                        _data_y = data_y
-                    elif target_names is not None:
-                        tmp = np.split(data,[len(input_names)], axis=1)
-                        _data_x = tmp[0]
-                        _data_y = tmp[1]
-                    else:
-                        _data_x = data
+                pass
+            if isinstance(data, np.ndarray):
+                if data_y is not None:
+                    _data_x = data
+                    _data_y = data_y
+                elif target_names is not None:
+                    tmp = np.split(data,[len(input_names)], axis=1)
+                    _data_x = tmp[0]
+                    _data_y = tmp[1]
                 else:
-                    raise Exception('Cannot add given data: The data is neither a filename, nor a pandas DataFrame nor a numpy ndarray.')
+                    _data_x = data
         if _data_x is None:
-            raise Exception('Cannot add given data: Either data is empty or could not be properly converted.')
+            raise Exception('Cannot add given data: The data is neither a filename, nor a pandas DataFrame nor a numpy ndarray.')
         path = name
         if not 'raw_data' in path:
             path = 'raw_data/' + name
