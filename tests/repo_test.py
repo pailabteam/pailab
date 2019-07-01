@@ -477,7 +477,69 @@ class RepoTest(unittest.TestCase):
             self.assertEqual(0,1)
         except:
             pass
+
+    def test_add_raw_data(self):
+        """Test the method add_raw_data
+        """
+        raw_data_input = np.zeros((10,3,))
+        # test to add just x_data
+        ml_repo = MLRepo(user = 'unittestuser')
+        ml_repo.add_raw_data('test1', raw_data_input, ['x0', 'x1', 'x2'])
+        raw_data = ml_repo.get('raw_data/test1', full_object = True)
+        self.assertTrue('x0' in raw_data.x_coord_names)
+        self.assertEqual(raw_data.x_data.shape[1], 3)
+        # test to add x and y data from data only
+        ml_repo.add_raw_data('test1', raw_data_input, ['x0', 'x1'], target_names = ['x2'])
+        raw_data = ml_repo.get('raw_data/test1', full_object = True)
+        self.assertTrue('x2' in raw_data.y_coord_names)
+        self.assertEqual(raw_data.x_data.shape[1], 2)
+        self.assertEqual(raw_data.y_data.shape[1], 1)
+        # test to add x and y data with two different input matrices
+        raw_data_y_input = np.zeros( (10,1, ) )
+        ml_repo.add_raw_data('test1', raw_data_input, ['x0', 'x1', 'x2'], raw_data_y_input, target_names = ['y1'])
+        raw_data = ml_repo.get('raw_data/test1', full_object = True)
+        self.assertTrue('y1' in raw_data.y_coord_names)
+        self.assertTrue('x0' in raw_data.x_coord_names)
+        self.assertEqual(raw_data.y_data.shape[1], 1)
+        self.assertEqual(raw_data.x_data.shape[1], 3)
+
+        #test to add data from pandas dataframe
+        import pandas as pd
+        ml_repo.add_raw_data('test1', pd.DataFrame(data = raw_data_input, columns = ['x0', 'x1', 'x2']), ['x0', 'x1'], target_names = ['x2'])
+        raw_data = ml_repo.get('raw_data/test1', full_object = True)
+        self.assertTrue('x2' in raw_data.y_coord_names)
+        self.assertEqual(raw_data.y_data.shape[1], 1)
+
+        # try to read from file
+        try:
+            shutil.rmtree('test_add_raw_data')
+            os.makedirs('test_add_raw_data')
+        except OSError:
+            os.makedirs('test_add_raw_data')
+        tmp = pd.DataFrame(data = raw_data_input, columns = ['x0', 'x1', 'x2'])
+        tmp.to_csv('test_add_raw_data/dummy.csv')
+        ml_repo.add_raw_data('test1', 'test_add_raw_data/dummy.csv', ['x0', 'x1'], target_names = ['x2'], file_format = 'csv')
+        raw_data = ml_repo.get('raw_data/test1', full_object = True)
+        self.assertTrue('x2' in raw_data.y_coord_names)
+        self.assertEqual(raw_data.y_data.shape[1], 1)
+        self.assertEqual(raw_data.x_data.shape[1], 2)
+
+        #try to read from numpy file
+        np.save('test_add_raw_data/dummy.npy', np.zeros((10,3, ) ))
+        ml_repo.add_raw_data('test1', 'test_add_raw_data/dummy.npy', ['x0', 'x1'], target_names = ['x2'], file_format = 'numpy')
+        raw_data = ml_repo.get('raw_data/test1', full_object = True)
+        self.assertTrue('x2' in raw_data.y_coord_names)
+        self.assertEqual(raw_data.y_data.shape[1], 1)
+        self.assertEqual(raw_data.x_data.shape[1], 2)
+        try:
+            shutil.rmtree('test_add_raw_data')
+        except OSError:
+            pass
+       
+
+
         
+
 class MLRepoConstructorTest(unittest.TestCase):
     def test_default_constructor(self):
         #example with default
