@@ -8,12 +8,13 @@ import os
 from datetime import datetime
 from numpy import linalg
 from numpy import inf, load
+import numpy as np
 from enum import Enum
 from copy import deepcopy
 from types import SimpleNamespace
 import logging
 import pailab.ml_repo.repo_objects as repo_objects
-from pailab.ml_repo.repo_objects import RepoInfoKey, DataSet, MeasureConfiguration
+from pailab.ml_repo.repo_objects import RepoInfoKey, RawData, DataSet, MeasureConfiguration
 from pailab.ml_repo.repo_objects import repo_object_init, RepoInfo, RepoObject  # pylint: disable=E0401
 import pailab.ml_repo.repo_store as repo_store
 from pailab.ml_repo.repo_store_factory import RepoStoreFactory, NumpyStoreFactory
@@ -1204,6 +1205,119 @@ class MLRepo:
             training_data =  self._mapping[MLObjectType.TRAINING_DATA][0]
         return self.get(training_data, version, full_object)
 
+    def add_raw_data(self, name, data, input_names = None, data_y = None, target_names = None, file_format = None, axis = 1):
+        """Adds a RawData object to the repository.
+
+        This methods creates/reads from the given data/file a RawData object and adds it to the repository. 
+
+        Examples:
+            Read data from csv file 'test_data.csv' and use columns with headers 'x0', 'x1' as input data and column with label 'x2' as target, store the results under name 'my_data'::
+
+                >>ml_repo.add_raw_data('my_data', 'test_data.csv', ['x0', 'x1], file_format = 'csv')
+
+            Create data from a DataFrame test where the columns 'x0', 'x1' are used as input and no target is specified::
+
+                >>ml_repo.add_raw_data('my_data', test, ['x0', 'x1])
+
+            
+        
+        Args:
+            name (str): Name of RawData in repository (if name does not start with 'raw_data/' this is added.
+            data (str, numpy ndarray or pandas DataFrame): Eithr a pandas DataFarme, a numpy ndarray or a string that is interpreted as filename of the underling data.
+            input_names (iterable of str, optional): List of the input variables names. Defaults to None.
+            data_y (str or numpy ndarray, optional):Either a numpy ndarray or a string defining the filename of th y-data (not valid if file_format=='csv'). Defaults to None.
+            target_names (iterable of str, optional): List of the target variables names. Defaults to None.
+            file_format ('csv' or 'numpy', optional): File type which can be either csv or numpy (numpy means an ndarray stored with numpy.save). Defaults to None.
+            axis (int, optional): If only an ndarray is given but target variables are defined, this array will b split into weo arrays (one for input, one for target) along this axis. Defaults to 1.
+        
+        Returns:
+             str: version number of RawData object added
+        """
+        _data_x = None
+        _data_y = None
+        # read from file
+        if isinstance(data, str):
+            # we assume that data represents a filename of the file containing the data
+            if file_format == 'csv':
+                try:
+                    import pandas as pd
+                    data = pd.read_csv(data)
+                    if data_y is not None:
+                        raise Exception('Cannot define separate y-data using csv file to read RawData from.')
+                except ImportError:
+                    raise Exception('Cannot add RawData: To read csv pandas needs to be installed.')
+            elif file_format == 'numpy':
+                data = np.load(data)
+                if isinstance(data_y, str):
+                    data_y = np.load(data_y)
+            else:
+                raise Exception('Unknown file format ' + file_format)
+            return self.add_rawData(name, data, input_names, data_y, target_names, axis=axis)
+        # use objects directly
+        else:
+            # check if pandas is installed and if the given data object is a DataFrame
+            try:
+                import pandas as pd
+                if isinstance(data, pd.DataFrame):
+                    _data_x = data.loc[:, input_names].values
+                    if target_names is not None:
+                        _data_y = data.loc[:, target_names].values
+            except ImportError:
+                if isinstance(data, np.ndarray):
+                    if data_y is not None:
+                        _data_x = data
+                        _data_y = data_y
+                    elif target_names is not None:
+                        tmp = np.split(data,[len(input_names)], axis=1)
+                        _data_x = tmp[0]
+                        _data_y = tmp[1]
+                    else:
+                        _data_x = data
+                else:
+                    raise Exception('Cannot add given data: The data is neither a filename, nor a pandas DataFrame nor a numpy ndarray.')
+        if _data_x is None:
+            raise Exception('Cannot add given data: Either data is empty or could not be properly converted.')
+        path = name
+        if not 'raw_data' in path:
+            path = 'raw_data/' + name
+        raw_data = RawData(_data_x, input_names, _data_y, 
+                target_names, repo_info = {RepoInfoKey.NAME: path})
+        return self.add(raw_data)
+
+    def add_training_data(self, name, raw_data_name, start_index = 0, end_index = None, raw_data_version='last'):
+        """Add training data as a DataSet to the repository.
+        
+            This method defines a DataSet and adds it to the repository. A DataSet is a logical unit based on a RawData object and defines the range of data
+            that is taken from the respective RawData data.
+
+        Args:
+            name (str): Name of respective object in repository.
+            raw_data_name (str): Name of the underlying RawData object that is used as basis.
+            start_index (int, optional): Start index where training data starts from underlying RawData. Defaults to 0.
+            end_index (int, optional): End index where training data end. Defaults to None.
+            raw_data_version (str): Version of underlying RawData (if 'last', always the latest RawData will be used to derive the respective DataSet). Defaults to 'last'
+        """
+        training_data = repo_objects.DataSet(raw_data_name, start_index, end_index, 
+                raw_data_version, repo_info = {RepoInfoKey.NAME: name, RepoInfoKey.CATEGORY: MLObjectType.TRAINING_DATA})
+        return self.add(training_data)
+
+    def add_test_data(self, name, raw_data_name, start_index = 0, end_index = None, raw_data_version='last'):
+        """Add test data as a DataSet to the repository.
+        
+            This method defines a DataSet and adds it to the repository. A DataSet is a logical unit based on a RawData object and defines the range of data
+            that is taken from the respective RawData data.
+
+        Args:
+            name (str): Name of respective object in repository.
+            raw_data_name (str): Name of the underlying RawData object that is used as basis.
+            start_index (int, optional): Start index where test data starts from underlying RawData. Defaults to 0.
+            end_index (int, optional): End index where test data end. Defaults to None.
+            raw_data_version (str): Version of underlying RawData (if 'last', always the latest RawData will be used to derive the respective DataSet). Defaults to 'last'
+        """
+        test_data = repo_objects.DataSet(raw_data_name, start_index, end_index, 
+                raw_data_version, repo_info = {RepoInfoKey.NAME: name, RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA})
+        return self.add(test_data)
+    
     def add_eval_function(self, f, repo_name = None):
         """ Add the function to evaluate the model
 
