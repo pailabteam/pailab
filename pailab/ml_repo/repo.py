@@ -1238,7 +1238,7 @@ class MLRepo:
         # read from file
         if isinstance(data, str):
             if file_format is None:
-                raise Exception('Please specify a file format.')
+                raise Exception('Please specify a file format.') # pragma: no cover
             # we assume that data represents a filename of the file containing the data
             if file_format == 'csv':
                 try:
@@ -1247,7 +1247,7 @@ class MLRepo:
                     if data_y is not None:
                         raise Exception('Cannot define separate y-data using csv file to read RawData from.')
                 except ImportError:
-                    raise Exception('Cannot add RawData: To read csv pandas needs to be installed.')
+                    raise Exception('Cannot add RawData: To read csv pandas needs to be installed.') # pragma: no cover
             elif file_format == 'numpy':
                 data = np.load(data)
                 if isinstance(data_y, str):
@@ -1265,7 +1265,7 @@ class MLRepo:
                     if target_names is not None:
                         _data_y = data.loc[:, target_names].values
             except ImportError:
-                pass
+                pass # pragma: no cover
             if isinstance(data, np.ndarray):
                 if data_y is not None:
                     _data_x = data
@@ -1277,7 +1277,7 @@ class MLRepo:
                 else:
                     _data_x = data
         if _data_x is None:
-            raise Exception('Cannot add given data: The data is neither a filename, nor a pandas DataFrame nor a numpy ndarray.')
+            raise Exception('Cannot add given data: The data is neither a filename, nor a pandas DataFrame nor a numpy ndarray.') # pragma: no cover
         path = name
         if not 'raw_data' in path:
             path = 'raw_data/' + name

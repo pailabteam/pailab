@@ -535,7 +535,10 @@ class RepoTest(unittest.TestCase):
             shutil.rmtree('test_add_raw_data')
         except OSError:
             pass
-       
+        # now test add_training_data
+        ml_repo.add_training_data('training_data_dummy', 'raw_data/test1')
+        # now test add_test_data
+        ml_repo.add_test_data('test_data_dummy', 'raw_data/test1')
 
 
         
