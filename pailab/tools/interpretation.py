@@ -19,7 +19,7 @@ except ImportError:
 @ml_cache
 def _compute_ice(data, model_eval_function, model,
                  y_coordinate, x_coordinate,
-                 x_values, start_index = 0, end_index = -1, scale=True):
+                 x_values, start_index = 0, end_index = -1, scale=''):
     """Independent conditional expectation plot
 
     Args:
@@ -30,8 +30,10 @@ def _compute_ice(data, model_eval_function, model,
         y_coordinate ([type]): [description]
         x_coordinate ([type]): [description]
         x_values ([type]): [description]
-        scale (non-zero int, inf, -inf, ''): If specified, the scaling parameter is used to scale each projection by the respective numpy.linalg.norm.
-        Scaling may be useful to compare ice at different data points.
+        scale (str or int, optional): String defining the scaling for the functions before functional clustering is applied. Scaling is perfomred by
+                                dividing the vector of the y-values of the ICE by the respective vector norm defined by scaling.
+                                The scaling must be one of numpy's valid strings for linalg.norm's ord parameter. If string is empty, no scaling will be applied.
+                                Defaults to ''. 
     Returns:
         [type]: [description]
     """
@@ -79,8 +81,8 @@ def _get_model_eval(model, model_version, ml_repo, model_label=None):
     model_version_ = model_version
     if model_label is not None:
         label = ml_repo.get(model_label)
-        model_ = label.name
-        model_version_ = label.version
+        model = label.name
+        model_version = label.version
 
     if isinstance(model, str):
         if len(model.split('/')) == 1:
@@ -99,7 +101,6 @@ def _get_model_eval(model, model_version, ml_repo, model_label=None):
     return result_model, result_eval_f
 
 
-
 class ICE_Results:
     def __init__(self):
         """Class holding the results of the compute_ice function.
@@ -116,6 +117,8 @@ class ICE_Results:
             start_index (int): Start index of input data.
             model (str): Name of model used for the ICE curves.
             model_version (str): Version of model used for the ICE curves.
+            data_name (str): Name of underlying data.
+            data_version (str): Version of underlying data.
         """
         self.ice = None
         self.x_values = None
@@ -125,10 +128,38 @@ class ICE_Results:
         self.cluster_centers = None
         self.distance_to_clusters = None
         self.data_name = ''
+        self.data_version = ''
         self.start_index = 0
         self.model = ''
         self.model_version = ''
+
+    def _validate_for_comparison(self, ice_results_2):
+        if self.data_name != ice_results_2.data_name:
+            raise Exception('Cannot compare two ice results on different data, ice_results_1 : ' + self.data_name + ', ice_results_2: ' + ice_results_2.data_name)
+        if self.data_version != ice_results_2.data_version:
+            raise Exception('Cannot compare two ice results on different data, ice_results_1 : ' + self.data_version + ', ice_results_2: ' + ice_results_2.data_version)
+        if self.start_index != ice_results_2.start_index:
+            raise Exception('Cannot compare two ice results with different start_index, ice_results_1 : ' + str(self.start_index) + ', ice_results_2: ' + str(ice_results_2.start_index))
     
+    def compute_cluster_average(self, ice_results_2,):
+        """[summary]
+        
+        Args:
+            ice_results_2 ([type]): [description]
+
+        Returns:
+            numpy matrix: Matrix containing the average of values from ice_results_2 over the different clusters from this result. 
+        """
+        self._validate_for_comparison(ice_results_2)
+        if self.cluster_centers is None:
+            raise Exception("No clusters have been computed yet.")
+        result = np.empty(self.cluster_centers.shape)
+        
+        for i in range(self.cluster_centers.shape[0]):
+            tmp = ice_results_2.ice[self.labels == i]
+            result[i] =  np.mean(tmp, axis = 0)
+        return result
+
 def functional_clustering(x, scale='',
                  n_clusters=20, random_state=42):
     """Given a set of different 1D functions (represented in matrix form where each row contains the function values on a given grid), this
@@ -161,7 +192,7 @@ def functional_clustering(x, scale='',
 @ml_cache
 def _compute_and_cluster_ice(data, model_eval_function, model,
                  y_coordinate, x_coordinate,
-                 x_values, start_index = 0, end_index = -1, scale=True,
+                 x_values, start_index = 0, end_index = -1, scale='',
                  n_clusters=20, random_state=42, clustering_param = None):
     """[summary]
     
@@ -199,7 +230,7 @@ def _compute_and_cluster_ice(data, model_eval_function, model,
 def compute_ice(ml_repo, x_values, data, model=None, model_label=None, model_version=RepoStore.LAST_VERSION,
                 data_version=RepoStore.LAST_VERSION, y_coordinate=0, x_coordinate = 0,
                 start_index=0, end_index=-1, cache = False,
-                clustering_param = None):
+                clustering_param = None, scale=''):
     """Compute individual conditional expectation (ice) for a given dataset and model
     
     Args:
@@ -217,7 +248,11 @@ def compute_ice(ml_repo, x_values, data, model=None, model_label=None, model_ver
         cache (bool, optional): If True, results will be cached. Defaults to False.
         clustering_param (dict or None, optional): Dictionary of parameters for method functional_clustering that is called if the parameter is not None and applies 
             functional clustering to the ICE curves.
-        
+        scale (str or int, optional): String defining the scaling for the functions before functional clustering is applied. Scaling is perfomred by
+                                dividing the vector of the y-values of the ICE by the respective vector norm defined by scaling.
+                                The scaling must be one of numpy's valid strings for linalg.norm's ord parameter. If string is empty, no scaling will be applied.
+                                Defaults to ''. 
+
     Returns:
         ICE_Results: result object containing all relevant data (including functional clustering)
     """
@@ -239,11 +274,12 @@ def compute_ice(ml_repo, x_values, data, model=None, model_label=None, model_ver
     result.x_values, result.ice, result.labels, result.cluster_centers, result.distance_to_clusters = _compute_and_cluster_ice(data_, model_eval_f, model_,  y_coordinate,
                      x_coordinate=x_coordinate, x_values=x_values, 
                      start_index = start_index, end_index = end_index, cache=cache_,
-                     clustering_param=clustering_param)
+                     clustering_param=clustering_param, scale = scale)
     result.x_coord_name = data_.x_coord_names[x_coordinate]
     result.y_coord_name = data_.y_coord_names[y_coordinate]
     result.data_name = data_.repo_info.name
     result.start_index = start_index
     result.model = model_.repo_info.name
     result.model_version = model_.repo_info.version
+    result.data_version = data_.repo_info.version
     return result

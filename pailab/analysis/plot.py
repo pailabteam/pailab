@@ -154,7 +154,6 @@ def measure_history(ml_repo, measure_name):
                     name=plot_name,
                     mode='markers'
                 )
-
             )
 
     layout = go.Layout(
@@ -331,7 +330,7 @@ def histogram_data_conditional_error(ml_repo, models, data, x_coordinate, y_coor
     plot_dict = {'data': plot_data, 'title': '', 'x0_name':x_coordinate}
     _histogram(plot_dict, n_bins=n_bins)
 
-def _ice_plotly(ice_results, ice_points = None, height = None, width = None, clusters = None):
+def _ice_plotly(ice_results, ice_points = None, height = None, width = None, ice_results_2 = None, clusters = None):
     data = []
     if ice_points is None:
         ice_points = range(ice_results.ice.shape[0])
@@ -340,13 +339,14 @@ def _ice_plotly(ice_results, ice_points = None, height = None, width = None, clu
         for i in ice_points:
             if ice_results.labels[i] in clusters:
                 ice_points_tmp.append(i)
-        _ice_plotly(ice_results, ice_points=ice_points_tmp, height=height, width=width)
+        _ice_plotly(ice_results, ice_points=ice_points_tmp, ice_results_2 = ice_results_2, height=height, width=width)
         return
 
     # plot ice curves
     for i in ice_points:
         data.append(go.Scatter(x=ice_results.x_values, y = ice_results.ice[i,:], name = ice_results.data_name + '[' + str(ice_results.start_index +i) + ',:]'))
-    
+        if ice_results_2 is not None:
+            data.append(go.Scatter(x=ice_results_2.x_values, y = ice_results_2.ice[i,:], name = 'model2, ' + ice_results.data_name + '[' + str(ice_results.start_index +i) + ',:]'))
     layout = go.Layout(
         title='ICE, model: ' + ice_results.model + ', version: ' + ice_results.model_version,
         xaxis=dict(title=ice_results.x_coord_name),
@@ -358,12 +358,17 @@ def _ice_plotly(ice_results, ice_points = None, height = None, width = None, clu
     iplot(fig)  # , filename='pandas/basic-line-plot')
 
 
-def _ice_clusters_plotly(ice_results, height = None, width = None):
+def _ice_clusters_plotly(ice_results, height = None, width = None, ice_results_2= None, clusters = None):
     data = []
+    if clusters is None:
+        clusters = range(ice_results.cluster_centers.shape[0])
     # plot ice cluster curves
-    for i in range(ice_results.cluster_centers.shape[0]):
+    for i in clusters:
         data.append(go.Scatter(x=ice_results.x_values, y = ice_results.cluster_centers[i,:], name = 'cluster ' + str(i)))
-    
+    if ice_results_2 is not None:
+        cluster_averages = ice_results.compute_cluster_average(ice_results_2)
+        for i in clusters:
+            data.append(go.Scatter(x=ice_results.x_values, y = cluster_averages[i,:], name = 'average ' + str(i)))
 
     layout = go.Layout(
         title='ICE clusters, model: ' + ice_results.model + ', version: ' + ice_results.model_version,
@@ -383,16 +388,57 @@ def _ice_clusters_plotly(ice_results, height = None, width = None):
     iplot(fig)  # , filename='pandas/basic-line-plot')
 
 
-
-def ice(ice_results, height = None, width = None, ice_points = None, clusters = None):
+def ice(ice_results, height = None, width = None, ice_points = None, ice_results_2 = None, clusters = None):
+    if ice_results_2 is not None:
+        ice_results._validate_for_comparison(ice_results_2)
     if has_plotly:
-        _ice_plotly(ice_results, height=height, width=width, ice_points = ice_points, clusters = clusters)
+        _ice_plotly(ice_results, height=height, width=width, ice_points = ice_points, ice_results_2 = ice_results_2, clusters = clusters)
     else:
         raise Exception("Plot methods for matplotlib have not yet been implemented.")
      
-def ice_clusters(ice_results, height = None, width = None):
+def ice_clusters(ice_results, height = None, width = None, ice_results_2 = None, clusters = None):
+    """Plot the cluster centers from functional clustering of ICE curves.
+    
+    Args:
+        ice_results (ICE_Result): Result from calling the method interpretation.compute_ice with functional clustering.
+        height (int, optional): Height of resulting figure. Defaults to None.
+        width (int, optional): Width of resulting figures. Defaults to None.
+        ice_results_2 (ICE_Result, optional): Result from an ICE computation for a different model (version). Here, the result does not need to contain functional clustering.
+            If specified, the ICE curves in this result are clustered according to the clustering of the other results. Defaults to None.
+        clusters (iterable of int): Defines the clusters that will be plot. If None, all clusters will be plot. Default to None.
+
+    Raises:
+        Exception: If ice_results_2 was computed on a different data (version) or with different start_index, and exception is thrown.
+    """
+    if ice_results.cluster_centers is None:
+        raise Exception('No clusters have yet been computed. Call compute_ice with clusering_param to compute clusters.')
+
     if has_plotly:
-        _ice_clusters_plotly(ice_results, height=height, width=width)
+        _ice_clusters_plotly(ice_results, height=height, width=width, ice_results_2=ice_results_2, clusters = clusters)
     else:
         raise Exception("Plot methods for matplotlib have not yet been implemented.")
     
+def ice_diff(ice_results, ice_results_2, n_curves=10, ord = 2, height = None, width = None):
+    """[summary]
+    
+    Args:
+        ice_results ([type]): [description]
+        ice_results_2 ([type]): [description]
+        n_curves (int, optional): [description]. Defaults to 10.
+        ord (int, optional): Defines the norm to be used to measure distance between two ICE curves, see numpy's valid strings for ord in linalg.norm [description]. Defaults to 2.
+        
+    """
+    ice_results._validate_for_comparison(ice_results_2)
+    if n_curves > ice_results.ice.shape[0]:
+        raise Exception('Number of desired curves exceeds number of all curves.')
+    tmp = ice_results.ice - ice_results_2.ice
+    distance = np.linalg.norm(ice_results.ice - ice_results_2.ice, ord = ord, axis = 1)
+    indices = [i for i in range(ice_results.ice.shape[0])]
+    tmp = sorted(zip(distance, indices))
+    ice_points = [tmp[i][1] for i in range(n_curves)]
+    if has_plotly:
+        _ice_plotly(ice_results, height=height, width=width, ice_points = ice_points, ice_results_2 = ice_results_2)
+    else:
+        raise Exception("Plot methods for matplotlib have not yet been implemented.")
+    
+
