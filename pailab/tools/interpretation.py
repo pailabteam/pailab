@@ -380,7 +380,7 @@ def _compute_prototypes(X, n_prototypes, n_criticisms, metric = 'rbf', witness_p
 
 def generate_prototypes(ml_repo, data, n_prototypes, n_criticisms, data_version = RepoStore.LAST_VERSION,
                         use_x = True, data_start_index=0, data_end_index = -1, metric = 'rbf', witness_penalty = 1.0, 
-                        result_name = None, **kwds):
+                        **kwds):
     """This methods computes for a given test/training dataset prototypes and criticisms and adds them as separate test data sets to the repository. 
     
     This methods computes for given test/training dataset prototypes and criticisms, i.e. datapoints from th given set that are typical representatives (prototypes) 
@@ -424,7 +424,7 @@ def generate_prototypes(ml_repo, data, n_prototypes, n_criticisms, data_version 
         d = data.y_data[data_start_index:data_end_index]
         if d is None:
             raise Exception('No y-data defined.')
-    prototypes, criticisms = _compute_prototypes(d, n_prototypes, n_criticisms, metric = metric, witness_penalty=witness_penalty, **kwd)
+    prototypes, criticisms = _compute_prototypes(d, n_prototypes, n_criticisms, metric = metric, witness_penalty=witness_penalty, **kwds)
     
     result_name = data+'_'+'prototypes'
     if data.y_data is None:
