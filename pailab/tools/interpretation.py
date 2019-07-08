@@ -13,6 +13,7 @@ has_sklearn = True
 try:
     from sklearn.cluster import KMeans
     from sklearn.metrics.pairwise import pairwise_kernels
+    from sklearn import preprocessing
 except ImportError:
     import warnings
     warnings.warn('No sklearn installed, some functions of this submodule may not be usable.')
@@ -424,9 +425,12 @@ def generate_prototypes(ml_repo, data, n_prototypes, n_criticisms, data_version 
         d = data.y_data[data_start_index:data_end_index]
         if d is None:
             raise Exception('No y-data defined.')
+
+    std_scale = preprocessing.StandardScaler().fit(d)
+    d = std_scale.transform(d)
     prototypes, criticisms = _compute_prototypes(d, n_prototypes, n_criticisms, metric = metric, witness_penalty=witness_penalty, **kwds)
     
-    result_name = data+'_'+'prototypes'
+    result_name = data.repo_info.name+'_'+'prototypes'
     if data.y_data is None:
         result = RawData(data.x_data[data_start_index:data_end_index][prototypes], data.x_coord_names, repo_info = {RepoInfoKey.NAME: result_name,  
                         RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA, 
@@ -441,7 +445,7 @@ def generate_prototypes(ml_repo, data, n_prototypes, n_criticisms, data_version 
                     })
     ml_repo.add(result)
 
-    result_name = data+'_'+'criticisms'
+    result_name = data.repo_info.name+'_'+'criticisms'
     if data.y_data is None:
         result = RawData(data.x_data[data_start_index:data_end_index][criticisms], data.x_coord_names, repo_info = {RepoInfoKey.NAME: result_name,  
                         RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA, 
@@ -454,3 +458,4 @@ def generate_prototypes(ml_repo, data, n_prototypes, n_criticisms, data_version 
                         RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA, 
                         RepoInfoKey.MODIFICATION_INFO: {data.repo_info.name: data.repo_info.version}
                     })
+    ml_repo.add(result)
