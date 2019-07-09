@@ -162,12 +162,15 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
     coord = 0
     if coord_name is None:
         coord_name = ref_data.y_coord_names[0]
-
+    if isinstance(coord_name, int):
+        coord_name = ref_data.y_coord_names[coord_name]
     coord = ref_data.y_coord_names.index(coord_name)
     result = {'title': 'pointwise error (' + coord_name + ')', 'data': {}}
     if x_coord_name is None:
         result['x0_name'] = 'model-target  [' + coord_name + ']'
     else:
+        if isinstance(x_coord_name, int):
+            x_coord_name = ref_data.x_coord_names[x_coord_name]
         result['x0_name'] = x_coord_name
         result['x1_name'] = 'model-target  [' + coord_name + ']'
 
@@ -231,7 +234,10 @@ def get_data(ml_repo, data, x0_coord_name, x1_coord_name=None, start_index = 0, 
             ref_data = [ref_data]
         for d in ref_data:
             if x_coord is None:
-                x_coord = d.x_coord_names.index(x0_coord_name)
+                if isinstance(x0_coord_name, str):
+                    x_coord = d.x_coord_names.index(x0_coord_name)
+                else:
+                    x_coord = x0_coord_name
             if x1_coord_name is not None:
                 y_coord = d.x_coord_names.index(x1_coord_name)
             tmp = {'info': {}}
