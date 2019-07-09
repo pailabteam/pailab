@@ -24,15 +24,22 @@ init_notebook_mode(connected=True)
 
 
 def measure_by_parameter(ml_repo, measure_name, param_name, data_versions=None, training_param=False):
-    '''[summary]
-
+    """Plot a measure value vs a certain training or model parameter.
+    
     Args:
-        :param ml_repo ([type]): [description]
-        :param measure_name ([type]): [description]
-        :param param_name ([type]): [description]
-        :param data_versions ([type], optional): Defaults to None. [description]
-        :param training_parm (bool, optional): If True, training parameters are used otherwise model parameter (default is False)
-    '''
+        ml_repo (MLRepo): MLRepo
+        measure_name (str): Name of measure to be plotted.
+        param_name (str): Name of parameter to be plotted. To define a subparameter on can use the '/' to define the path to the parameter.
+        data_versions (str, optional): Version of the dataset that should be underlying the measure. If Noe, the latest version for the underlying data is used. 
+                                        Defaults to None.
+        training_param (bool, optional): Boolean that defines if parameter of interest belongs to training or model parameter. Defaults to False.
+
+    Examples:
+        To plot the maximum error (which must have been defined in the measures) for the model ``DecisionTreeRegressor`` on the dataset ``sample1`` against
+        the parameter ``learning_rate`` contained in the subparameter ``optim_param`` we may call::
+
+            >> measure_by_parameter(ml_repo, 'DecisionTreeRegressor/measure/sample1/max', 'optim_param/learning_rate')
+    """
 
     x = plot_helper.get_measure_by_parameter(
         ml_repo, measure_name, param_name, data_versions, training_param)
@@ -114,7 +121,18 @@ def projection(ml_repo, left, right, n_steps = 100, model = None, labels = None,
     iplot(fig)
 
 def measure_history(ml_repo, measure_name):
+    """Plots the history of the model w.r.t. a defined measure. The x-axis is defined by the indert datetime of each model.
+    
 
+    Args:
+        ml_repo (MLRepo): MLRepo.
+        measure_name (str, iterable of str): Name (or iterable of names) of measure(s) to plot (a measure name includes the name of the underlying model and dataset).
+
+    Examples:
+        To plot the history of the maximum error (which must have been defined in the measures) for the model ``DecisionTreeRegressor`` on the dataset ``sample1``::
+
+            >> measure_history(ml_repo, 'DecisionTreeRegressor/measure/sample1/max')
+    """
     x = plot_helper.get_measure_history(
         ml_repo, measure_name)
     data = []
@@ -215,11 +233,11 @@ def histogram_model_error(ml_repo, models, data_name, y_coordinate=None, data_ve
     - just a model name (in this case the latest version is used)
 
     Args:
-        :param ml_repo ([type]): [description]
-        :param models ([type]): [description]
-        :param data_name (str or list of str): [description]
-        :param y_coordinate ([type], optional): Defaults to None. [description]
-        :param data_version ([type], optional): Defaults to LAST_VERSION. [description]
+        ml_repo ([type]): [description]
+        models ([type]): [description]
+        data_name (str or list of str): [description]
+        y_coordinate ([type], optional): Defaults to None. [description]
+        data_version ([type], optional): Defaults to LAST_VERSION. [description]
 
     Examples:
         Plot histograms for errors in the variable mickey_mouse on the dataset my_test_data for the latest version of model_1 and all versions of model_2. 
@@ -241,15 +259,16 @@ def histogram_model_error(ml_repo, models, data_name, y_coordinate=None, data_ve
 
 
 def scatter_model_error(ml_repo, models, data_name, x_coordinate, y_coordinate=None, start_index = 0, end_index = -1):
-    '''[summary]
+    '''Plots for each model the pointwise error along a specified target dimension w.r.t. a specified input dimension.
 
     Args:
-        :param ml_repo ([type]): [description]
-        :param models ([type]): [description]
-        :param data_name ([type]): [description]
-        :param x_coordinate ([type]): [description]
-        :param y_coordinate ([type], optional): Defaults to None. [description]
-        :param data_version ([type], optional): Defaults to LAST_VERSION. [description]
+        ml_repo (MLRepo): MLRepo.
+        models (str, iterable of str or dict of string to string): Definition of the models for whih the pointwise error are plotted.
+            It may be a string defining the model or label name (in case of a model the latest model is used), an iterable of strings where again each string is either a model name
+            or a label, or a dict mapping model names to version numbers.
+        data_name (str or iterable of str): String or iterable of string defining the datasets over which the pointwise errors will be computed.
+        x_coordinate (str or int): Either string or int defining the x-coordinate to which the error will be plotted.
+        y_coordinate (str or int, optional): Either string or int defining the x-coordinate to which the error will be plotted. Defaults to None (then the 0th cordinate will be used).
     '''
 
     plot_dict = plot_helper.get_pointwise_model_errors(
@@ -281,16 +300,13 @@ def scatter_model_error(ml_repo, models, data_name, x_coordinate, y_coordinate=N
 
 
 def histogram_data(ml_repo, data, x_coordinate, y_coordinate=None, n_bins = None,  start_index = 0, end_index = -1):
-    '''[summary]
+    '''Plot the histogram of the input data along a specified coordinate direction.
 
     Args:
-        ml_repo ([type]): [description]
-        data ([type]): [description]
-        x_coordinate ([type]): Defaults to None. [description]
-        y_coordinate ([type], optional): Defaults to None. [description]
-
-    Raises:
-        Exception: [description]
+        ml_repo (MLRepo): MLRepo.
+        data (str or dict): Either a string with the name of the data to be plotted (latest data will be plotte) or a dictionary of data names to version or list of versions.
+        x_coordinate (str): String defining the x_coordinate wo be plotted. Defaults to None.
+        y_coordinate (str, optional): String defining a y-coordinate to be plotted. Defaults to None (meaning that no y-coordinate will be plotted).
     '''
     plot_dict = plot_helper.get_data(ml_repo, data, x_coordinate, start_index=start_index, end_index=end_index)
     _histogram(plot_dict, n_bins=n_bins)
@@ -389,6 +405,18 @@ def _ice_clusters_plotly(ice_results, height = None, width = None, ice_results_2
 
 
 def ice(ice_results, height = None, width = None, ice_points = None, ice_results_2 = None, clusters = None):
+    """Plots ICE graphs computed with tools.interpretation.compute_ice.
+    
+    Args:
+        ice_results (tools.interpretation.ICE_Results): Resulting object after calling tools.interpretation.compute_ice.
+        height ([type], optional): [description]. Defaults to None.
+        width ([type], optional): [description]. Defaults to None.
+        ice_points (list of int, optional): List of integers to select the ICE graphs to be plotted. Defaults to None (all ICE graphs will be plotted).
+        ice_results_2 (tools.interpretation.ICE_Results, optional): ICE graphs for another model which are plotted for comparison. Defaults to None.
+        clusters (list of int, optional): List of clusters of ICE graphs that will be plotted. In order to wok with this feature, 
+                    the ice_result must have been derived calling  tools.interpretation.compute_ice so that clustering will be executed (cluster params need to be set).
+                    Defaults to None (no clusters plotted).
+    """
     if ice_results_2 is not None:
         ice_results._validate_for_comparison(ice_results_2)
     if has_plotly:
@@ -403,7 +431,8 @@ def ice_clusters(ice_results, height = None, width = None, ice_results_2 = None,
         ice_results (ICE_Result): Result from calling the method interpretation.compute_ice with functional clustering.
         height (int, optional): Height of resulting figure. Defaults to None.
         width (int, optional): Width of resulting figures. Defaults to None.
-        ice_results_2 (ICE_Result, optional): Result from an ICE computation for a different model (version). Here, the result does not need to contain functional clustering.
+        ice_results_2 (ICE_Result, optional): Result from an ICE computation for a different model (version). 
+            Here, the result does not need to contain functional clustering.
             If specified, the ICE curves in this result are clustered according to the clustering of the other results. Defaults to None.
         clusters (iterable of int): Defines the clusters that will be plot. If None, all clusters will be plot. Default to None.
 
@@ -419,11 +448,11 @@ def ice_clusters(ice_results, height = None, width = None, ice_results_2 = None,
         raise Exception("Plot methods for matplotlib have not yet been implemented.")
     
 def ice_diff(ice_results, ice_results_2, n_curves=10, ord = 2, height = None, width = None):
-    """[summary]
+    """It computes the indices of the n-th largest ICE differences between two models (w.r.t. a specified vector norm) and plots these ICE graphs.
     
     Args:
-        ice_results ([type]): [description]
-        ice_results_2 ([type]): [description]
+        ice_results (tools.interpretation.ICE_Results): [description]
+        ice_results_2 (tools.interpretation.ICE_Results): [description]
         n_curves (int, optional): [description]. Defaults to 10.
         ord (int, optional): Defines the norm to be used to measure distance between two ICE curves, see numpy's valid strings for ord in linalg.norm [description]. Defaults to 2.
         
