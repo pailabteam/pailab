@@ -77,7 +77,9 @@ class TensorflowKerasTrainingParameter:
         result['optimizer_parameter'] = self.optimizer_parameter
         result['loss'] = self.loss
 
-        result['random_seed'] = self.random_seed
+        result['np_random_seed'] = self.np_random_seed
+        result['tf_random_seed'] = self.tf_random_seed
+        
         result['epochs'] = self.epochs
         result['batch_size'] = self.batch_size
         result['validation_split'] = self.validation_split
