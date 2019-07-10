@@ -1,3 +1,4 @@
+import warnings
 import logging
 import collections
 import numpy as np
@@ -28,6 +29,7 @@ import json
 import functools
 
 #region caching
+
 class _CachedResults(repo_objects.RepoObject):
     """Object to store results of functions for caching reasons in the repo.
     
@@ -159,7 +161,38 @@ def ml_cache(f):
     return wrapper
 
 #endregion
-        
+
+
+
+def get_model_measure_list(ml_repo, measure, data, data_version = RepoStore.LAST_VERSION):
+    """[summary]
+    
+    Args:
+        ml_repo ([type]): [description]
+        data ([type]): [description]
+    """
+    def _get_model_info(mod_info):
+        for k,v in mod_info.items():
+            if k.endswith('/model'):
+                return k,v
+
+    tmp = ml_repo.get_names(MLObjectType.MEASURE)
+    result = []
+    missing_measure = False
+    for n in tmp:
+        if data in n and measure in n:
+            candidates = ml_repo.get(n, version = None, modifier_versions = {data: data_version}, throw_error_not_exist=False)
+            if not isinstance(candidates, list):
+                candidates = [candidates]
+            if candidates == []:
+                logger.warning('Missing measure ' + n + ' for data version: ' + data_version)
+                missing_measure = True
+            for c in candidates:
+                model_name, model_version = _get_model_info(c.repo_info.modification_info)
+                result.append({'model': model_name, 'version': model_version, measure + ', ' + data: c.value})
+    warnings.warn('There were measures missing for the given data version, see log for details.')
+    return result
+       
 from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.metrics import mean_squared_error
