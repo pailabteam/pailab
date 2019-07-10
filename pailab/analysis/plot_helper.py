@@ -84,8 +84,7 @@ def get_measure_by_parameter(ml_repo, measure_names, param_name, data_versions=L
     for measure_name in measure_names:
         data = str(NamingConventions.Data(NamingConventions.EvalData(
             NamingConventions.Measure(measure_name))))
-        measures = ml_repo.get(measure_name, version=(
-            RepoStore.FIRST_VERSION, RepoStore.LAST_VERSION), modifier_versions={data: data_versions})
+        measures = ml_repo.get(measure_name, version=None, modifier_versions={data: data_versions})
         if not isinstance(measures, list):
             measures = [measures]
         model_name = NamingConventions.CalibratedModel(
@@ -120,7 +119,7 @@ def get_measure_by_parameter(ml_repo, measure_names, param_name, data_versions=L
                 result.append(info)
             except:
                 n_warnings += 1
-                logger.warning('Could no retrieve parameter for ' + p.repo_info.name + ', version ' + p.repo_info.version)
+                logger.warning('Could no retrieve parameter ' + p_name + ' for ' + p.repo_info.name + ', version ' + p.repo_info.version)
         if n_warnings > 1:
             warnings.warn('There are ' + str(n_warnings) + ' cases where the parameter could not be retrieved. See logging (logevel warning) for details.')
         result_all[measure_name] = result
