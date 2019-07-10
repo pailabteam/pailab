@@ -3,6 +3,7 @@ such as axes labels, titles, additional info which may be shown on hover in the 
 """
 
 import logging
+import warnings
 from pailab.ml_repo.repo import MLObjectType, MLRepo, NamingConventions  # pylint: disable=E0401,E0611
 from pailab.ml_repo.repo_objects import RepoInfoKey, RawData  # pylint: disable=E0401
 from pailab.ml_repo.repo_store import RepoStore, LAST_VERSION, FIRST_VERSION, _time_from_version  # pylint: disable=E0401
@@ -99,22 +100,29 @@ def get_measure_by_parameter(ml_repo, measure_names, param_name, data_versions=L
         # eval_name
 
         result = []
+        n_warnings = 1
         for x in measures:
             p = ml_repo.get(
                 p_name, version=x.repo_info[RepoInfoKey.MODIFICATION_INFO][p_name])
-            param_value = _get_value_by_path(p.get_params(), param_name)
-            # get train data version
-            model = ml_repo.get(model_name, version = x.repo_info.modification_info[model_name])
-            info = {'model_version': x.repo_info[RepoInfoKey.MODIFICATION_INFO][model_name],
-                    param_name: param_value, 'param_version': p.repo_info[RepoInfoKey.VERSION],
-                    'data_version': x.repo_info[RepoInfoKey.MODIFICATION_INFO][data],
-                    'train_data_version': model.repo_info[RepoInfoKey.MODIFICATION_INFO][train_data],
-                    'measure_version': x.repo_info[RepoInfoKey.VERSION], 'value': x.value}
-            label = label_checker.get_label(
-                model_name, x.repo_info[RepoInfoKey.MODIFICATION_INFO][model_name])
-            if label is not None:
-                info['model_label'] = label
-            result.append(info)
+            try:
+                param_value = _get_value_by_path(p.get_params(), param_name)
+                # get train data version
+                model = ml_repo.get(model_name, version = x.repo_info.modification_info[model_name])
+                info = {'model_version': x.repo_info[RepoInfoKey.MODIFICATION_INFO][model_name],
+                        param_name: param_value, 'param_version': p.repo_info[RepoInfoKey.VERSION],
+                        'data_version': x.repo_info[RepoInfoKey.MODIFICATION_INFO][data],
+                        'train_data_version': model.repo_info[RepoInfoKey.MODIFICATION_INFO][train_data],
+                        'measure_version': x.repo_info[RepoInfoKey.VERSION], 'value': x.value}
+                label = label_checker.get_label(
+                    model_name, x.repo_info[RepoInfoKey.MODIFICATION_INFO][model_name])
+                if label is not None:
+                    info['model_label'] = label
+                result.append(info)
+            except:
+                n_warnings += 1
+                logger.warning('Could no retrieve parameter for ' + p.repo_info.name + ', version ' + p.repo_info.version)
+        if n_warnings > 1:
+            warnings.warn('There are ' + str(n_warnings) + ' cases where the parameter could not be retrieved. See logging (logevel warning) for details.')
         result_all[measure_name] = result
     return result_all
 
