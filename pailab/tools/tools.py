@@ -164,12 +164,19 @@ def ml_cache(f):
 
 
 
-def get_model_measure_list(ml_repo, measure, data, data_version = RepoStore.LAST_VERSION):
-    """[summary]
+def get_model_measure_list(ml_repo, measure_type, data, data_version = RepoStore.LAST_VERSION):
+    """Return a list of models and their version together with the respective measure.
     
+    Examples:
+        To get a list of measures for the different models, their version and measures for measure 'mse' on the dataset 'sample1'::
+
+            >> import pailab.tools.tools as tools
+            >> tools.get_model_measure_list(ml_repo,  'mse', 'sample1')
     Args:
-        ml_repo ([type]): [description]
-        data ([type]): [description]
+        ml_repo (MLRepo): MLRepo.
+        measure_type (str): Name of measure type which will be returned, i.e. 'mse'. Note that the respective measure must have been added and computed before.
+        data (str): Name of data on which the measure type is computed.
+        data_version (str): Version of the data on which the measure has been computed.
     """
     def _get_model_info(mod_info):
         for k,v in mod_info.items():
@@ -180,7 +187,7 @@ def get_model_measure_list(ml_repo, measure, data, data_version = RepoStore.LAST
     result = []
     missing_measure = False
     for n in tmp:
-        if data in n and measure in n:
+        if data in n and measure_type in n:
             candidates = ml_repo.get(n, version = None, modifier_versions = {data: data_version}, throw_error_not_exist=False)
             if not isinstance(candidates, list):
                 candidates = [candidates]
@@ -189,8 +196,9 @@ def get_model_measure_list(ml_repo, measure, data, data_version = RepoStore.LAST
                 missing_measure = True
             for c in candidates:
                 model_name, model_version = _get_model_info(c.repo_info.modification_info)
-                result.append({'model': model_name, 'version': model_version, measure + ', ' + data: c.value})
-    warnings.warn('There were measures missing for the given data version, see log for details.')
+                result.append({'model': model_name, 'version': model_version, measure_type + ', ' + data: c.value})
+    if missing_measure:
+        warnings.warn('There were measures missing for the given data version, see log for details.')
     return result
        
 from sklearn.linear_model import LinearRegression
