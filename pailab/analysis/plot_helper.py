@@ -55,6 +55,17 @@ class _LabelChecker:
                 return self._labels[name][version]
         return None
 
+    def get_model_and_version(label_name):
+        """Returns a tuple of model and version if a label with label_name exists, otherwise it returns None.
+        
+        Args:
+            label_name (str): Name of potential label
+        """
+        for model_name, v in self._labels.items():
+            for version, label in v.items():
+                if label == label_name:
+                    return model_name, version
+        return None
 
 def get_measure_by_parameter(ml_repo, measure_names, param_name, data_versions=LAST_VERSION, training_param=False):
     """Returns for a (list of) measure(s) the measures and corresponding param values for a certain parameter 
@@ -64,7 +75,6 @@ def get_measure_by_parameter(ml_repo, measure_names, param_name, data_versions=L
         measure_names (str, list(str)): string or list of strings of measure names  
         param_name (str): name of parameter
         data_versions (version number, optional): Defaults to None. If not None, only values on measures on dta with this version number are used
-
     Returns:
         [dict]: dictionary of measure name to list of dictionaries containing the result, i.e. 
         model_version: version of model parameter
@@ -126,45 +136,65 @@ def get_measure_by_parameter(ml_repo, measure_names, param_name, data_versions=L
     return result_all
 
 
+def _get_obj_dict(ml_repo, objs, label_checker = None, category = None, _objs = None):
+    if _objs is None:
+        _objs = {}
+    # first determine models (including their respective version) to be plotted
+    def add_obj(obj_name, obj_version, objs_):
+        if obj_name in objs_.keys():
+            if isinstance(obj_version, list):
+                objs_[obj_name].extend(obj_version)
+            else: 
+                objs_[obj_name].append(obj_version)
+        else:
+            if isinstance(obj_version, list):
+                objs_[obj_name] = obj_version
+            else:
+                objs_[obj_name] = [obj_version]
+
+    if objs is None:
+        if label_checker is not None:
+            logging.info('No model specified, use all labeled models.')
+            for k, v in label_checker._labels.items():
+                for w in v.keys():
+                    add_obj(k, w, _objs)
+        if category is not None:
+            if isinstance(category, list):
+                names = []
+                for n in category:
+                    names.extend(ml_repo.get_names(n))
+            else:
+                names = ml_repo.get_names(category)
+            for n in names:
+                _get_obj_dict(ml_repo, n, category = category, _objs = _objs)
+    elif isinstance(objs, tuple):
+        add_obj(objs[0], objs[1], _objs)
+    elif isinstance(objs, str):
+        if label_checker is not None:
+            tmp = label_checker.get_model_and_version(objs)
+            if tmp is not None:
+                add_obj(tmp[0], tmp[1], _objs)
+            else:
+                add_obj(objs, LAST_VERSION, _objs)
+        else:
+            add_obj(objs, LAST_VERSION, _objs)
+    elif isinstance(objs, dict):
+        # check if some entry does contain a None entry->then the entry defines a label and must be replaced by model and version
+        _get_obj_dict(ml_repo, [(k,v,) for k,v in objs.items()], label_checker, category, _objs)
+    else:
+        for m in objs:
+            _get_obj_dict(ml_repo, m, label_checker, category, _objs)
+    return _objs
+
+
 def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_version=LAST_VERSION, x_coord_name=None, start_index = 0, end_index = -1):
     label_checker = _LabelChecker(ml_repo)
-
-    def get_model_dict(ml_repo, models, label_checker):
-        # first determine models (including their respective version) to be plotted
-        _models = {}  # dictionary containing model names together with model versions to be plotted
-        if models is None:  # if models is None, use all labeled models
-            logging.info(
-                'No model specified, use all labeled models.')
-            for k, v in label_checker._labels.items():
-                if v.name in _models.keys():
-                    _models[v.name].append(v.version)
-                else:
-                    _models[v.name] = [v.version]
-        if isinstance(models, list):
-            for m in models:
-                if m in label_checker._labels.keys():
-                    label = label_checker._labels[m]
-                    _models[label.name] = label.version
-                else:
-                    _models[str(NamingConventions.CalibratedModel(
-                        model=m))] = LAST_VERSION
-        # if just a string is given, use all labels on this model and the latest model
-        if isinstance(models, str):
-            _models[models] = [LAST_VERSION]
-            if models in label_checker._labels.keys():
-                for k in label_checker._labels[models].keys():
-                    _models[models].append(k)
-            logging.info(logging.info(
-                'Only a model name given, using last version and ' + str(len(_models[models])-1) + ' labeled versions of this model.'))
-        if isinstance(models, dict):
-            _models = models
-        return _models
-
     _data = data
     if isinstance(_data, str):
         _data = [data]
 
-    _models = get_model_dict(ml_repo, models, label_checker)
+    #_models = get_model_dict(ml_repo, models)
+    _models = _get_obj_dict(ml_repo, models, label_checker, MLObjectType.CALIBRATED_MODEL)
     ref_data = ml_repo.get(_data[0], version=data_version, full_object=False)
     coord = 0
     if coord_name is None:
@@ -185,13 +215,15 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
         ref_data = ml_repo.get(d, version=data_version, full_object=True)
 
         for m_name, m_versions in _models.items():
+            if len(m_versions) == 1:
+                m_versions = m_versions[0]
             tmp = m_name.split('/')[0]
             eval_data_name = str(
                 NamingConventions.EvalData(data=d, model=tmp))
             logging.info('Retrieving eval data for model ' + tmp + ', versions ' +
                          str(m_versions) + ' and data ' + d + ', versions ' + str(data_version))
             eval_data = ml_repo.get(
-                eval_data_name, version=(FIRST_VERSION, LAST_VERSION), modifier_versions={m_name: m_versions, d: data_version}, full_object=True)
+                    eval_data_name, version=None, modifier_versions={m_name: m_versions, d: data_version}, full_object=True)
             if not isinstance(eval_data, list):
                 eval_data = [eval_data]
             for eval_d in eval_data:
@@ -221,22 +253,15 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
 
 
 def get_data(ml_repo, data, x0_coord_name, x1_coord_name=None, start_index = 0, end_index = -1):
-
-    data_dict = data
+    data_dict = _get_obj_dict(ml_repo, data, category=[MLObjectType.TRAINING_DATA, MLObjectType.TEST_DATA])
     result = {'title': 'data distribution', 'data': {}}
-    result['x0_name'] = x0_coord_name
     result['data'] = {}
     if x1_coord_name is not None:
         result['x1_name'] = x1_coord_name
-
-    if isinstance(data, str):
-        data_dict[data] = LAST_VERSION
-
     x_coord = None
     y_coord = None
     for k, v in data_dict.items():
         ref_data = ml_repo.get(k, version=v, full_object=True)
-
         if not isinstance(ref_data, list):
             ref_data = [ref_data]
         for d in ref_data:
@@ -245,14 +270,16 @@ def get_data(ml_repo, data, x0_coord_name, x1_coord_name=None, start_index = 0, 
                     x_coord = d.x_coord_names.index(x0_coord_name)
                 else:
                     x_coord = x0_coord_name
+                    x0_coord_name = d.x_coord_names[x0_coord_name]
             if x1_coord_name is not None:
                 y_coord = d.x_coord_names.index(x1_coord_name)
-            tmp = {'info': {}}
+            tmp = {'info': {k:v}}
             tmp['x0'] = d.x_data[start_index:end_index, x_coord]
             if y_coord is not None:
                 tmp['x1'] = d.x_data[:, y_coord]
             result['data'][d.repo_info[RepoInfoKey.NAME] + ': ' +
                            str(d.repo_info[RepoInfoKey.VERSION])] = tmp
+    result['x0_name'] = x0_coord_name
     return result
 
 
