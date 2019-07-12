@@ -360,7 +360,8 @@ def histogram_data_conditional_error(ml_repo, models, data, x_coordinate, y_coor
         ml_repo, models, data, y_coordinate, x_coord_name=x_coordinate, start_index = 0, end_index = -1)
     
     plot_data = {}
-    for k,x in tmp['data'].items():
+        
+    for k, x in tmp['data'].items():
         abs_err = np.abs(x['x1'])
         sorted_indices = np.argsort(abs_err)
         i_start = int( (1.0-percentile)*len(sorted_indices))
@@ -372,7 +373,7 @@ def histogram_data_conditional_error(ml_repo, models, data, x_coordinate, y_coor
         else:
             plot_data[k+':'+str(percentile)] = data
             plot_data[k] = {'x0': x['x0'][start_index:end_index], 'info': x['info']}
-    plot_dict = {'data': plot_data, 'title': '', 'x0_name':x_coordinate}
+    plot_dict = {'data': plot_data, 'title': tmp['title'] + ', inlcuding distribution w.r.t ' + str(100*percentile) + ' % quantile', 'x0_name' : tmp['x0_name'], 'x1_name': tmp['x1_name']}
     _histogram(plot_dict, n_bins=n_bins)
 
 def _ice_plotly(ice_results, ice_points = None, height = None, width = None, ice_results_2 = None, clusters = None):
