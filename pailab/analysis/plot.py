@@ -3,6 +3,7 @@ added to the resuling figures from the information stored in the repository.
 """
 
 import logging
+import math
 import numpy as np
 import pandas as pd
 import pailab.analysis.plot_helper as plot_helper  # pylint: disable=E0611
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 init_notebook_mode(connected=True)
 
 
-def measure_by_parameter(ml_repo, measure_name, param_name, data_versions=None, training_param=False):
+def measure_by_parameter(ml_repo, measure_name, param_name, data_versions=None, training_param=False, logscale_y = False, logscale_x = False):
     """Plot a measure value vs a certain training or model parameter.
     
     Args:
@@ -33,6 +34,8 @@ def measure_by_parameter(ml_repo, measure_name, param_name, data_versions=None, 
         data_versions (str, optional): Version of the dataset that should be underlying the measure. If Noe, the latest version for the underlying data is used. 
                                         Defaults to None.
         training_param (bool, optional): Boolean that defines if parameter of interest belongs to training or model parameter. Defaults to False.
+        logscale_y (bool): If true, the y-axis will be log scale. Defaults to False.
+        logscale_x (bool): If true, the x-axis will be log scale. Defaults to False.
 
     Examples:
         To plot the maximum error (which must have been defined in the measures) for the model ``DecisionTreeRegressor`` on the dataset ``sample1`` against
@@ -40,6 +43,15 @@ def measure_by_parameter(ml_repo, measure_name, param_name, data_versions=None, 
 
             >> measure_by_parameter(ml_repo, 'DecisionTreeRegressor/measure/sample1/max', 'optim_param/learning_rate')
     """
+    if logscale_x:
+        x_scaler = math.log10
+    else:
+        x_scaler = lambda x : x
+
+    if logscale_y:
+        y_scaler = math.log10
+    else:
+        y_scaler = lambda x : x
 
     x = plot_helper.get_measure_by_parameter(
         ml_repo, measure_name, param_name, data_versions, training_param)
@@ -53,7 +65,7 @@ def measure_by_parameter(ml_repo, measure_name, param_name, data_versions=None, 
         for measure in measures:
             data_versions.add(measure['data_version'])
             if 'model_label' in measure:
-                model_label_annotations.append(dict(x=measure[param_name], y=measure['value'], xref='x', yref='y', text=measure['model_label'],
+                model_label_annotations.append(dict(x=x_scaler(measure[param_name]), y=y_scaler(measure['value']), xref='x', yref='y', text=measure['model_label'],
                                                     showarrow=True,
                                                     arrowhead=2,
                                                     # ax=0,
@@ -83,15 +95,22 @@ def measure_by_parameter(ml_repo, measure_name, param_name, data_versions=None, 
 
             )
 
+    xaxis=dict(title=param_name)
+    if logscale_x:
+        xaxis['type'] = 'log'
+    yaxis=dict(title=NamingConventions.Measure(
+            measure_name).values['measure_type'])
+    if logscale_y:
+        yaxis['type'] = 'log'
     layout = go.Layout(
         title='measure by parameter',
         annotations=model_label_annotations,
-        xaxis=dict(title=param_name),
-        yaxis=dict(title=NamingConventions.Measure(
-            measure_name).values['measure_type'])
+        xaxis=xaxis,
+        yaxis=yaxis
     )
     # IPython notebook
     # py.iplot(data, filename='pandas/basic-line-plot')
+    
     fig = go.Figure(data=data, layout=layout)
     #return fig
     iplot(fig)  # , filename='pandas/basic-line-plot')
@@ -120,19 +139,26 @@ def projection(ml_repo, left, right, n_steps = 100, model = None, labels = None,
     fig = go.Figure(data=data, layout=layout)
     iplot(fig)
 
-def measure_history(ml_repo, measure_name):
+def measure_history(ml_repo, measure_name, logscale_y = False):
     """Plots the history of the model w.r.t. a defined measure. The x-axis is defined by the indert datetime of each model.
     
 
     Args:
         ml_repo (MLRepo): MLRepo.
         measure_name (str, iterable of str): Name (or iterable of names) of measure(s) to plot (a measure name includes the name of the underlying model and dataset).
-
+        logscale_y (bool): If true, the y-axis will be log scale. Defaults to False.
+        
     Examples:
         To plot the history of the maximum error (which must have been defined in the measures) for the model ``DecisionTreeRegressor`` on the dataset ``sample1``::
 
             >> measure_history(ml_repo, 'DecisionTreeRegressor/measure/sample1/max')
     """
+    if logscale_y:
+        y_scaler = math.log10
+    else:
+        y_scaler = lambda x : x
+
+    
     x = plot_helper.get_measure_history(
         ml_repo, measure_name)
     data = []
@@ -145,7 +171,7 @@ def measure_history(ml_repo, measure_name):
         for measure in measures:
             data_versions.add(measure['data_version'])
             if 'model_label' in measure:
-                model_label_annotations.append(dict(x=str(measure['datetime']), y=measure['value'], xref='x', yref='y', text=measure['model_label'],
+                model_label_annotations.append(dict(x=str(measure['datetime']), y=y_scaler(measure['value']), xref='x', yref='y', text=measure['model_label'],
                                                     showarrow=True,
                                                     arrowhead=2,  # 1
                                                     # ax=,
@@ -174,12 +200,15 @@ def measure_history(ml_repo, measure_name):
                 )
             )
 
+    yaxis=dict(title=NamingConventions.Measure(
+            measure_name).values['measure_type'])
+    if logscale_y:
+        yaxis['type'] = 'log'
     layout = go.Layout(
         title='measure history',
         annotations=model_label_annotations,
         xaxis=dict(title='t'),
-        yaxis=dict(title=NamingConventions.Measure(
-            measure_name).values['measure_type'])
+        yaxis=yaxis
     )
     # IPython notebook
     # py.iplot(data, filename='pandas/basic-line-plot')
@@ -299,17 +328,17 @@ def scatter_model_error(ml_repo, models, data_name, x_coordinate, y_coordinate=N
     iplot(fig)  # , filename='pandas/basic-line-plot')
 
 
-def histogram_data(ml_repo, data, x_coordinate, y_coordinate=None, n_bins = None,  start_index = 0, end_index = -1):
+def histogram_data(ml_repo, data, x_coordinate, n_bins = None,  start_index = 0, end_index = -1):
     '''Plot the histogram of the input data along a specified coordinate direction.
 
     Args:
         ml_repo (MLRepo): MLRepo.
         data (str or dict): Either a string with the name of the data to be plotted (latest data will be plotte) or a dictionary of data names to version or list of versions.
-        x_coordinate (str): String defining the x_coordinate wo be plotted. Defaults to None.
-        y_coordinate (str, optional): String defining a y-coordinate to be plotted. Defaults to None (meaning that no y-coordinate will be plotted).
+        x_coordinate (str): String defining the x_coordinate to be plotted. Defaults to None.
     '''
     plot_dict = plot_helper.get_data(ml_repo, data, x_coordinate, start_index=start_index, end_index=end_index)
     _histogram(plot_dict, n_bins=n_bins)
+    
 
 def histogram_data_conditional_error(ml_repo, models, data, x_coordinate, y_coordinate = None,  
                                     start_index = 0, end_index = -1, percentile = 0.1, n_bins = None):
