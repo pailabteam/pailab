@@ -3,13 +3,17 @@
 """
 
 import numpy as np
-from pailab.ml_repo.repo_objects import RepoObject, RawData
+from pailab.ml_repo.repo_objects import RepoObject, RawData, RepoInfoKey
 from pailab.tools.tools import ml_cache
 from pailab.ml_repo.repo_store import RepoStore  # pylint: disable=E0401
+from pailab.ml_repo.repo import MLObjectType
+
 
 has_sklearn = True
 try:
     from sklearn.cluster import KMeans
+    from sklearn.metrics.pairwise import pairwise_kernels
+    from sklearn import preprocessing
 except ImportError:
     import warnings
     warnings.warn('No sklearn installed, some functions of this submodule may not be usable.')
@@ -283,3 +287,175 @@ def compute_ice(ml_repo, x_values, data, model=None, model_label=None, model_ver
     result.model_version = model_.repo_info.version
     result.data_version = data_.repo_info.version
     return result
+
+def _compute_MMD2(X, prototypes, metric = 'rbf', **kwds):
+    kernel_matrix = pairwise_kernels(X, metric=metric, **kwds)
+    m = float(len(prototypes))
+    n = float(kernel_matrix.shape[0])
+    #print('kernel_matrix.sum()/(n**2): ' + str(kernel_matrix.sum()/(n**2)))
+    #print('kernel_matrix[np.ix_(prototypes, prototypes)].sum()/(m**2): ' + str(kernel_matrix[np.ix_(prototypes, prototypes)].sum()/(m**2)))
+    #print('2.0*kernel_matrix[prototypes, :].sum()/(m*n): ' + str(2.0*kernel_matrix[prototypes, :].sum()/(m*n)))
+    return kernel_matrix.sum()/(n**2) + kernel_matrix[np.ix_(prototypes, prototypes)].sum()/(m**2) - 2.0*kernel_matrix[prototypes, :].sum()/(m*n)
+
+def _compute_prototypes(X, n_prototypes, n_criticisms, metric = 'rbf', witness_penalty = 1.0, **kwds):
+    """This methods computes for given datapoints prototypes and criticisms.
+    
+    This methods computes for given datapoints prototypes and criticisms, i.e. datapoints from th given set that are typical representatives (prototypes) and datapoints
+    that are not well representatives (criticisms). Here, a simple greedy algorithm using MDM2 is used to compute the prototypes and a witness function together
+    with som simple penalty are used to compute the criticisms (see e.g. C. Molnar, Interpretable Machine Learning).
+
+    Args:
+        X (numpy matrix): Set of datapoints (each row representing one datapoint)
+        n_prototypes (int): Number of prototypes.
+        n_criticisms (int): Number of criticisms.
+        metric (str or callable, optional): The metric to use when calculating kernel between instances in a feature array.
+            If metric is a string, it must be one of the metrics in sklearn.metrics.pairwise.PAIRWISE_KERNEL_FUNCTIONS. 
+            If metric is precomputed, X is assumed to be a kernel matrix. Alternatively, if metric is a callable function, 
+            it is called on each pair of instances (rows) and the resulting value recorded. 
+            The callable should take two arrays from X as input and return a value indicating the distance between them. 
+            Currently, sklearn provides the following strings: ‘additive_chi2’, ‘chi2’, ‘linear’, ‘poly’, ‘polynomial’, ‘rbf’,
+                                                ‘laplacian’, ‘sigmoid’, ‘cosine’ 
+        witness_penalty (float): Penalty parameter to include some penalty to avoid to close criticisms. 
+        **kwds: optional keyword parameters
+            Any further parameters are passed directly to the kernel function.
+    
+    Raises:
+        Exception: If sklearn is not installed
+
+    Returns:
+        list of int: List of indices defining the datapoints which are the resulting prototypes.
+        list of int: List of indices defining the datapoints which are the resulting criticisms.
+    """
+    if not has_sklearn:
+        raise Exception('This method needs functionality form sklearn but sklearn is not installed.')
+    kernel_matrix = pairwise_kernels(X, metric=metric, **kwds)
+    prototypes = []
+    n = float(kernel_matrix.shape[0])
+    if n_prototypes >= n:
+        raise Exception('Number of prototypes must be less then number of datapoints.')
+    # To compute  prototypes we minimize the Maximum Mean Discrepancy (MDM), .. math::
+    #     MDM^2 = \frac{1}{m^2}\sum_{i=1}^m \sum_{j=1}^m k(z_i,z_j) - \frac{2}{mn}\sum_{i=1}^m \sum_{j=1}^n k(z_i,x_j) + \frac{1}{n^2}\sum_{i=1}^n\sum_{j=1}^n k(x_i,x_j)
+    #     We are doing this using a greedy search, looking for the next prototype by simply computing which next datapoint reduces the current MDM most. 
+    #     For this we compute simply
+    #     the impact on the MDM if a new point x is used as a prototype. The impact is computed by .. math::
+    #     \frac{2}{(m+1)^2}(k(x,x) + \sum{i=1}^mk(z_i,x)) -  \frac{2}{(m+1)n}\sum_{j=1}^n k(x,x_j)for i in range(n_prototypes):
+    #max_impact  = 1.0e8
+    for i in range(n_prototypes):
+        m = float(len(prototypes))
+        max_impact  = 1.0e8
+        new_prototype = None
+        for candidate in range(kernel_matrix.shape[0]):
+            if candidate not in prototypes:
+                impact = kernel_matrix[candidate][prototypes].sum()/((m+1)**2) - kernel_matrix[candidate,:].sum()/((m+1)*n)
+                if impact < max_impact:
+                    new_prototype = candidate
+                    max_impact = impact    
+        if new_prototype is None:
+            print(str(prototypes))
+            raise Exception('Cannot find a new prototype.')
+        prototypes.append(new_prototype)
+
+    m = float(len(prototypes))
+    n = float(kernel_matrix.shape[0])
+    criticisms = []    
+    for i in range(n_criticisms):
+        m_criticisms = float(len(criticisms)) 
+        max_witness  = -1.0e8
+        new_criticism = None
+        for candidate in range(kernel_matrix.shape[0]):
+            if candidate not in criticisms:
+                witness = kernel_matrix[candidate].sum()/n - kernel_matrix[candidate][prototypes].sum()/m
+                if m_criticisms > 0:
+                    regularizer = kernel_matrix[candidate][criticisms].max()
+                else:
+                    regularizer = 0
+                cost = abs(witness) - witness_penalty*regularizer
+                if cost > max_witness:
+                    max_witness = cost
+                    new_criticism = candidate
+        if new_criticism is None:
+            raise Exception('Cannot find a new criticism.')
+        criticisms.append(new_criticism)
+
+    return prototypes, criticisms
+
+def generate_prototypes(ml_repo, data, n_prototypes, n_criticisms, data_version = RepoStore.LAST_VERSION,
+                        use_x = True, data_start_index=0, data_end_index = -1, metric = 'rbf', witness_penalty = 1.0, 
+                        **kwds):
+    """This methods computes for a given test/training dataset prototypes and criticisms and adds them as separate test data sets to the repository. 
+    
+    This methods computes for given test/training dataset prototypes and criticisms, i.e. datapoints from th given set that are typical representatives (prototypes) 
+    and datapoints that are not well representatives (criticisms). Here, a simple greedy algorithm using MDM2 is used to compute the prototypes and a witness 
+    function together with some simple penalty are used to compute the criticisms (see e.g. C. Molnar, Interpretable Machine Learning).
+
+    Args:
+        ml_repo (MLRepo): The repository used to retrieve data and store prototypes/criticisms.
+        data (str): Name of data used for computation.
+        n_prototypes (int): Number of prototypes.
+        n_criticisms (int): Number of criticisms.
+        data_version (str): Version of data to be used. Defaults to RepoStore.LAST_VERSION.
+        use_x (bool): Flags that determine if prototypes are computed w.r.t. x or y coordinates. Defaults to True.
+        data_start_index (int): Startindex of data used.
+        data_end_index (int): Endindex of data used.
+        metric (str or callable, optional): The metric to use when calculating kernel between instances in a feature array.
+            If metric is a string, it must be one of the metrics in sklearn.metrics.pairwise.PAIRWISE_KERNEL_FUNCTIONS. 
+            If metric is precomputed, X is assumed to be a kernel matrix. Alternatively, if metric is a callable function, 
+            it is called on each pair of instances (rows) and the resulting value recorded. 
+            The callable should take two arrays from X as input and return a value indicating the distance between them. 
+            Currently, sklearn provides the following strings: ‘additive_chi2’, ‘chi2’, ‘linear’, ‘poly’, ‘polynomial’, ‘rbf’,
+                                                ‘laplacian’, ‘sigmoid’, ‘cosine’ 
+        witness_penalty (float): Penalty parameter to include some penalty to avoid to close criticisms. 
+        **kwds: optional keyword parameters
+            Any further parameters are passed directly to the kernel function.
+    
+    Raises:
+        Exception: If sklearn is not installed
+
+    Returns:
+        list of int: List of indices defining the datapoints which are the resulting prototypes.
+        list of int: List of indices defining the datapoints which are the resulting criticisms.
+    """
+    if isinstance(data, str):
+        data = ml_repo.get(data, data_version, full_object = True)
+    if use_x:
+        d = data.x_data[data_start_index:data_end_index]
+        if d is None:
+            raise Exception('No x-data defined.')
+    else:
+        d = data.y_data[data_start_index:data_end_index]
+        if d is None:
+            raise Exception('No y-data defined.')
+
+    std_scale = preprocessing.StandardScaler().fit(d)
+    d = std_scale.transform(d)
+    prototypes, criticisms = _compute_prototypes(d, n_prototypes, n_criticisms, metric = metric, witness_penalty=witness_penalty, **kwds)
+    
+    result_name = data.repo_info.name+'_'+'prototypes'
+    if data.y_data is None:
+        result = RawData(data.x_data[data_start_index:data_end_index][prototypes], data.x_coord_names, repo_info = {RepoInfoKey.NAME: result_name,  
+                        RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA, 
+                        RepoInfoKey.MODIFICATION_INFO: {data.repo_info.name: data.repo_info.version}
+                    })
+    else:
+        result = RawData(data.x_data[data_start_index:data_end_index][prototypes], data.x_coord_names, 
+            data.y_data[data_start_index:data_end_index][prototypes], data.y_coord_names, 
+            repo_info = {RepoInfoKey.NAME: result_name,  
+                        RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA, 
+                        RepoInfoKey.MODIFICATION_INFO: {data.repo_info.name: data.repo_info.version}
+                    })
+    ml_repo.add(result)
+
+    result_name = data.repo_info.name+'_'+'criticisms'
+    if data.y_data is None:
+        result = RawData(data.x_data[data_start_index:data_end_index][criticisms], data.x_coord_names, repo_info = {RepoInfoKey.NAME: result_name,  
+                        RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA, 
+                        RepoInfoKey.MODIFICATION_INFO: {data.repo_info.name: data.repo_info.version}
+                    })
+    else:
+        result = RawData(data.x_data[data_start_index:data_end_index][criticisms], data.x_coord_names, 
+            data.y_data[data_start_index:data_end_index][criticisms], data.y_coord_names, 
+            repo_info = {RepoInfoKey.NAME: result_name,  
+                        RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA, 
+                        RepoInfoKey.MODIFICATION_INFO: {data.repo_info.name: data.repo_info.version}
+                    })
+    ml_repo.add(result)

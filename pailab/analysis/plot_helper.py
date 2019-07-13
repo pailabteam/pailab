@@ -15,6 +15,8 @@ def _get_value_by_path(source, path):
         p = path.split('/')
     else:
         p = path
+    if len(p) == 0:
+        return source
     if '[' in p[0]:
         tmp = p[0].split('[')
         name = tmp[0]
@@ -23,7 +25,7 @@ def _get_value_by_path(source, path):
     else:
         value = source[p[0]]
     if len(p) > 1:
-        return _get_value_by_path(value, p[1:-1])
+        return _get_value_by_path(value, p[1:])
     return value
 
 
