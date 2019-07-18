@@ -7,6 +7,7 @@ import warnings
 from pailab.ml_repo.repo import MLObjectType, MLRepo, NamingConventions  # pylint: disable=E0401,E0611
 from pailab.ml_repo.repo_objects import RepoInfoKey, RawData  # pylint: disable=E0401
 from pailab.ml_repo.repo_store import RepoStore, LAST_VERSION, FIRST_VERSION, _time_from_version  # pylint: disable=E0401
+from pailab.tools.interpretation import _get_MMD2_X_vs_abs_ptw_error_percentile
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +56,7 @@ class _LabelChecker:
                 return self._labels[name][version]
         return None
 
-    def get_model_and_version(label_name):
+    def get_model_and_version(self, label_name):
         """Returns a tuple of model and version if a label with label_name exists, otherwise it returns None.
         
         Args:
@@ -188,6 +189,25 @@ def _get_obj_dict(ml_repo, objs, label_checker = None, category = None, _objs = 
 
 
 def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_version=LAST_VERSION, x_coord_name=None, start_index = 0, end_index = -1):
+    """Compute pointwise errors for given models and data.
+
+    The method plots histograms between predicted and real values of a certain target variable for reference data and models. 
+    The reference data is described by the data name and the version of the data (as well as the targt variables name). The models can be described
+    by 
+    - a dictionary of model names to versions (a single version number, a range of versions or a list of versions)
+    - just a model name (in this case the latest version is used)
+
+    Args:
+        ml_repo (MLRepo): [description]
+        models (str or dict): A dictionary of model names to versions (a single version number, a range of versions or a list of versions) or 
+                just a model name (in this case the latest version is used)
+
+        data (str or list of str): Name of input data to be used for the error plot.
+        coord_name (int or str, optional): Index or name of y-coordinate used for error measurement. If None, the first coordinate is used. Defaults to None.
+        data_version (str, optional): Version of the input data used. Defaults to LAST_VERSION.
+        x_coord_name (str): If specified it defines the respective x-coordinate that will additionally to the errors be returned. 
+            If None, no x-values will be returned. Defaults to None.
+    """
     label_checker = _LabelChecker(ml_repo)
     _data = data
     if isinstance(_data, str):
@@ -249,6 +269,109 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
 
                 result['data'][eval_data_name + ': ' +
                                str(eval_d.repo_info[RepoInfoKey.VERSION])] = tmp
+    return result
+
+def get_ptws_error_dist_mdm(ml_repo, model, data, x_coords = None, y_coords = None, start_index = 0, end_index=-1, percentile = 0.1, 
+                            cache = True, scale = True, metric='rbf',  **kwds):
+    """Returns Squared Maximum Mean Distance (MMD) between the distributions of the x-data w.r.t. a percentile of the absolute pointwise
+        errors along the y-coordinates.
+    
+    Args:
+        ml_repo (MLRepo): [description]
+        model (str or dict): A dictionary of model names (or labels) to versions (a single version number, a range of versions or a list of versions) or 
+                just a model name (in this case the latest version is used)
+        data (str or dict): A dictionary of data namesto versions (a single version number, a range of versions or a list of versions) or 
+                just a data name (in this case the latest version is used)
+        x_coords (int, str or list, optional): x-coordinate or list of x-coordinates used to comput the squared MMD. 
+            If None, all x-coordinates are used. Defaults to None.
+        y_coords (int str or list, optional): y-coordinate or list of y-coordinates used to comput the squared MMD. If None, all y-coordinates are used. Defaults to None.
+        start_index (int, optional): Start index of data. Defaults to 0.
+        end_index (int, optional): End index of data. Defaults to -1.
+        percentile (float, optional): Percentile of absolute error defining the x-values. Defaults to 0.1.
+        cache (bool, optional): If True, caching is used using the given MLRepo. Defaults to True.
+        scale (bool, optional): If True, the x-cordntes will be scaled by sklearn StandardScaler. Defaults to True.
+        metric (str or callable, optional): The metric to use when calculating kernel between instances in a feature array. defaults to 'rbf'.
+            If metric is a string, it must be one of the metrics in sklearn.metrics.pairwise.PAIRWISE_KERNEL_FUNCTIONS. 
+            If metric is precomputed, X is assumed to be a kernel matrix. Alternatively, if metric is a callable function, 
+            it is called on each pair of instances (rows) and the resulting value recorded. 
+            The callable should take two arrays from X as input and return a value indicating the distance between them. 
+            Currently, sklearn provides the following strings: ‘additive_chi2’, ‘chi2’, ‘linear’, ‘poly’, ‘polynomial’, ‘rbf’,
+                                                ‘laplacian’, ‘sigmoid’, ‘cosine’ 
+        **kwds: optional keyword parameters that are passed directly to the kernel function.
+    
+    Returns:
+        list of dict: List of dictionary where each dictionary contains the squared MMD as well as the name 
+        and version of underlying data and model and the x- and y-coordinates used.
+
+    """
+    label_checker = _LabelChecker(ml_repo)
+    tmp = _get_obj_dict(ml_repo, model, label_checker, MLObjectType.CALIBRATED_MODEL)
+    _models = []
+    for m, m_tmp in tmp.items():
+        for m_v in m_tmp:
+            tmp = ml_repo.get(m, version = m_v, throw_error_not_unique=False)
+            if isinstance(tmp, list):
+                _models.extend(tmp)
+            else:
+                _models.append(tmp)
+    
+    tmp = _get_obj_dict(ml_repo, data, None, [MLObjectType.TRAINING_DATA, MLObjectType.TEST_DATA])
+    _data = []
+    for d, d_tmp in tmp.items():
+        for d_v in d_tmp:
+            tmp = ml_repo.get(d, version = d_v, throw_error_not_unique=False)
+            if isinstance(tmp, list):
+                _data.extend(tmp)
+            else:
+                _data.append(tmp)
+
+    result = []
+    if cache:
+        cache_ = ml_repo
+    else:
+        cache_ = None
+    # set coordinates
+    #
+    
+    if x_coords is not None:
+        if isinstance(x_coords, int) or isinstance(x_coords, str):
+            x_coords = [x_coords]
+        for i in range(len(x_coords)):
+            if isinstance(x_coords[i], str):
+                x_coords[i] = _data[0].x_coord_names.index(x_coords[i])
+
+    if y_coords is not None:
+        if isinstance(y_coords, int) or isinstance(y_coords, str):
+            y_coords = [y_coords]
+        for i in range(len(y_coords)):
+            if isinstance(y_coords[i], str):
+                y_coords[i] = _data[0].y_coord_names.index(y_coords[i])
+   
+
+    
+    # loop over models and data
+    #
+    for m in _models:
+        for d in _data:
+            _eval_data_name = str(
+                    NamingConventions.EvalData(data=d.repo_info.name, model=m.repo_info.name.split('/')[0]))
+            eval_data = ml_repo.get(_eval_data_name, None, modifier_versions = {m.repo_info.name: m.repo_info.version}, full_object = True)
+            tmp = ml_repo.get(d.repo_info.name, version = d.repo_info.version, full_object = True)
+            mmd = _get_MMD2_X_vs_abs_ptw_error_percentile(tmp, eval_data, x_coords, y_coords, cache = cache_, percentile=percentile, scale=scale, metric=metric, **kwds)
+            if x_coords is not None:
+                x_coord_names = [d.x_coord_names[i] for i in x_coords]
+            else:
+                x_coord_names = d.x_coord_names
+            
+            if y_coords is not None:
+                y_coord_names = [d.y_coord_names[i] for i in y_coords]
+            else:
+                y_coord_names = d.y_coord_names
+            
+            for i in range(len(x_coord_names)):
+                for j in range(len(y_coord_names)):
+                    result.append({'model': m.repo_info.name , 'model version': m.repo_info.version, 'data': d.repo_info.name, 
+                        'data version': d.repo_info.version, 'x-coord': x_coord_names[i], 'y-coord': y_coord_names[j], 'mmd': mmd[i,j]})
     return result
 
 
