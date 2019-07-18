@@ -262,11 +262,13 @@ def histogram_model_error(ml_repo, models, data_name, y_coordinate=None, data_ve
     - just a model name (in this case the latest version is used)
 
     Args:
-        ml_repo ([type]): [description]
-        models ([type]): [description]
-        data_name (str or list of str): [description]
-        y_coordinate ([type], optional): Defaults to None. [description]
-        data_version ([type], optional): Defaults to LAST_VERSION. [description]
+        ml_repo (MLRepo): [description]
+        models (str or dict): A dictionary of model names to versions (a single version number, a range of versions or a list of versions) or 
+                just a model name (in this case the latest version is used)
+
+        data_name (str or list of str): Name of input data to be used for the error plot.
+        y_coordinate (int or str, optional): Index or name of y-coordinate used for error measurement. If None, the first coordinate is used. Defaults to None.
+        data_version (str, optional): Version of the input data used. Defaults to LAST_VERSION.
 
     Examples:
         Plot histograms for errors in the variable mickey_mouse on the dataset my_test_data for the latest version of model_1 and all versions of model_2. 
@@ -340,41 +342,57 @@ def histogram_data(ml_repo, data, x_coordinate, n_bins = None,  start_index = 0,
     _histogram(plot_dict, n_bins=n_bins)
     
 
-def histogram_data_conditional_error(ml_repo, models, data, x_coordinate, y_coordinate = None,  
-                                    start_index = 0, end_index = -1, percentile = 0.1, n_bins = None):
+def histogram_data_conditional_error(ml_repo, models, data, x_coordinate, y_coordinate = 0,  
+                                    start_index = 0, end_index = -1, percentile = 0.1, n_bins = None, n_hist = 1):
     """Plots the distribution of input data along a given axis for the largest absolute pointwise errors in comparison to the distribution of all data.
     
     Args:
         ml_repo (MLRepo): repository
-        models (str, list of str): definition of latest model/models used for plotting beneath the labeled models
+        models (str or dict): A dictionary of model names (or labels) to versions (a single version number, a range of versions or a list of versions) or 
+            just a model name (in this case the latest version is used)
         data (str): name of dataset used for plotting
-        x_coordinate (str): name of x coordinate for which the distribution will be plotted
-        y_coordinate (str, optional): Name of y-coordinate for which the error is determined. Defaults to None (use first y-coordinate).
+        x_coordinate (str): Name of x coordinate for which the distribution will be plotted. If None, the method tries to find interesting coordinates where distribution of perentile differs to original distribution.
+        y_coordinate (str, optional): Name of y-coordinate for which the error is determined. Defaults to 0 (use first y-coordinate). 
+            If None, the method tries to find interesting coordinates where distribution of perentile differs to original distribution.
         start_index (int, optional): Defaults to 0. Startindex of data.
         end_index (int, optional): Defaults to -1. Endindex of data.
         percentile (float, optional): Defaults to 0.1. Percentage of largest absolute errors used.
-        n_bins ([type], optional): Defaults to None. Number of bin of histogram.
+        n_bins (int, optional): Defaults to None. Number of bin of histogram.
     """
-
-    tmp = plot_helper.get_pointwise_model_errors(
-        ml_repo, models, data, y_coordinate, x_coord_name=x_coordinate, start_index = 0, end_index = -1)
-    
-    plot_data = {}
+    if x_coordinate is None or y_coordinate is None:
+        tmp =  pd.DataFrame.from_dict( plot_helper.get_ptws_error_dist_mdm(ml_repo, models, data, x_coordinate,
+                     y_coordinate, start_index=start_index, end_index=end_index, percentile = percentile)
+            )
+        tmp = tmp.sort_values(['mmd'])
+        recommended_coordinates = set()
+        for i in range(tmp.shape[0]):
+            recommended_coordinates.update((tmp.iloc[i]['x-coord'], tmp.iloc[i]['y-coord'], ))
+            if len(recommended_coordinates) > n_hist:
+                break
+        for coord in recommended_coordinates:
+            histogram_data_conditional_error(ml_repo, models, data, coord[0], coord[1],
+                start_index, end_index, percentile, n_bins, n_hist)
+    else:
+        tmp = plot_helper.get_pointwise_model_errors(
+            ml_repo, models, data, y_coordinate, x_coord_name=x_coordinate, start_index = start_index, end_index = end_index)
         
-    for k, x in tmp['data'].items():
-        abs_err = np.abs(x['x1'])
-        sorted_indices = np.argsort(abs_err)
-        i_start = int( (1.0-percentile)*len(sorted_indices))
-        indices = sorted_indices[i_start:]
-        data = {'x0': x['x0'][indices], 'info': x['info']}
-        if 'label' in x.keys():
-            plot_data[x['label']+':'+str(percentile)] = data
-            plot_data[x['label']] = {'x0': x['x0'][start_index:end_index], 'info': x['info']}
-        else:
-            plot_data[k+':'+str(percentile)] = data
-            plot_data[k] = {'x0': x['x0'][start_index:end_index], 'info': x['info']}
-    plot_dict = {'data': plot_data, 'title': tmp['title'] + ', inlcuding distribution w.r.t ' + str(100*percentile) + ' % quantile', 'x0_name' : tmp['x0_name'], 'x1_name': tmp['x1_name']}
-    _histogram(plot_dict, n_bins=n_bins)
+        plot_data = {}
+            
+        for k, x in tmp['data'].items():
+            abs_err = np.abs(x['x1'])
+            sorted_indices = np.argsort(abs_err)
+            i_start = int( (1.0-percentile)*len(sorted_indices))
+            indices = sorted_indices[i_start:]
+            data = {'x0': x['x0'][indices], 'info': x['info']}
+            if 'label' in x.keys():
+                plot_data[x['label']+':'+str(percentile)] = data
+                plot_data[x['label']] = {'x0': x['x0'][start_index:end_index], 'info': x['info']}
+            else:
+                plot_data[k+':'+str(percentile)] = data
+                plot_data[k] = {'x0': x['x0'][start_index:end_index], 'info': x['info']}
+        plot_dict = {'data': plot_data, 'title': tmp['title'] + ', inlcuding distribution w.r.t ' + str(100*percentile) + ' % quantile', 'x0_name' : tmp['x0_name'], 'x1_name': tmp['x1_name']}
+        _histogram(plot_dict, n_bins=n_bins)
+
 
 def _ice_plotly(ice_results, ice_points = None, height = None, width = None, ice_results_2 = None, clusters = None):
     data = []
