@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy
 import copy
+import datetime as dt
 from tensorflow.keras import backend
 from tensorflow.keras.models import model_from_config  # model_from_json
 from tensorflow.keras.models import Sequential
@@ -134,6 +135,7 @@ def train_keras_tensorflow(model_param, train_param, data, verbose=0):
                 **train_param.early_stopping))
         if train_param.tensorboard['log_dir'] != None:
             tb_param = copy.deepcopy(train_param.tensorboard)
+            tb_param['log_dir'] = tb_param['log_dir'] + '/' + dt.datetime.now().strftime("%Y%m%dT%H%M%S")
             cb.append(tf.keras.callbacks.TensorBoard(**tb_param))
         #reduce_lr = ReduceLROnPlateau(monitor = 'loss', factor=0.8, patience=100, min_lr=0.00001)
 

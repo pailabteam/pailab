@@ -86,12 +86,12 @@ Another frequent use case is to retrieve an object that has been created using a
 For example, you may be interested to get mean squared error (mse) for a specific model. Then, you can just use get to retrieve 
 the mse object containing the mse for the specified model by calling get specifying the modifier_versions::
 
-    obj = ml_reo.get('obj_name', version=None,  modifier_versions={'obj2_name': 'aasfdg-111-ezrhf'})
+    obj = ml_repo.get('obj_name', version=None,  modifier_versions={'obj2_name': 'aasfdg-111-ezrhf'})
 
 which returns the object with name obj_name and the version which has been constructed using the object 'obj2_name' with the specified version.
 Analogously to above one can also ask for all objects which haven been constructed using an object with object's version in a list of specified versions, i.e.::
 
-    objs = ml_reo.get('obj_name', version=None,  modifier_versions={'obj2_name': ['aasfdg-111-ezrhf', 'bbhuuu-123-ooo'})
+    objs = ml_repo.get('obj_name', version=None,  modifier_versions={'obj2_name': ['aasfdg-111-ezrhf', 'bbhuuu-123-ooo'})
 
 
 .. IMPORTANT::

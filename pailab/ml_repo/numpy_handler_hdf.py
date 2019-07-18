@@ -39,7 +39,7 @@ class NumpyHDFStorage(NumpyStore):
         folder (str): main directory where the files will be stored
         version_files (bool): If True, each version is contained in a separate file, otherwise all versions are in one file.
             If you like to work in a distributed environmnt (e.g. multiple users working in parallel) you should set this parameter to True so that no file merge is necessary.
-             (default: {False})
+            . Defaults to False.
     
     """
 
@@ -52,12 +52,10 @@ class NumpyHDFStorage(NumpyStore):
     def _create_file_name(self, name, version, change_if_not_exist=False):
         """ Function to create the file name for an object 
 
-        Arguments:
-            name {str} -- the identifier object
-            version {str} -- the version id
-
-        Keyword Arguments:
-            change_if_not_exist {bool} -- change the name if it does not exist (default: {False})
+        Args:
+            name (str): the identifier object
+            version (str): the version id
+            change_if_not_exist (bool): change the name if it does not exist. Defaults to False.
 
         Returns:
             str -- the filename
@@ -76,9 +74,9 @@ class NumpyHDFStorage(NumpyStore):
     def _delete(self, name, version):
         """ Delete an object with a predefined version
 
-        Arguments:
-            name {str} -- identifier of the object
-            version {str} -- the version id
+        Args:
+            name (str): identifier of the object
+            version (str): the version id
         """
 
         pass
@@ -88,13 +86,13 @@ class NumpyHDFStorage(NumpyStore):
     def _save(data_grp, ref_grp, numpy_dict):
         """ saving the data 
 
-        Arguments:
-            data_grp {[type]} -- the data group
-            ref_grp {[type]} -- the reference group 
-            numpy_dict {numpy dict} -- the numpy dictionary to save
+        Args:
+            data_grp ([type]): the data group
+            ref_grp ([type]): the reference group 
+            numpy_dict (numpy dict): the numpy dictionary to save
 
         Raises:
-            NotImplementedException -- [description]
+            NotImplementedException: [description]
         """
 
         for k, v in numpy_dict.items():
@@ -114,19 +112,25 @@ class NumpyHDFStorage(NumpyStore):
                             tmp = data_grp.create_dataset(
                                 k, data=v, maxshape=(None, v.shape[1], v.shape[2]))
                             ref_grp.create_dataset(
-                                k, data=tmp.regionref[0:v.shape[0], 0:v.shape[1], 0:v.shape[1]])
+                                k, data=tmp.regionref[0:v.shape[0], 0:v.shape[1], 0:v.shape[2]])
                         else:
-                            raise NotImplementedException(
-                                'Not implemenet for dim>3.')
+                            if len(v.shape) == 4:
+                                tmp = data_grp.create_dataset(
+                                    k, data=v, maxshape=(None, v.shape[1], v.shape[2], v.shape[3]))
+                                ref_grp.create_dataset(
+                                    k, data=tmp.regionref[0:v.shape[0], 0:v.shape[1], 0:v.shape[2], 0:v.shape[3]])
+                            else:                                        
+                                raise NotImplementedException(
+                                    'Not implemenet for dim>3.')
 
     @trace
     def add(self, name, version, numpy_dict):
         """ Add numpy data from an object to the storage.
 
-        Arguments:
-            name {str} -- the identifier of the object to add
-            version {str} -- the object version 
-            numpy_dict {numpy dict} -- the numpy dictionary to add
+        Args:
+            name (str): the identifier of the object to add
+            version (str): the object version 
+            numpy_dict (numpy dict): the numpy dictionary to add
         """
 
         tmp = pathlib.Path(self.main_dir + '/' + name + 'hdf')
@@ -145,11 +149,11 @@ class NumpyHDFStorage(NumpyStore):
     def _append_same_file(self, name, version_old, version_new, numpy_dict):
         """ Append data to the same file
 
-        Arguments:
-            name {str} -- the object identifier
-            version_old {str} -- the previous object version
-            version_new {str} -- the next object version
-            numpy_dict {numpy dict} -- the data to add as a numpy dictionary
+        Args:
+            name (str): the object identifier
+            version_old (str): the previous object version
+            version_new (str): the next object version
+            numpy_dict (numpy dict): the data to add as a numpy dictionary
         """
 
         with h5py.File(self.main_dir + '/' + self._create_file_name(name, version_new), 'a') as f:
@@ -186,15 +190,20 @@ class NumpyHDFStorage(NumpyStore):
                             data[old_size:new_shape[0], :, :] = v
                             ref_grp.create_dataset(
                                 k, data=data.regionref[0:new_shape[0], :, :])
+                        else:
+                            if len(data.shape) == 4:
+                                data[old_size:new_shape[0], :, :, :] = v
+                                ref_grp.create_dataset(
+                                    k, data=data.regionref[0:new_shape[0], :, :, :])
 
     def _append_different_file(self, name, version_old, version_new, numpy_dict):
         """ Append data to a different file
 
-        Arguments:
-            name {str} -- the object identifier
-            version_old {str} -- the previous object version
-            version_new {str} -- the next object version
-            numpy_dict {numpy dict} -- the data to add as a numpy dictionary
+        Args:
+            name (str): the object identifier
+            version_old (str): the previous object version
+            version_new (str): the next object version
+            numpy_dict (numpy dict): the data to add as a numpy dictionary
         """
 
         # save data to append in separate file
@@ -229,11 +238,11 @@ class NumpyHDFStorage(NumpyStore):
     def append(self, name, version_old, version_new, numpy_dict):
         """ append data to the an existing object
 
-        Arguments:
-            name {str} -- the object identifier
-            version_old {str} -- the previous object version
-            version_new {str} -- the next object version
-            numpy_dict {numpy dict} -- the data to add as a numpy dictionary
+        Args:
+            name (str): the object identifier
+            version_old (str): the previous object version
+            version_new (str): the next object version
+            numpy_dict (numpy dict): the data to add as a numpy dictionary
         """
 
         if not self._version_files:
@@ -246,17 +255,15 @@ class NumpyHDFStorage(NumpyStore):
     def get(self, name, version, from_index=0, to_index=None):
         """ get the numpy object for a name and a version, rows can be used
 
-        Arguments:
-            name {str} -- identifier of the object
-            version {str} -- version of the object
-
-        Keyword Arguments:
-            from_index {int} -- the index from which the data should be taken (default: {0})
-            to_index {int or None} -- the index to which the data is returned (None means till the end) (default: {None})
+        Args:
+            name (str): identifier of the object
+            version (str): version of the object
+            from_index (int): the index from which the data should be taken. Defaults to 0.
+            to_index (int or None): the index to which the data is returned (None means till the end). Defaults to None.
 
         Raises:
-            Exception -- raises an exception if no object with the name exists
-            Exception -- raises an exception if no object and with the version exists 
+            Exception: raises an exception if no object with the name exists
+            Exception: raises an exception if no object and with the version exists 
 
         Returns:
             numpy array -- the numpy object to return
@@ -292,9 +299,9 @@ class NumpyHDFStorage(NumpyStore):
     def object_exists(self, name, version):
         """ checks whether the object exists
 
-        Arguments:
-            name {str} -- the identifier of the object
-            version {str} -- the version of the object
+        Args:
+            name (str): the identifier of the object
+            version (str): the version of the object
 
         Returns:
             bool -- returns true if the object exists
@@ -313,8 +320,8 @@ class NumpyHDFStorage(NumpyStore):
 def _get_all_files(directory):
     """ Returns set of all files in directory
 
-    Arguments:
-        directory {str} -- the directory
+    Args:
+        directory (str): the directory
 
     Returns:
         set -- set with all filenames (including relative paths)
@@ -421,7 +428,7 @@ class NumpyHDFRemoteStorage(NumpyHDFStorage):
         """
 
         with _lock_dir(self.main_dir, self._wait_time, self._timeout):
-            remote_files = {x.name for x in self._remote_store._remote_file_list()}
+            remote_files = {x for x in self._remote_store._remote_file_list()}
             local_files = _get_all_files(self.main_dir)
             if '.lock' in local_files:
                 local_files.remove('.lock')

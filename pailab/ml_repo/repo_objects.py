@@ -25,11 +25,9 @@ logger = logging.getLogger(__name__)
 def _get_attribute_dict(clazz, excluded=set()):
     """ Return dictionary of non-static members and their values for an instance of  class
     
-    Arguments:
-        clazz {[type]} -- object instance of a certain class
-    
-    Keyword Arguments:
-        excluded {set} -- names of member attributes which are excluded from dictionary (default: {set()})
+    Args:
+        clazz ([type]): object instance of a certain class
+        excluded (set): names of member attributes which are excluded from dictionary}). Defaults to set().
     
     Returns:
         [type] -- [description]
@@ -67,12 +65,12 @@ class RepoInfo:
     def __init__(self, kwargs = {}, name = None, version = None, category = None, modification_info = None):
         """ constructor
         
-        Keyword Arguments:
-            kwargs {dict} -- additional arguments (default: {{}})
-            name {str or None} -- object identifier (default: {None})
-            version {str or None} -- object version (default: {None})
-            category {str or None} -- the object category (default: {None})
-            modification_info {dict or None} -- dictionary with the modification info (default: {None})
+        Args:
+            kwargs (dict): additional arguments. Defaults to {}.
+            name (str or None): object identifier. Defaults to None.
+            version (str or None): object version. Defaults to None.
+            category (str or None): the object category. Defaults to None.
+            modification_info (dict or None): dictionary with the modification info. Defaults to None.
         """
 
         self.version = version
@@ -93,8 +91,8 @@ class RepoInfo:
     def set_fields(self, kwargs):
         """ Set repo info fields from a dictionary
         
-        Arguments:
-            kwargs {dict} -- additional arguments
+        Args:
+            kwargs (dict): additional arguments
         """
 
         for k,v in kwargs.items():
@@ -103,9 +101,9 @@ class RepoInfo:
     def __setitem__(self, field, value):
         """ Set an item
         
-        Arguments:
-            field {Either a string (RepoInfoKey.value or RepoInfoKey.name) or directly a RepoInfoKey enum} -- the field name
-            value {[type]} -- value for the field
+        Args:
+            field (Either a string (RepoInfoKey.value or RepoInfoKey.name) or directly a RepoInfoKey enum): the field name
+            value ([type]): value for the field
         """
 
         if isinstance(field, RepoInfoKey):
@@ -123,8 +121,8 @@ class RepoInfo:
     def __getitem__(self, field):
         """ Get an item.
         
-        Arguments:
-            field {Either a string (RepoInfoKey.value or RepoInfoKey.name) or directly a RepoInfoKey enum} -- the field to return
+        Args:
+            field (Either a string (RepoInfoKey.value or RepoInfoKey.name) or directly a RepoInfoKey enum): the field to return
         
         Returns:
             [type] -- Value of specified field.
@@ -152,8 +150,8 @@ class RepoInfo:
 def create_repo_obj_dict(obj):
     """ Create from a repo_object a dictionary with all values to handle the object within the repo
     
-    Arguments:
-        obj {RepoObject} -- repository object
+    Args:
+        obj (RepoObject): repository object
     
     Returns:
         dict -- returns the dictionary 
@@ -171,8 +169,8 @@ class RepoObject:
     def __init__(self, repo_info):
         """ Constructor for a repo object
         
-        Arguments:
-            repo_info {dict} -- dictionary of the repo info
+        Args:
+            repo_info (dict): dictionary of the repo info
         """
 
         self.repo_info = RepoInfo()
@@ -231,8 +229,8 @@ class RepoObject:
     def from_dict(self, repo_obj_dict):  # pylint: disable=E0213
         """ set object from a dictionary
 
-        Arguments:
-            repo_object_dict {dict} -- dictionary with the object data
+        Args:
+            repo_object_dict (dict): dictionary with the object data
         """
 
         for key, value in repo_obj_dict.items():
@@ -254,8 +252,8 @@ class RepoObject:
     def numpy_from_dict(self, repo_numpy_dict):  # pylint: disable=E0213
         """ sets the attributes of the numpy dictionary
 
-        Arguments:
-            repo_numpy_dict {dict} -- dictionary with the object data
+        Args:
+            repo_numpy_dict (dict): dictionary with the object data
         """
 
         for x in self.repo_info[RepoInfoKey.BIG_OBJECTS]:  # pylint: disable=E1101
@@ -271,8 +269,8 @@ class repo_object_init:  # pylint: disable=too-few-public-methods
     def to_dict(repo_obj):  # pylint: disable=E0213
         """ Return a data dictionary for a given repo_object
 
-        Arguments:
-            repo_obj {RepoObject} -- A repo_object, i.e. object which provides the repo_object interface
+        Args:
+            repo_obj (RepoObject): A repo_object, i.e. object which provides the repo_object interface
         
         Returns:
             dict -- dictionary of data
@@ -286,9 +284,9 @@ class repo_object_init:  # pylint: disable=too-few-public-methods
     def from_dict(repo_obj, repo_obj_dict):  # pylint: disable=E0213
         """ set object from a dictionary
 
-        Arguments:
-            repo_object {RepoObject} -- repo_object which will be set from the dictionary
-            repo_object_dict {dict} -- dictionary with the object data
+        Args:
+            repo_object (RepoObject): repo_object which will be set from the dictionary
+            repo_object_dict (dict): dictionary with the object data
         """
 
         for key, value in repo_obj_dict.items():
@@ -297,8 +295,8 @@ class repo_object_init:  # pylint: disable=too-few-public-methods
     def numpy_to_dict(repo_obj):  # pylint: disable=E0213
         """ function to get the attributes as a dictionary
 
-        Arguments:
-            repo_obj {RepoObject} -- the repo object
+        Args:
+            repo_obj (RepoObject): the repo object
         
         Returns:
             dict -- dictionary of the attributes
@@ -312,9 +310,9 @@ class repo_object_init:  # pylint: disable=too-few-public-methods
     def numpy_from_dict(repo_obj, repo_numpy_dict):  # pylint: disable=E0213
         """ function to transform a dictionary to a numpy
 
-        Arguments:
-            repo_obj {RepoObject} -- the repo object
-            repo_numpy_dict {numpy dict} -- the repo numpy dictionary
+        Args:
+            repo_obj (RepoObject): the repo object
+            repo_numpy_dict (numpy dict): the repo numpy dictionary
 
         """
 
@@ -327,8 +325,8 @@ class repo_object_init:  # pylint: disable=too-few-public-methods
     def __init__(self, big_objects=[]):
         """ constructor
         
-        Keyword Arguments:
-            big_objects {list} -- list of big objects (default: {[]})
+        Args:
+            big_objects (list): list of big objects. Defaults to [].
         """
 
         self._big_objects = big_objects
@@ -336,9 +334,9 @@ class repo_object_init:  # pylint: disable=too-few-public-methods
     def init_repo_object(self, init_self, repo_info):  # pylint: disable=E0213
         """ initialiser for repo objects
         
-        Arguments:
-            init_self {[type]} -- [description]
-            repo_info {dict} -- the repository info
+        Args:
+            init_self ([type]): [description]
+            repo_info (dict): the repository info
         """
 
         repo_info[RepoInfoKey.CLASSNAME] = init_self.__class__.__module__ + \
@@ -384,9 +382,9 @@ class repo_object_init:  # pylint: disable=too-few-public-methods
 def get_object_from_classname(classname, data):
     """ Returns an object instance for given classname and data dictionary.
     
-    Arguments:
-        classname {str} -- Full classname as string including the modules, e.g. repo.Y if class Y is defined in module repo.
-        data {dict} -- dictionary of data used to initialize the object instance.
+    Args:
+        classname (str): Full classname as string including the modules, e.g. repo.Y if class Y is defined in module repo.
+        data (dict): dictionary of data used to initialize the object instance.
     
     Returns:
         [type] -- Instance object of class.
@@ -411,11 +409,11 @@ def create_repo_obj(obj):
     It uses the obj['repo_info']['classname'] within the dictionary and constructs the class
     using get_object_from_classname. It throws an exception if the dictionary does not contain an 'repo_info' key.
     
-    Arguments:
-        obj {dict} -- dictionary containing all informations for a repo_object.
+    Args:
+        obj (dict): dictionary containing all informations for a repo_object.
     
     Raises:
-        Exception -- raises an exception if the dictionary is not a repo dictionary
+        Exception: raises an exception if the dictionary is not a repo dictionary
     
     Returns:
         [type] -- the object of the specified class
@@ -437,8 +435,8 @@ class RawData(RepoObject):
     def _cast_data_to_numpy(data):   # pylint: disable=E0213
         """ casts the data to a numpy object
         
-        Arguments:
-            data {[type]} -- the data to cast to an numpy array
+        Args:
+            data ([type]): the data to cast to an numpy array
         
         Returns:
             [type] -- the numpy array
@@ -456,25 +454,25 @@ class RawData(RepoObject):
     def __init__(self, x_data, x_coord_names, y_data=None, y_coord_names=None, repo_info = RepoInfo()):
         """ Constructor
         
-        Arguments:
-            x_data {numpy object} -- numpy object (array or matrix) containing x_data
-            x_coord_names {list of str} -- list of x_data coordinate names
-        
-        Keyword Arguments:
-            y_data {numpy object} -- numpy object (array or matrix) containing x_data (default: {None})
-            y_coord_names {list of str} -- list of y_data coordinate names (default: {None})
-            repo_info {RepoInfo} -- dictionary of the repo info (default: {RepoInfo()})
+        Args:
+            x_data (numpy object): numpy object (array or matrix) containing x_data
+            x_coord_names (list of str): list of x_data coordinate names
+            y_data (numpy object): numpy object (array or matrix) containing x_data. Defaults to None.
+            y_coord_names (list of str): list of y_data coordinate names. Defaults to None.
+            repo_info (RepoInfo): dictionary of the repo info}). Defaults to RepoInfo().
         
         Raises:
-            Exception -- raises an exception if no x_data is specified
-            Exception -- raises an exception if the number of x-coordinates is not equal to the number of names of the x-coordinates
-            Exception -- raises an exception if the number of y-coordinates is not equal to the number of names of the y-coordinates
-            Exception -- raises an exception if the number of rows in x_data and y_data do not match
+            Exception: raises an exception if no x_data is specified
+            Exception: raises an exception if the number of x-coordinates is not equal to the number of names of the x-coordinates
+            Exception: raises an exception if the number of y-coordinates is not equal to the number of names of the y-coordinates
+            Exception: raises an exception if the number of rows in x_data and y_data do not match
         """
 
         super(RawData, self).__init__(repo_info)
         self.repo_info.big_objects = ['x_data', 'y_data']
-        self.repo_info.category = 'RAW_DATA'
+        if self.repo_info.category is None:
+            self.repo_info.category = 'RAW_DATA'
+
         if x_data is None:
             raise Exception("No x_data specified.")
         x_data = RawData._cast_data_to_numpy(x_data)
@@ -511,13 +509,13 @@ class Model(RepoObject):
                 model_param = None, training_data = None, test_data = None, repo_info = RepoInfo()):
         """Defines all model relevant information
         
-        Keyword Arguments:
-            preprocessors {string} -- list of preprocessor names (default: {None})
-            eval_function {string} -- name of function object for model evaluation (default: {None})
-            train_function {string} -- name of function object for model training (default: {None})
-            train_param {string} -- name of training parameer object used for model training (default: {None})
-            model_param {string} -- name of model parameter object used for creating the model, i.e. network architecture (default: {None})
-            repo_info {RepoInfo} -- dictionary of the repo info (default: {RepoInfo()})
+        Args:
+            preprocessors (string): list of preprocessor names. Defaults to None.
+            eval_function (string): name of function object for model evaluation. Defaults to None.
+            train_function (string): name of function object for model training. Defaults to None.
+            train_param (string): name of training parameer object used for model training. Defaults to None.
+            model_param (string): name of model parameter object used for creating the model, i.e. network architecture. Defaults to None.
+            repo_info (RepoInfo): dictionary of the repo info}). Defaults to RepoInfo().
             training_data (str): name of training data used to train the model
             test_data (str): Regular expression defining the test data used for the model within the repository. If None, all test data in the repo is used.
         """
@@ -559,13 +557,11 @@ class Preprocessor(RepoObject):
                 preprocessing_param = None, repo_info = RepoInfo()):
         """ Defines all relevant information for the preprocessor
         
-        Arguments:
-            transforming_function {str} -- the identifier of the transforming function
-        
-        Keyword Arguments:
-            fitting_function {str or None} -- the identifier of the fitting function (default: {None})
-            preprocessing_param {str or None} -- the identifier of the preprocessing parameter (default: {None})
-            repo_info {RepoInfo} -- dictionary of the repo info (default: {RepoInfo()})
+        Args:
+            transforming_function (str): the identifier of the transforming function
+            fitting_function (str or None): the identifier of the fitting function. Defaults to None.
+            preprocessing_param (str or None): the identifier of the preprocessing parameter. Defaults to None.
+            repo_info (RepoInfo): dictionary of the repo info}). Defaults to RepoInfo().
         """
 
         super(Preprocessor, self).__init__(repo_info)
@@ -579,11 +575,9 @@ class Function(RepoObject):
     def __init__(self, f, repo_info = RepoInfo()):
         """ constructor
         
-        Arguments:
-            f {function} -- function to initialize
-        
-        Keyword Arguments:
-            repo_info {RepoInfo} -- dictionary of the repo info (default: {RepoInfo()})
+        Args:
+            f (function): function to initialize
+            repo_info (RepoInfo): dictionary of the repo info}). Defaults to RepoInfo().
         """
 
         super(Function, self).__init__(repo_info)
@@ -627,12 +621,10 @@ class Result(RepoObject):
     def __init__(self, data, big_data = None, repo_info = RepoInfo()):
         """ the constructor
         
-        Arguments:
-            data {[type]} -- the data
-        
-        Keyword Arguments:
-            big_data {[type]} -- the big data (default: {None})
-            repo_info {RepoInfo} -- dictionary of the repo info (default: {RepoInfo()})
+        Args:
+            data ([type]): the data
+            big_data ([type]): the big data. Defaults to None.
+            repo_info (RepoInfo): dictionary of the repo info}). Defaults to RepoInfo().
         """
 
         super(Result, self).__init__(repo_info)
@@ -658,18 +650,18 @@ class CommitInfo(RepoObject):
     """Stores each commit including the commit message and the objects commited.
     
     Args:
-        :param message {string} -- commit message
-        :param author {string} -- author
-        objects {dictionary} --  dictionary of names of committed objects and version numbers
+        :param message (string): commit message
+        :param author (string): author
+        objects (dictionary):  dictionary of names of committed objects and version numbers
     
     """
     def __init__(self, message, author, objects, repo_info = RepoInfo()):
         """Constructor
         
         Args:
-            message {string} -- commit message
-            author {string} -- author
-            objects {dictionary} --  dictionary of names of committed objects and version numbers
+            message (string): commit message
+            author (string): author
+            objects (dictionary):  dictionary of names of committed objects and version numbers
         """
         super(CommitInfo, self).__init__(repo_info)
         self.message = message
@@ -690,12 +682,10 @@ class Label(RepoObject):
     def __init__(self, model_name, model_version, repo_info = RepoInfo()):
         """ constructor for labelling a model
         
-        Arguments:
-            model_name {str} -- the identifier of the model
-            model_version {str} -- the model version
-        
-        Keyword Arguments:
-            repo_info {RepoInfo} -- dictionary of the repo info (default: {RepoInfo()})
+        Args:
+            model_name (str): the identifier of the model
+            model_version (str): the model version
+            repo_info (RepoInfo): dictionary of the repo info}). Defaults to RepoInfo().
         """
 
         super(Label, self).__init__(repo_info)
@@ -717,12 +707,10 @@ class MeasureConfiguration(RepoObject):
     def __init__(self, measures, repo_info = RepoInfo()):
         """Constructor
         
-        Arguments:
-            measures {list} -- list containing defintions for measures. The list contains either tuples of string (describing measure type) and a list of strings 
+        Args:
+            measures (list): list containing defintions for measures. The list contains either tuples of string (describing measure type) and a list of strings 
             (containing names of coordinates used computing the measure) or only strings (just the measure types where we assume that then all coordinates are used o compute the measure)
-        
-        Keyword Arguments:
-            repo_info {RepoInfo} -- dictionary of the repo info (default: {RepoInfo()})
+            repo_info (RepoInfo): dictionary of the repo info}). Defaults to RepoInfo().
         """
 
         super(MeasureConfiguration, self).__init__(repo_info)
@@ -739,11 +727,9 @@ class MeasureConfiguration(RepoObject):
     def add_measure(self, measure, coords=None):
         """ add a measure to the repo object
         
-        Arguments:
-            measure {[type]} -- the measure 
-        
-        Keyword Arguments:
-            coords {[type]} -- the coordinates (default: {None})
+        Args:
+            measure ([type]): the measure 
+            coords ([type]): the coordinates. Defaults to None.
         """
 
         if not coords is None:
@@ -755,8 +741,8 @@ class MeasureConfiguration(RepoObject):
     def get_name(measure_def):
         """ function to return a name of the measure
         
-        Arguments:
-            measure_def {MeasureConfiguration} -- the measure definition
+        Args:
+            measure_def (MeasureConfiguration): the measure definition
         
         Returns:
             str -- the name of the measure
@@ -769,8 +755,8 @@ class MeasureConfiguration(RepoObject):
     def _create_name(measure_def):
         """ function to create a name from a measure definition
         
-        Arguments:
-            measure_def {MeasureConfiguration} -- the measure definition
+        Args:
+            measure_def (MeasureConfiguration): the measure definition
         
         Returns:
             str -- the name of the measure
@@ -803,11 +789,9 @@ class Measure(RepoObject):
 
         This constructor is used for the measure object
         
-        Arguments:
-            value {[type]} -- [description]
-        
-        Keyword Arguments:
-            repo_info {RepoInfo} -- dictionary of the repo info (default: {RepoInfo()})
+        Args:
+            value ([type]): [description]
+            repo_info (RepoInfo): dictionary of the repo info}). Defaults to RepoInfo().
         """
 
         super(Measure, self).__init__(repo_info)
@@ -822,33 +806,29 @@ class DataSet(RepoObject):
     This class refers to some RawData object and a start- and endindex. The repository 
 
     Args:
-        raw_data {str} -- id of raw_data the dataset refers to
-    
-    Keyword Args:
-        start_index {int} -- index of first entry of the raw data used in the dataset (default: {0})
-        end_index {int or None} -- end_index of last entry of the raw data used in the dataset (if None, all including last element are used) (default: {None})
-        raw_data_version {str} -- version of RawData object the DataSet refers to (default: {'last'})
-        repo_info {RepoInfo} -- dictionary of the repo info (default: {RepoInfo()})
+        raw_data (str): id of raw_data the dataset refers to
+        start_index (int): index of first entry of the raw data used in the dataset. Defaults to 0.
+        end_index (int or None): end_index of last entry of the raw data used in the dataset (if None, all including last element are used). Defaults to None.
+        raw_data_version (str): version of RawData object the DataSet refers to. Defaults to 'last'.
+        repo_info (RepoInfo): dictionary of the repo info}). Defaults to RepoInfo().
     
     Raises:
-        Exception -- raises an exception if the start index is after the end index
+        Exception: raises an exception if the start index is after the end index
     """
     
     def __init__(self, raw_data, start_index=0, 
         end_index=None, raw_data_version='last', repo_info = RepoInfo()):
         """ Constructor
         
-        Arguments:
-            raw_data {str} -- id of raw_data the dataset refers to
-        
-        Keyword Arguments:
-            start_index {int} -- index of first entry of the raw data used in the dataset (default: {0})
-            end_index {int or None} -- end_index of last entry of the raw data used in the dataset (if None, all including last element are used) (default: {None})
-            raw_data_version {str} -- version of RawData object the DataSet refers to (default: {'last'})
-            repo_info {RepoInfo} -- dictionary of the repo info (default: {RepoInfo()})
+        Args:
+            raw_data (str): id of raw_data the dataset refers to
+            start_index (int): index of first entry of the raw data used in the dataset. Defaults to 0.
+            end_index (int or None): end_index of last entry of the raw data used in the dataset (if None, all including last element are used). Defaults to None.
+            raw_data_version (str): version of RawData object the DataSet refers to. Defaults to 'last'.
+            repo_info (RepoInfo): dictionary of the repo info}). Defaults to RepoInfo().
         
         Raises:
-            Exception -- raises an exception if the start index is after the end index
+            Exception: raises an exception if the start index is after the end index
         """
 
         super(DataSet, self).__init__(repo_info)
@@ -864,11 +844,11 @@ class DataSet(RepoObject):
     def set_data(self, raw_data):
         """Set the data from the given raw_data.
         
-        Arguments:
-            raw_data {RawData} -- the raw data used to set the data from
+        Args:
+            raw_data (RawData): the raw data used to set the data from
         
         Raises:
-            Exception -- if end_index id less than start_index
+            Exception: if end_index id less than start_index
         
         """
 

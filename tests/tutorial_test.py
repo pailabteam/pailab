@@ -77,7 +77,7 @@ class TutorialTest(unittest.TestCase):
         # end specifying job runner
         job_runner._throw_job_error = True
 
-        from pailab.tools.tools import MLTree
+        from pailab.tools.tree import MLTree
         MLTree.add_tree(ml_repo)
 
         # A convenient way to add RawData is simply to use the method add on the raw_data collection.
