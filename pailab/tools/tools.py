@@ -53,6 +53,8 @@ class _CachedResults(repo_objects.RepoObject):
                 self.repo_x = x
             else:
                 self.x = x
+                if isinstance(x, np.ndarray):
+                    self.repo_info[RepoInfoKey.BIG_OBJECTS].append('x')
 
     def _add_object(self, obj, counter):
         # repo objects are added separately to the repo
