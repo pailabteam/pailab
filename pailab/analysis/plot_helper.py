@@ -271,7 +271,7 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
                                str(eval_d.repo_info[RepoInfoKey.VERSION])] = tmp
     return result
 
-def get_ptws_error_dist_mdm(ml_repo, model, data, x_coords = None, y_coords = None, start_index = 0, end_index=-1, percentile = 0.1, 
+def get_ptws_error_dist_mmd(ml_repo, model, data, x_coords = None, y_coords = None, start_index = 0, end_index=-1, percentile = 0.1, 
                             cache = True, scale = True, metric='rbf',  **kwds):
     """Returns Squared Maximum Mean Distance (MMD) between the distributions of the x-data w.r.t. a percentile of the absolute pointwise
         errors along the y-coordinates.
