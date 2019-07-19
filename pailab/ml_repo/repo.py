@@ -1993,15 +1993,23 @@ class MLRepo:
             model_version (str): model version for which the label is set.. Defaults to repo_store.RepoStore.LAST_VERSION.
             message (str): commit message. Defaults to ''.
         """
-        
+        # check if label with same model and model version already exists
         model = self._get_default_object_name(model, MLObjectType.CALIBRATED_MODEL)
+        tmp = self.get(label_name, throw_error_not_exist=False)
+        
         # check if a model with this version exists
         m = self.get(model)
         if model_version == repo_store.RepoStore.LAST_VERSION:
             model_version = m.repo_info[RepoInfoKey.VERSION]
+
+        if not tmp == []:
+            if isinstance(tmp,list):
+                tmp=tmp[0]
+            if tmp.name == model and model_version == tmp.version:
+                return
         label = repo_objects.Label(model, model_version, repo_info={RepoInfoKey.NAME: label_name, 
             RepoInfoKey.CATEGORY: MLObjectType.LABEL.value})
-        self.add(label)        
+        return self.add(label)        
         
     def push(self):
         """ Push changes to an external repo.
