@@ -13,7 +13,7 @@ Note:
     of future work.
 """
 import numpy as np
-from collections2 import OrderedDict
+from collections import OrderedDict
 
 import torch
 import torch.nn as nn
