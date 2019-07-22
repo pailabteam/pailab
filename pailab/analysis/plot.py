@@ -360,7 +360,7 @@ def histogram_data_conditional_error(ml_repo, models, data, x_coordinate, y_coor
         n_bins (int, optional): Defaults to None. Number of bin of histogram.
     """
     if x_coordinate is None or y_coordinate is None:
-        tmp =  pd.DataFrame.from_dict( plot_helper.get_ptws_error_dist_mdm(ml_repo, models, data, x_coordinate,
+        tmp =  pd.DataFrame.from_dict( plot_helper.get_ptws_error_dist_mmd(ml_repo, models, data, x_coordinate,
                      y_coordinate, start_index=start_index, end_index=end_index, percentile = percentile)
             )
         tmp = tmp.sort_values(['mmd'])

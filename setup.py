@@ -46,7 +46,6 @@ setup(name='pailab',
           'all': all_dependencies,
           'sklearn': sklearn,
           'tensorflow': tensorflow,
-          ':python_version>="3.4"': ['futures'],
       },
       include_package_data=True,
       zip_safe=False)
