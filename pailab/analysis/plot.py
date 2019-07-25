@@ -376,7 +376,7 @@ def histogram_data_conditional_error(ml_repo, models, data, x_coordinate, y_coor
         tmp =  pd.DataFrame.from_dict( plot_helper.get_ptws_error_dist_mmd(ml_repo, models, data, x_coordinate,
                      y_coordinate, start_index=start_index, end_index=end_index, percentile = percentile,  metric='rbf',  **kwds)
             )
-        tmp = tmp.sort_values(['mmd'])
+        tmp = tmp.sort_values(['mmd'], ascending = False)
         recommended_coordinates = set()
         for i in range(tmp.shape[0]):
             recommended_coordinates.add((tmp.iloc[i]['x-coord'], tmp.iloc[i]['y-coord'], ))
