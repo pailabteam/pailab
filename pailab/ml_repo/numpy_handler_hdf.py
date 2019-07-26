@@ -78,7 +78,7 @@ class NumpyHDFStorage(NumpyStore):
             name (str): identifier of the object
             version (str): the version id
         """
-
+        
         pass
 
     @staticmethod
