@@ -137,11 +137,11 @@ class RepoDiskStorageTest(unittest.TestCase):
         """Test deletion
         """
         obj = self._storage.get('obj') 
-        n_objs = len(self._storage.get('obj', version = (RepoStore.FIRST_VERSION, RepoStore.LAST_VERSION,)))
-        self._storage._delete('obj', obj.repo_info.version)
-        n_objs_new = len(self._storage.get('obj', version = (RepoStore.FIRST_VERSION, RepoStore.LAST_VERSION,)))
-        self.assertEqual(objs-1, n_objs_new)
-        
+        n_objs = len(self._storage.get('obj', versions = (RepoStore.FIRST_VERSION, RepoStore.LAST_VERSION,)))
+        self._storage._delete('obj', obj[0]['repo_info']['version'])
+        n_objs_new = len(self._storage.get('obj', versions = (RepoStore.FIRST_VERSION, RepoStore.LAST_VERSION,)))
+        self.assertEqual(n_objs-1, n_objs_new)
+
 
 
 

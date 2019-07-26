@@ -884,6 +884,8 @@ class NumpyHDFRemoteStorageTest(unittest.TestCase):
         def _upload_file(self,  local_filename, remote_filename):
             shutil.copyfile(local_filename, self.directory + '/' + remote_filename)
 
+        def _delete_file(self, filename):
+            pass
 
     def setUp(self):
         try:
@@ -949,7 +951,7 @@ class NumpyHDFRemoteStorageTest(unittest.TestCase):
         except:
             succeeded = True
         self.assertTrue(succeeded)
-        
+
 
         
 
