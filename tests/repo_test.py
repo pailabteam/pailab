@@ -845,6 +845,29 @@ class NumpyHDFStorageTest(unittest.TestCase):
         self.assertEqual(test_data_get['test_data'].shape, test_data.shape)
         self.assertEqual(test_data[0,0,0], test_data_get['test_data'][0,0,0])
 
+    def test_delete(self):
+        """Test deletion of data.
+        """
+        test_data = np.full((1,5,5,6), 1.0)
+        self.store.add('test_4d', '1', {'test_data': test_data})
+        self.store._delete('test_4d', '1')
+        succeeded = False
+        try:
+            test_data_get = self.store.get('test_4d', '1')
+        except:
+            succeeded = True
+        self.assertTrue(succeeded)
+        self.store._version_files = True
+        # now test branch with different files
+        self.store.add('test_4d', '1', {'test_data': test_data})
+        self.store._delete('test_4d', '1')
+        succeeded = False
+        try:
+            test_data_get = self.store.get('test_4d', '1')
+        except:
+            succeeded = True
+        self.assertTrue(succeeded)
+
 class NumpyHDFRemoteStorageTest(unittest.TestCase):
     class RemoteDummy:
         """Dummy remote class to test NumpyHDFRemoteStorage.
@@ -915,6 +938,19 @@ class NumpyHDFRemoteStorageTest(unittest.TestCase):
         self.store.get('test_1', '1')
         self.assertTrue(os.path.exists('test_numpy_hdf5_remote/test_1_1.hdf5'))
         
+    def test_delete(self):
+        test_data = np.full((1,5), 1.0)
+        self.store._sync_add = True
+        self.store.add('test_1', '1', {'test_data': test_data})
+        self.store._delete('test_1', '1')
+        succeeded = False
+        try:
+            test_data_get = self.store.get('test_1', '1')
+        except:
+            succeeded = True
+        self.assertTrue(succeeded)
+        
+
         
 
 

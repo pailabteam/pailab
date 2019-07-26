@@ -133,6 +133,19 @@ class RepoDiskStorageTest(unittest.TestCase):
         self.assertTrue(
             obj[1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions[1])
 
+    def test_delete(self):
+        """Test deletion
+        """
+        obj = self._storage.get('obj') 
+        n_objs = len(self._storage.get('obj', version = (RepoStore.FIRST_VERSION, RepoStore.LAST_VERSION,)))
+        self._storage._delete('obj', obj.repo_info.version)
+        n_objs_new = len(self._storage.get('obj', version = (RepoStore.FIRST_VERSION, RepoStore.LAST_VERSION,)))
+        self.assertEqual(objs-1, n_objs_new)
+        
+
+
+
+
 
 if __name__ == '__main__':
     unittest.main()
