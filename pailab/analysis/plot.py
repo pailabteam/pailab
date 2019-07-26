@@ -363,9 +363,10 @@ def histogram_data_conditional_error(ml_repo, models, data, x_coordinate, y_coor
         models (str or dict): A dictionary of model names (or labels) to versions (a single version number, a range of versions or a list of versions) or 
             just a model name (in this case the latest version is used)
         data (str): name of dataset used for plotting
-        x_coordinate (str): Name of x coordinate for which the distribution will be plotted. If None, the method tries to find interesting coordinates where distribution of perentile differs to original distribution.
+        x_coordinate (str): Name of x coordinate for which the distribution will be plotted. If None, the method tries to find interesting coordinates
+             where distribution of perentile differs to original distribution.
         y_coordinate (str, optional): Name of y-coordinate for which the error is determined. Defaults to 0 (use first y-coordinate). 
-            If None, the method tries to find interesting coordinates where distribution of perentile differs to original distribution.
+            If None, the method tries to find interesting coordinates where distribution of percentile differs to original distribution.
         start_index (int, optional): Defaults to 0. Startindex of data.
         end_index (int, optional): Defaults to -1. Endindex of data.
         percentile (float, optional): Defaults to 0.1. Percentage of largest absolute errors used.
@@ -381,15 +382,15 @@ def histogram_data_conditional_error(ml_repo, models, data, x_coordinate, y_coor
     
     """
     if x_coordinate is None or y_coordinate is None:
+        logger.info('Start computing recommendations for coordinates.')
         tmp =  pd.DataFrame.from_dict( plot_helper.get_ptws_error_dist_mmd(ml_repo, models, data, x_coordinate,
                      y_coordinate, start_index=start_index, end_index=end_index, percentile = percentile,  metric='rbf',  **kwds)
             )
         tmp = tmp.sort_values(['mmd'], ascending = False)
         recommended_coordinates = set()
-        for i in range(tmp.shape[0]):
+        for i in range(min(tmp.shape[0], n_hist)):
             recommended_coordinates.add((tmp.iloc[i]['x-coord'], tmp.iloc[i]['y-coord'], ))
-            if len(recommended_coordinates) > n_hist:
-                break
+        logger.info('Finished computing recommendations for coordinates.')
         for coord in recommended_coordinates:
             histogram_data_conditional_error(ml_repo, models, data, coord[0], coord[1],
                 start_index, end_index, percentile, n_bins, n_hist)
