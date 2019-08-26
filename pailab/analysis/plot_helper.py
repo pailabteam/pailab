@@ -2,6 +2,7 @@
 such as axes labels, titles, additional info which may be shown on hover in the plot encapsulated in a dictionary.
 """
 
+import numpy as np
 import logging
 import warnings
 from pailab.ml_repo.repo import MLObjectType, MLRepo, NamingConventions  # pylint: disable=E0401,E0611
@@ -58,7 +59,7 @@ class _LabelChecker:
 
     def get_model_and_version(self, label_name):
         """Returns a tuple of model and version if a label with label_name exists, otherwise it returns None.
-        
+
         Args:
             label_name (str): Name of potential label
         """
@@ -67,6 +68,7 @@ class _LabelChecker:
                 if label == label_name:
                     return model_name, version
         return None
+
 
 def get_measure_by_parameter(ml_repo, measure_names, param_name, data_versions=LAST_VERSION, training_param=False):
     """Returns for a (list of) measure(s) the measures and corresponding param values for a certain parameter 
@@ -95,7 +97,8 @@ def get_measure_by_parameter(ml_repo, measure_names, param_name, data_versions=L
     for measure_name in measure_names:
         data = str(NamingConventions.Data(NamingConventions.EvalData(
             NamingConventions.Measure(measure_name))))
-        measures = ml_repo.get(measure_name, version=None, modifier_versions={data: data_versions})
+        measures = ml_repo.get(measure_name, version=None,
+                               modifier_versions={data: data_versions})
         if not isinstance(measures, list):
             measures = [measures]
         model_name = NamingConventions.CalibratedModel(
@@ -117,7 +120,8 @@ def get_measure_by_parameter(ml_repo, measure_names, param_name, data_versions=L
             try:
                 param_value = _get_value_by_path(p.get_params(), param_name)
                 # get train data version
-                model = ml_repo.get(model_name, version = x.repo_info.modification_info[model_name])
+                model = ml_repo.get(
+                    model_name, version=x.repo_info.modification_info[model_name])
                 info = {'model_version': x.repo_info[RepoInfoKey.MODIFICATION_INFO][model_name],
                         param_name: param_value, 'param_version': p.repo_info[RepoInfoKey.VERSION],
                         'data_version': x.repo_info[RepoInfoKey.MODIFICATION_INFO][data],
@@ -130,22 +134,25 @@ def get_measure_by_parameter(ml_repo, measure_names, param_name, data_versions=L
                 result.append(info)
             except:
                 n_warnings += 1
-                logger.warning('Could no retrieve parameter ' + p_name + ' for ' + p.repo_info.name + ', version ' + p.repo_info.version)
+                logger.warning('Could no retrieve parameter ' + p_name + ' for ' +
+                               p.repo_info.name + ', version ' + p.repo_info.version)
         if n_warnings > 1:
-            warnings.warn('There are ' + str(n_warnings) + ' cases where the parameter could not be retrieved. See logging (logevel warning) for details.')
+            warnings.warn('There are ' + str(n_warnings) +
+                          ' cases where the parameter could not be retrieved. See logging (logevel warning) for details.')
         result_all[measure_name] = result
     return result_all
 
 
-def _get_obj_dict(ml_repo, objs, label_checker = None, category = None, _objs = None):
+def _get_obj_dict(ml_repo, objs, label_checker=None, category=None, _objs=None):
     if _objs is None:
         _objs = {}
     # first determine models (including their respective version) to be plotted
+
     def add_obj(obj_name, obj_version, objs_):
         if obj_name in objs_.keys():
             if isinstance(obj_version, list):
                 objs_[obj_name].extend(obj_version)
-            else: 
+            else:
                 objs_[obj_name].append(obj_version)
         else:
             if isinstance(obj_version, list):
@@ -167,7 +174,7 @@ def _get_obj_dict(ml_repo, objs, label_checker = None, category = None, _objs = 
             else:
                 names = ml_repo.get_names(category)
             for n in names:
-                _get_obj_dict(ml_repo, n, category = category, _objs = _objs)
+                _get_obj_dict(ml_repo, n, category=category, _objs=_objs)
     elif isinstance(objs, tuple):
         add_obj(objs[0], objs[1], _objs)
     elif isinstance(objs, str):
@@ -181,14 +188,15 @@ def _get_obj_dict(ml_repo, objs, label_checker = None, category = None, _objs = 
             add_obj(objs, LAST_VERSION, _objs)
     elif isinstance(objs, dict):
         # check if some entry does contain a None entry->then the entry defines a label and must be replaced by model and version
-        _get_obj_dict(ml_repo, [(k,v,) for k,v in objs.items()], label_checker, category, _objs)
+        _get_obj_dict(
+            ml_repo, [(k, v,) for k, v in objs.items()], label_checker, category, _objs)
     else:
         for m in objs:
             _get_obj_dict(ml_repo, m, label_checker, category, _objs)
     return _objs
 
 
-def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_version=LAST_VERSION, x_coord_name=None, start_index = 0, end_index = -1):
+def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_version=LAST_VERSION, x_coord_name=None, start_index=0, end_index=-1):
     """Compute pointwise errors for given models and data.
 
     The method plots histograms between predicted and real values of a certain target variable for reference data and models. 
@@ -214,7 +222,8 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
         _data = [data]
 
     #_models = get_model_dict(ml_repo, models)
-    _models = _get_obj_dict(ml_repo, models, label_checker, MLObjectType.CALIBRATED_MODEL)
+    _models = _get_obj_dict(ml_repo, models, label_checker,
+                            MLObjectType.CALIBRATED_MODEL)
     ref_data = ml_repo.get(_data[0], version=data_version, full_object=False)
     coord = 0
     if coord_name is None:
@@ -243,7 +252,7 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
             logging.info('Retrieving eval data for model ' + tmp + ', versions ' +
                          str(m_versions) + ' and data ' + d + ', versions ' + str(data_version))
             eval_data = ml_repo.get(
-                    eval_data_name, version=None, modifier_versions={m_name: m_versions, d: data_version}, full_object=True)
+                eval_data_name, version=None, modifier_versions={m_name: m_versions, d: data_version}, full_object=True)
             if not isinstance(eval_data, list):
                 eval_data = [eval_data]
             for eval_d in eval_data:
@@ -271,11 +280,12 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
                                str(eval_d.repo_info[RepoInfoKey.VERSION])] = tmp
     return result
 
-def get_ptws_error_dist_mmd(ml_repo, model, data, x_coords = None, y_coords = None, start_index = 0, end_index=-1, percentile = 0.1, 
-                            cache = True, scale = True, metric='rbf',  **kwds):
+
+def get_ptws_error_dist_mmd(ml_repo, model, data, x_coords=None, y_coords=None, start_index=0, end_index=-1, percentile=0.1,
+                            cache=True, scale=True, metric='rbf',  **kwds):
     """Returns Squared Maximum Mean Distance (MMD) between the distributions of the x-data w.r.t. a percentile of the absolute pointwise
         errors along the y-coordinates.
-    
+
     Args:
         ml_repo (MLRepo): [description]
         model (str or dict): A dictionary of model names (or labels) to versions (a single version number, a range of versions or a list of versions) or 
@@ -298,28 +308,30 @@ def get_ptws_error_dist_mmd(ml_repo, model, data, x_coords = None, y_coords = No
             Currently, sklearn provides the following strings: ‘additive_chi2’, ‘chi2’, ‘linear’, ‘poly’, ‘polynomial’, ‘rbf’,
                                                 ‘laplacian’, ‘sigmoid’, ‘cosine’ 
         **kwds: optional keyword parameters that are passed directly to the kernel function.
-    
+
     Returns:
         list of dict: List of dictionary where each dictionary contains the squared MMD as well as the name 
         and version of underlying data and model and the x- and y-coordinates used.
 
     """
     label_checker = _LabelChecker(ml_repo)
-    tmp = _get_obj_dict(ml_repo, model, label_checker, MLObjectType.CALIBRATED_MODEL)
+    tmp = _get_obj_dict(ml_repo, model, label_checker,
+                        MLObjectType.CALIBRATED_MODEL)
     _models = []
     for m, m_tmp in tmp.items():
         for m_v in m_tmp:
-            tmp = ml_repo.get(m, version = m_v, throw_error_not_unique=False)
+            tmp = ml_repo.get(m, version=m_v, throw_error_not_unique=False)
             if isinstance(tmp, list):
                 _models.extend(tmp)
             else:
                 _models.append(tmp)
-    
-    tmp = _get_obj_dict(ml_repo, data, None, [MLObjectType.TRAINING_DATA, MLObjectType.TEST_DATA])
+
+    tmp = _get_obj_dict(ml_repo, data, None, [
+                        MLObjectType.TRAINING_DATA, MLObjectType.TEST_DATA])
     _data = []
     for d, d_tmp in tmp.items():
         for d_v in d_tmp:
-            tmp = ml_repo.get(d, version = d_v, throw_error_not_unique=False)
+            tmp = ml_repo.get(d, version=d_v, throw_error_not_unique=False)
             if isinstance(tmp, list):
                 _data.extend(tmp)
             else:
@@ -332,7 +344,7 @@ def get_ptws_error_dist_mmd(ml_repo, model, data, x_coords = None, y_coords = No
         cache_ = None
     # set coordinates
     #
-    
+
     if x_coords is not None:
         if isinstance(x_coords, int) or isinstance(x_coords, str):
             x_coords = [x_coords]
@@ -346,37 +358,39 @@ def get_ptws_error_dist_mmd(ml_repo, model, data, x_coords = None, y_coords = No
         for i in range(len(y_coords)):
             if isinstance(y_coords[i], str):
                 y_coords[i] = _data[0].y_coord_names.index(y_coords[i])
-   
 
-    
     # loop over models and data
     #
     for m in _models:
         for d in _data:
             _eval_data_name = str(
-                    NamingConventions.EvalData(data=d.repo_info.name, model=m.repo_info.name.split('/')[0]))
-            eval_data = ml_repo.get(_eval_data_name, None, modifier_versions = {m.repo_info.name: m.repo_info.version}, full_object = True)
-            tmp = ml_repo.get(d.repo_info.name, version = d.repo_info.version, full_object = True)
-            mmd = _get_MMD2_X_vs_abs_ptw_error_percentile(tmp, eval_data, x_coords, y_coords, cache = cache_, percentile=percentile, scale=scale, metric=metric, **kwds)
+                NamingConventions.EvalData(data=d.repo_info.name, model=m.repo_info.name.split('/')[0]))
+            eval_data = ml_repo.get(_eval_data_name, None, modifier_versions={
+                                    m.repo_info.name: m.repo_info.version}, full_object=True)
+            tmp = ml_repo.get(d.repo_info.name,
+                              version=d.repo_info.version, full_object=True)
+            mmd = _get_MMD2_X_vs_abs_ptw_error_percentile(
+                tmp, eval_data, x_coords, y_coords, cache=cache_, percentile=percentile, scale=scale, metric=metric, **kwds)
             if x_coords is not None:
                 x_coord_names = [d.x_coord_names[i] for i in x_coords]
             else:
                 x_coord_names = d.x_coord_names
-            
+
             if y_coords is not None:
                 y_coord_names = [d.y_coord_names[i] for i in y_coords]
             else:
                 y_coord_names = d.y_coord_names
-            
+
             for i in range(len(x_coord_names)):
                 for j in range(len(y_coord_names)):
-                    result.append({'model': m.repo_info.name , 'model version': m.repo_info.version, 'data': d.repo_info.name, 
-                        'data version': d.repo_info.version, 'x-coord': x_coord_names[i], 'y-coord': y_coord_names[j], 'mmd': mmd[i,j]})
+                    result.append({'model': m.repo_info.name, 'model version': m.repo_info.version, 'data': d.repo_info.name,
+                                   'data version': d.repo_info.version, 'x-coord': x_coord_names[i], 'y-coord': y_coord_names[j], 'mmd': mmd[i, j]})
     return result
 
 
-def get_data(ml_repo, data, x0_coord_name, x1_coord_name=None, start_index = 0, end_index = -1):
-    data_dict = _get_obj_dict(ml_repo, data, category=[MLObjectType.TRAINING_DATA, MLObjectType.TEST_DATA])
+def get_data(ml_repo, data, x0_coord_name, x1_coord_name=None, start_index=0, end_index=-1):
+    data_dict = _get_obj_dict(ml_repo, data, category=[
+                              MLObjectType.TRAINING_DATA, MLObjectType.TEST_DATA])
     result = {'title': 'data distribution', 'data': {}}
     result['data'] = {}
     if x1_coord_name is not None:
@@ -396,7 +410,7 @@ def get_data(ml_repo, data, x0_coord_name, x1_coord_name=None, start_index = 0, 
                     x0_coord_name = d.x_coord_names[x0_coord_name]
             if x1_coord_name is not None:
                 y_coord = d.x_coord_names.index(x1_coord_name)
-            tmp = {'info': {k:v}}
+            tmp = {'info': {k: v}}
             tmp['x0'] = d.x_data[start_index:end_index, x_coord]
             if y_coord is not None:
                 tmp['x1'] = d.x_data[:, y_coord]
@@ -452,19 +466,19 @@ def get_measure_history(ml_repo, measure_names):
         result_all[measure_name] = result
     return result_all
 
-import numpy as np
-def project(ml_repo, model = None, labels = None, left = None, right=None,
-         output_index = 0, n_steps = 100):
+
+def project(ml_repo, model=None, labels=None, left=None, right=None,
+            output_index=0, n_steps=100):
     if left is None or right is None:
         raise Exception('Please specify left and right points.')
-    steps = [0.0 + float(x)/float(n_steps-1) for x in range(n_steps) ]
+    steps = [0.0 + float(x)/float(n_steps-1) for x in range(n_steps)]
     # compute input for evaluation
     shape = (len(steps),)
     shape += left.shape
     x_data = np.empty(shape=shape)
     for i in range(len(steps)):
         x_data[i] = (1.0-steps[i])*left + steps[i]*right
-    
+
     result = {}
     models = []
     if labels is None:
@@ -475,22 +489,23 @@ def project(ml_repo, model = None, labels = None, left = None, right=None,
     if model is None:
         tmp = ml_repo.get_names(MLObjectType.CALIBRATED_MODEL)
         if len(tmp) == 1:
-            m  = ml_repo.get(tmp[0])
+            m = ml_repo.get(tmp[0])
             models.append((tmp[0], m.repo_info.version, 'latest'))
     else:
-        m  = ml_repo.get(model)
+        m = ml_repo.get(model)
         model.append((model, m.repo_info.version, 'latest'))
-        
+
     data = RawData(x_data, [""]*x_data.shape[1])
     for model in models:
         tmp = ml_repo.get(model[0], version=model[1], full_object=True)
         model_name = model[0].split('/')[0]
-        model_def = ml_repo.get(model_name, tmp.repo_info.modification_info[model_name])
+        model_def = ml_repo.get(
+            model_name, tmp.repo_info.modification_info[model_name])
         eval_func = ml_repo.get(model_def.eval_function)
         tmp = eval_func.create()(tmp, data)
         if len(tmp.shape) == 1:
             result[model[2]] = tmp
         elif len(tmp.shape) == 2:
-            result[model[2]] = tmp[:,output_index]
-        
+            result[model[2]] = tmp[:, output_index]
+
     return result
