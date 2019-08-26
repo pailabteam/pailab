@@ -33,7 +33,7 @@ setup(name='pailab',
       description='pailab the integrated machine learning workbench',
       long_description=readme(),
       classifiers=[
-          'Development Status :: 3 - Alpha',
+          'Development Status :: 4 - Beta',
       ],
       keywords='platform ml version-control neural-network ml-workbench ai big data',
       url='https://github.com/pailabteam/pailab',
