@@ -64,6 +64,7 @@ class TensorflowKerasTrainingParameter:
         self.epochs = epochs
         self.batch_size = batch_size
         self.validation_split = validation_split
+        self.reduceLROnPlateau = None
 
         self.tensorboard = {'log_dir': None, 'histogram_freq': 10,
                             'batch_size': 32, 'write_graph': True, 'write_grads': False}
@@ -77,8 +78,12 @@ class TensorflowKerasTrainingParameter:
         result['optimizer_parameter'] = self.optimizer_parameter
         result['loss'] = self.loss
 
-        result['np_random_seed'] = self.np_random_seed
-        result['tf_random_seed'] = self.tf_random_seed
+        if hasattr(self, 'reduceLROnPlateau'):
+            result['reduceLROnPlateau'] = self.reduceLROnPlateau
+        if hasattr(self, 'np_random_seed'):
+            result['np_random_seed'] = self.np_random_seed
+        if hasattr(self, 'tf_random_seed'):
+            result['tf_random_seed'] = self.tf_random_seed
         
         result['epochs'] = self.epochs
         result['batch_size'] = self.batch_size
@@ -143,7 +148,8 @@ def train_keras_tensorflow(model_param, train_param, data, verbose=0):
             tb_param = copy.deepcopy(train_param.tensorboard)
             tb_param['log_dir'] = tb_param['log_dir'] + '/' + dt.datetime.now().strftime("%Y%m%dT%H%M%S")
             cb.append(tf.keras.callbacks.TensorBoard(profile_batch=0, **tb_param))
-        #reduce_lr = ReduceLROnPlateau(monitor = 'loss', factor=0.8, patience=100, min_lr=0.00001)
+        if train_param.reduceLROnPlateau:
+            cb.append(tf.keras.callbacks.ReduceLROnPlateau(**train_param.reduceLROnPlateau))
 
         # fix random seed for reproducibility
         model = Sequential.from_config(model_param.param)

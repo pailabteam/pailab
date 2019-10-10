@@ -16,14 +16,15 @@ try:
     from sklearn import preprocessing
 except ImportError:
     import warnings
-    warnings.warn('No sklearn installed, some functions of this submodule may not be usable.')
+    warnings.warn(
+        'No sklearn installed, some functions of this submodule may not be usable.')
     has_sklearn = False
 
 
 @ml_cache
 def _compute_ice(data, model_eval_function, model,
                  y_coordinate, x_coordinate,
-                 x_values, start_index = 0, end_index = -1, scale=''):
+                 x_values, start_index=0, end_index=-1, scale=''):
     """Independent conditional expectation plot
 
     Args:
@@ -42,7 +43,7 @@ def _compute_ice(data, model_eval_function, model,
         [type]: [description]
     """
     x_data = data.x_data[start_index:end_index, :]
-    
+
     # compute input for evaluation
     shape = (x_data.shape[0], len(x_values),)  # x_data.shape[1:]
     _x_data = np.empty(shape=(len(x_values), ) + x_data.shape[1:])
@@ -65,9 +66,10 @@ def _compute_ice(data, model_eval_function, model,
         elif y_coordinate == 0:
             y = tmp[:]
         else:
-            raise Exception('Evaluation data is just an array but y_coordinate > 0.')
+            raise Exception(
+                'Evaluation data is just an array but y_coordinate > 0.')
         if use_scaling:
-            nom = 1.0 / max(np.linalg.norm(y, ord = scale), 1e-10)
+            nom = 1.0 / max(np.linalg.norm(y, ord=scale), 1e-10)
         result[i] = nom * y
     return result
 
@@ -139,15 +141,18 @@ class ICE_Results:
 
     def _validate_for_comparison(self, ice_results_2):
         if self.data_name != ice_results_2.data_name:
-            raise Exception('Cannot compare two ice results on different data, ice_results_1 : ' + self.data_name + ', ice_results_2: ' + ice_results_2.data_name)
+            raise Exception('Cannot compare two ice results on different data, ice_results_1 : ' +
+                            self.data_name + ', ice_results_2: ' + ice_results_2.data_name)
         if self.data_version != ice_results_2.data_version:
-            raise Exception('Cannot compare two ice results on different data, ice_results_1 : ' + self.data_version + ', ice_results_2: ' + ice_results_2.data_version)
+            raise Exception('Cannot compare two ice results on different data, ice_results_1 : ' +
+                            self.data_version + ', ice_results_2: ' + ice_results_2.data_version)
         if self.start_index != ice_results_2.start_index:
-            raise Exception('Cannot compare two ice results with different start_index, ice_results_1 : ' + str(self.start_index) + ', ice_results_2: ' + str(ice_results_2.start_index))
-    
+            raise Exception('Cannot compare two ice results with different start_index, ice_results_1 : ' +
+                            str(self.start_index) + ', ice_results_2: ' + str(ice_results_2.start_index))
+
     def compute_cluster_average(self, ice_results_2,):
         """[summary]
-        
+
         Args:
             ice_results_2 ([type]): [description]
 
@@ -158,17 +163,18 @@ class ICE_Results:
         if self.cluster_centers is None:
             raise Exception("No clusters have been computed yet.")
         result = np.empty(self.cluster_centers.shape)
-        
+
         for i in range(self.cluster_centers.shape[0]):
             tmp = ice_results_2.ice[self.labels == i]
-            result[i] =  np.mean(tmp, axis = 0)
+            result[i] = np.mean(tmp, axis=0)
         return result
 
+
 def functional_clustering(x, scale='',
-                 n_clusters=20, random_state=42):
+                          n_clusters=20, random_state=42):
     """Given a set of different 1D functions (represented in matrix form where each row contains the function values on a given grid), this
         method clusters those functions and tries to find typical function structures.
-    
+
     Args:
         x (numpy matrix): Matrix containing in each row the function values at a datapoint.
         n_clusters (int, optional): Number of clusters for the functional clustering of the ICE curves. Defaults to 0.
@@ -183,23 +189,24 @@ def functional_clustering(x, scale='',
         numpy matrix: Contains in each row a cluster centroid.
     """
     if not has_sklearn:
-        raise Exception('Cannot apply functional clustering: No sklearn installed. Please either install sklearn or set n_clusters to zero.')
+        raise Exception(
+            'Cannot apply functional clustering: No sklearn installed. Please either install sklearn or set n_clusters to zero.')
     k_means = KMeans(init='k-means++', n_clusters=n_clusters,
-                    n_init=10, random_state=random_state)
+                     n_init=10, random_state=random_state)
     labels = k_means.fit_predict(x)
     # now store for each data point the distance to the respectiv cluster center
     distance_to_clusters = k_means.transform(x)
-    cluster_centers =  k_means.cluster_centers_
+    cluster_centers = k_means.cluster_centers_
     return labels, distance_to_clusters, cluster_centers
 
 
 @ml_cache
 def _compute_and_cluster_ice(data, model_eval_function, model,
-                 y_coordinate, x_coordinate,
-                 x_values, start_index = 0, end_index = -1, scale='',
-                 n_clusters=20, random_state=42, clustering_param = None):
+                             y_coordinate, x_coordinate,
+                             x_values, start_index=0, end_index=-1, scale='',
+                             n_clusters=20, random_state=42, clustering_param=None):
     """[summary]
-    
+
     Args:
         data ([type]): [description]
         model_eval_function ([type]): [description]
@@ -210,7 +217,7 @@ def _compute_and_cluster_ice(data, model_eval_function, model,
         start_index (int, optional): [description]. Defaults to 0.
         end_index (int, optional): [description]. Defaults to -1.
         clustering_param (dict or None, optional): Default to None
-        
+
     Returns:
         list of doubles: the x-values used to compute ICE
         numpy matrix: Each row contains the ice values
@@ -223,20 +230,22 @@ def _compute_and_cluster_ice(data, model_eval_function, model,
     if isinstance(y_coordinate, str):
         y_coordinate = data.y_coord_names.index(y_coordinate)
     ice = _compute_ice(data, model_eval_function, model, y_coordinate, x_coordinate, x_values,
-                                 start_index=start_index, end_index=end_index, scale=scale)
+                       start_index=start_index, end_index=end_index, scale=scale)
     labels = None
     cluster_centers = None
     distance_to_clusters = None
     if clustering_param is not None:
-        labels, distance_to_clusters, cluster_centers = functional_clustering(ice, **clustering_param)
+        labels, distance_to_clusters, cluster_centers = functional_clustering(
+            ice, **clustering_param)
     return x_values, ice, labels, cluster_centers, distance_to_clusters
 
+
 def compute_ice(ml_repo, x_values, data, model=None, model_label=None, model_version=RepoStore.LAST_VERSION,
-                data_version=RepoStore.LAST_VERSION, y_coordinate=0, x_coordinate = 0,
-                start_index=0, end_index=-1, cache = False,
-                clustering_param = None, scale=''):
+                data_version=RepoStore.LAST_VERSION, y_coordinate=0, x_coordinate=0,
+                start_index=0, end_index=-1, cache=False,
+                clustering_param=None, scale=''):
     """Compute individual conditional expectation (ice) for a given dataset and model
-    
+
     Args:
         ml_repo (MLRepo): MLRepo used to retrieve model and data and be used in caching.
         x_values (list): List of x values for the ICE.
@@ -262,7 +271,7 @@ def compute_ice(ml_repo, x_values, data, model=None, model_label=None, model_ver
     """
     data_ = data
     if isinstance(data, str):
-        data_ = ml_repo.get(data, data_version, full_object = True)
+        data_ = ml_repo.get(data, data_version, full_object=True)
     if isinstance(x_coordinate, str):
         x_coordinate = data_.x_coord_names.index(x_coordinate)
     if isinstance(y_coordinate, str):
@@ -276,9 +285,9 @@ def compute_ice(ml_repo, x_values, data, model=None, model_label=None, model_ver
 
     result = ICE_Results()
     result.x_values, result.ice, result.labels, result.cluster_centers, result.distance_to_clusters = _compute_and_cluster_ice(data_, model_eval_f, model_,  y_coordinate,
-                     x_coordinate=x_coordinate, x_values=x_values, 
-                     start_index = start_index, end_index = end_index, cache=cache_,
-                     clustering_param=clustering_param, scale = scale)
+                                                                                                                               x_coordinate=x_coordinate, x_values=x_values,
+                                                                                                                               start_index=start_index, end_index=end_index, cache=cache_,
+                                                                                                                               clustering_param=clustering_param, scale=scale)
     result.x_coord_name = data_.x_coord_names[x_coordinate]
     result.y_coord_name = data_.y_coord_names[y_coordinate]
     result.data_name = data_.repo_info.name
@@ -288,9 +297,10 @@ def compute_ice(ml_repo, x_values, data, model=None, model_label=None, model_ver
     result.data_version = data_.repo_info.version
     return result
 
-def _compute_MMD_square(X,Y = None, metric = 'rbf', k_XX=None, k_YY=None, **kwds):
+
+def _compute_MMD_square(X, Y=None, metric='rbf', k_XX=None, k_YY=None, **kwds):
     """Compute the Maximum Mean Dicreapency (MMD) to measure how close two distributions are.
-    
+
     Args:
         X (numpy nd-array): X points used to approximate first distribution. 
         Y (numpy nd-array): Y points used to approximate second distribution. 
@@ -303,27 +313,29 @@ def _compute_MMD_square(X,Y = None, metric = 'rbf', k_XX=None, k_YY=None, **kwds
                                                 ‘laplacian’, ‘sigmoid’, ‘cosine’ 
         **kwds: optional keyword parameters
             Any further parameters are passed directly to the kernel function.
-    
+
     Returns:
         float: The squared MDM computed by [description]
     """
     if not has_sklearn:
-        raise Exception('This method needs functionality form sklearn but sklearn is not installed.')
+        raise Exception(
+            'This method needs functionality form sklearn but sklearn is not installed.')
     m = float(X.shape[0])
-   
+
     if k_XX is None:
-        k_XX = pairwise_kernels(X, metric=metric, **kwds).sum()/(m**2) 
+        k_XX = pairwise_kernels(X, metric=metric, **kwds).sum()/(m**2)
     if Y is None:
-        return  k_XX  
+        return k_XX
     n = float(Y.shape[0])
     if k_YY is None:
         k_YY = pairwise_kernels(Y, metric=metric, **kwds).sum()/(n**2)
     k_XY = pairwise_kernels(X, Y=Y, metric=metric, **kwds).sum()/(m*n)
     return k_XX + k_YY - 2.0*k_XY
 
-def _get_MMD2_X_vs_X_percentile(X, Y,  percentile = 0.1, scale = True, metric = 'rbf', **kwds):
+
+def _get_MMD2_X_vs_X_percentile(X, Y,  percentile=0.1, scale=True, metric='rbf', **kwds):
     """This method compares the distribution of X and of values of X whose indices belong to the respective percentile of Y.
-    
+
     Args:
         X (ndarray): X values for which the squared Maximum Mean Discrepancy to the subset of X described by indices defined as percentile of Y is computed.
         Y (ndarray): Y values used to compute indices belonging to the percentile.
@@ -337,7 +349,7 @@ def _get_MMD2_X_vs_X_percentile(X, Y,  percentile = 0.1, scale = True, metric = 
             Currently, sklearn provides the following strings: ‘additive_chi2’, ‘chi2’, ‘linear’, ‘poly’, ‘polynomial’, ‘rbf’,
                                                 ‘laplacian’, ‘sigmoid’, ‘cosine’ 
         **kwds: optional keyword parameters that are passed directly to the kernel function.
-    
+
     Returns:
         ndarray: Numpy nd array containing the respective squared MMD between the diffrent distributions.
     """
@@ -348,28 +360,29 @@ def _get_MMD2_X_vs_X_percentile(X, Y,  percentile = 0.1, scale = True, metric = 
         _X = X
     k_xx = [0]*X.shape[1]
     for i in range(X.shape[1]):
-        tmp = np.reshape(_X[:,i],(X.shape[0], 1, ))
+        tmp = np.reshape(_X[:, i], (X.shape[0], 1, ))
         #print('tmp: ' + str(tmp))
-        k_xx[i] = _compute_MMD_square(tmp, metric = metric, **kwds)
+        k_xx[i] = _compute_MMD_square(tmp, metric=metric, **kwds)
 
     for i in range(Y.shape[1]):
-        sorted_indices = np.argsort(Y[:,i])
-        i_start = int( (1.0-percentile)*len(sorted_indices))
+        sorted_indices = np.argsort(Y[:, i])
+        i_start = int((1.0-percentile)*len(sorted_indices))
         indices = sorted_indices[i_start:]
         #print('x_percentile: ' + str(x_percentile))
         for j in range(X.shape[1]):
-            x_percentile = np.reshape(_X[indices,j], (len(indices), 1, ) )
+            x_percentile = np.reshape(_X[indices, j], (len(indices), 1, ))
             #k_yy = _compute_MMD_square(x_percentile, metric = metric, **kwds)
-            x = np.reshape(_X[:,j], (len(sorted_indices), 1, ))
+            x = np.reshape(_X[:, j], (len(sorted_indices), 1, ))
             #print('k_xx: ' + str(k_xx[i]) + '   k_yy: ' + str(k_yy))
-            result[j,i] = _compute_MMD_square(x, x_percentile, k_XX = k_xx[j], metric = metric, **kwds)
+            result[j, i] = _compute_MMD_square(
+                x, x_percentile, k_XX=k_xx[j], metric=metric, **kwds)
     return result
 
 
 @ml_cache
-def _get_MMD2_X_vs_abs_ptw_error_percentile(X, Y_pred, x_coords = None, y_coords = None, percentile = 0.1, scale = True, metric = 'rbf', **kwds):
+def _get_MMD2_X_vs_abs_ptw_error_percentile(X, Y_pred, x_coords=None, y_coords=None, percentile=0.1, scale=True, metric='rbf', **kwds):
     """This method compares the distribution of X and of values of the pointwise absolut errors between Y_target and Y_pred.
-    
+
     Args:
         X (DataSet/RawData): X values for which the squared Maximum Mean Discrepancy to the subset of X described by indices defined as percentile of Y is computed.
         Y_pred (DataSet/RawData): predicted Y values
@@ -383,21 +396,21 @@ def _get_MMD2_X_vs_abs_ptw_error_percentile(X, Y_pred, x_coords = None, y_coords
             Currently, sklearn provides the following strings: ‘additive_chi2’, ‘chi2’, ‘linear’, ‘poly’, ‘polynomial’, ‘rbf’,
                                                 ‘laplacian’, ‘sigmoid’, ‘cosine’ 
         **kwds: optional keyword parameters that are passed directly to the kernel function.
-    
+
     Returns:
         ndarray: Numpy nd array containing the respective squared MMD between the diffrent distributions.
     """
     if y_coords is None:
         ptw_error = np.abs(X.y_data - Y_pred.x_data)
     else:
-        ptw_error = np.abs(X.y_data[:, y_coords] - Y_pred.x_data[:,y_coords])
+        ptw_error = np.abs(X.y_data[:, y_coords] - Y_pred.x_data[:, y_coords])
     if x_coords is None:
         return _get_MMD2_X_vs_X_percentile(X.x_data, ptw_error, percentile=percentile, scale=scale, metric=metric, **kwds)
     else:
         return _get_MMD2_X_vs_X_percentile(X.x_data[:, x_coords], ptw_error, percentile=percentile, scale=scale, metric=metric, **kwds)
 
 
-def _compute_MMD2(X, prototypes, metric = 'rbf', **kwds):
+def _compute_MMD2(X, prototypes, metric='rbf', **kwds):
     kernel_matrix = pairwise_kernels(X, metric=metric, **kwds)
     m = float(len(prototypes))
     n = float(kernel_matrix.shape[0])
@@ -406,9 +419,10 @@ def _compute_MMD2(X, prototypes, metric = 'rbf', **kwds):
     #print('2.0*kernel_matrix[prototypes, :].sum()/(m*n): ' + str(2.0*kernel_matrix[prototypes, :].sum()/(m*n)))
     return kernel_matrix.sum()/(n**2) + kernel_matrix[np.ix_(prototypes, prototypes)].sum()/(m**2) - 2.0*kernel_matrix[prototypes, :].sum()/(m*n)
 
-def _compute_prototypes(X, n_prototypes, n_criticisms, metric = 'rbf', witness_penalty = 1.0, **kwds):
+
+def _compute_prototypes(X, n_prototypes, n_criticisms, metric='rbf', witness_penalty=1.0, **kwds):
     """This methods computes for given datapoints prototypes and criticisms.
-    
+
     This methods computes for given datapoints prototypes and criticisms, i.e. datapoints from th given set that are typical representatives (prototypes) and datapoints
     that are not well representatives (criticisms). Here, a simple greedy algorithm using MDM2 is used to compute the prototypes and a witness function together
     with som simple penalty are used to compute the criticisms (see e.g. C. Molnar, Interpretable Machine Learning).
@@ -427,7 +441,7 @@ def _compute_prototypes(X, n_prototypes, n_criticisms, metric = 'rbf', witness_p
         witness_penalty (float): Penalty parameter to include some penalty to avoid to close criticisms. 
         **kwds: optional keyword parameters
             Any further parameters are passed directly to the kernel function.
-    
+
     Raises:
         Exception: If sklearn is not installed
 
@@ -436,29 +450,32 @@ def _compute_prototypes(X, n_prototypes, n_criticisms, metric = 'rbf', witness_p
         list of int: List of indices defining the datapoints which are the resulting criticisms.
     """
     if not has_sklearn:
-        raise Exception('This method needs functionality form sklearn but sklearn is not installed.')
+        raise Exception(
+            'This method needs functionality form sklearn but sklearn is not installed.')
     kernel_matrix = pairwise_kernels(X, metric=metric, **kwds)
     prototypes = []
     n = float(kernel_matrix.shape[0])
     if n_prototypes >= n:
-        raise Exception('Number of prototypes must be less then number of datapoints.')
+        raise Exception(
+            'Number of prototypes must be less then number of datapoints.')
     # To compute  prototypes we minimize the Maximum Mean Discrepancy (MDM), .. math::
     #     MDM^2 = \frac{1}{m^2}\sum_{i=1}^m \sum_{j=1}^m k(z_i,z_j) - \frac{2}{mn}\sum_{i=1}^m \sum_{j=1}^n k(z_i,x_j) + \frac{1}{n^2}\sum_{i=1}^n\sum_{j=1}^n k(x_i,x_j)
-    #     We are doing this using a greedy search, looking for the next prototype by simply computing which next datapoint reduces the current MDM most. 
+    #     We are doing this using a greedy search, looking for the next prototype by simply computing which next datapoint reduces the current MDM most.
     #     For this we compute simply
     #     the impact on the MDM if a new point x is used as a prototype. The impact is computed by .. math::
     #     \frac{2}{(m+1)^2}(k(x,x) + \sum{i=1}^mk(z_i,x)) -  \frac{2}{(m+1)n}\sum_{j=1}^n k(x,x_j)for i in range(n_prototypes):
     #max_impact  = 1.0e8
     for i in range(n_prototypes):
         m = float(len(prototypes))
-        max_impact  = 1.0e8
+        max_impact = 1.0e8
         new_prototype = None
         for candidate in range(kernel_matrix.shape[0]):
             if candidate not in prototypes:
-                impact = kernel_matrix[candidate][prototypes].sum()/((m+1)**2) - kernel_matrix[candidate,:].sum()/((m+1)*n)
+                impact = kernel_matrix[candidate][prototypes].sum(
+                )/((m+1)**2) - kernel_matrix[candidate, :].sum()/((m+1)*n)
                 if impact < max_impact:
                     new_prototype = candidate
-                    max_impact = impact    
+                    max_impact = impact
         if new_prototype is None:
             print(str(prototypes))
             raise Exception('Cannot find a new prototype.')
@@ -466,14 +483,15 @@ def _compute_prototypes(X, n_prototypes, n_criticisms, metric = 'rbf', witness_p
 
     m = float(len(prototypes))
     n = float(kernel_matrix.shape[0])
-    criticisms = []    
+    criticisms = []
     for i in range(n_criticisms):
-        m_criticisms = float(len(criticisms)) 
-        max_witness  = -1.0e8
+        m_criticisms = float(len(criticisms))
+        max_witness = -1.0e8
         new_criticism = None
         for candidate in range(kernel_matrix.shape[0]):
             if candidate not in criticisms:
-                witness = kernel_matrix[candidate].sum()/n - kernel_matrix[candidate][prototypes].sum()/m
+                witness = kernel_matrix[candidate].sum(
+                )/n - kernel_matrix[candidate][prototypes].sum()/m
                 if m_criticisms > 0:
                     regularizer = kernel_matrix[candidate][criticisms].max()
                 else:
@@ -488,11 +506,12 @@ def _compute_prototypes(X, n_prototypes, n_criticisms, metric = 'rbf', witness_p
 
     return prototypes, criticisms
 
-def generate_prototypes(ml_repo, data, n_prototypes, n_criticisms, data_version = RepoStore.LAST_VERSION,
-                        use_x = True, data_start_index=0, data_end_index = -1, metric = 'rbf', witness_penalty = 1.0, 
+
+def generate_prototypes(ml_repo, data, n_prototypes, n_criticisms, data_version=RepoStore.LAST_VERSION,
+                        use_x=True, data_start_index=0, data_end_index=-1, metric='rbf', witness_penalty=1.0,
                         **kwds):
     """This methods computes for a given test/training dataset prototypes and criticisms and adds them as separate test data sets to the repository. 
-    
+
     This methods computes for given test/training dataset prototypes and criticisms, i.e. datapoints from th given set that are typical representatives (prototypes) 
     and datapoints that are not well representatives (criticisms). Here, a simple greedy algorithm using MDM2 is used to compute the prototypes and a witness 
     function together with some simple penalty are used to compute the criticisms (see e.g. C. Molnar, Interpretable Machine Learning).
@@ -516,7 +535,7 @@ def generate_prototypes(ml_repo, data, n_prototypes, n_criticisms, data_version 
         witness_penalty (float): Penalty parameter to include some penalty to avoid to close criticisms. 
         **kwds: optional keyword parameters
             Any further parameters are passed directly to the kernel function.
-    
+
     Raises:
         Exception: If sklearn is not installed
 
@@ -525,7 +544,7 @@ def generate_prototypes(ml_repo, data, n_prototypes, n_criticisms, data_version 
         list of int: List of indices defining the datapoints which are the resulting criticisms.
     """
     if isinstance(data, str):
-        data = ml_repo.get(data, data_version, full_object = True)
+        data = ml_repo.get(data, data_version, full_object=True)
     if use_x:
         d = data.x_data[data_start_index:data_end_index]
         if d is None:
@@ -537,34 +556,39 @@ def generate_prototypes(ml_repo, data, n_prototypes, n_criticisms, data_version 
 
     std_scale = preprocessing.StandardScaler().fit(d)
     d = std_scale.transform(d)
-    prototypes, criticisms = _compute_prototypes(d, n_prototypes, n_criticisms, metric = metric, witness_penalty=witness_penalty, **kwds)
-    
+    prototypes, criticisms = _compute_prototypes(
+        d, n_prototypes, n_criticisms, metric=metric, witness_penalty=witness_penalty, **kwds)
+
     result_name = data.repo_info.name+'_'+'prototypes'
     if data.y_data is None:
-        result = RawData(data.x_data[data_start_index:data_end_index][prototypes], data.x_coord_names, repo_info = {RepoInfoKey.NAME: result_name,  
-                        RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA, 
-                        RepoInfoKey.MODIFICATION_INFO: {data.repo_info.name: data.repo_info.version}
-                    })
+        result = RawData(data.x_data[data_start_index:data_end_index][prototypes], data.x_coord_names, repo_info={RepoInfoKey.NAME: result_name,
+                                                                                                                  RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA,
+                                                                                                                  RepoInfoKey.MODIFICATION_INFO: {
+                                                                                                                      data.repo_info.name: data.repo_info.version}
+                                                                                                                  })
     else:
-        result = RawData(data.x_data[data_start_index:data_end_index][prototypes], data.x_coord_names, 
-            data.y_data[data_start_index:data_end_index][prototypes], data.y_coord_names, 
-            repo_info = {RepoInfoKey.NAME: result_name,  
-                        RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA, 
-                        RepoInfoKey.MODIFICATION_INFO: {data.repo_info.name: data.repo_info.version}
-                    })
+        result = RawData(data.x_data[data_start_index:data_end_index][prototypes], data.x_coord_names,
+                         data.y_data[data_start_index:data_end_index][prototypes], data.y_coord_names,
+                         repo_info={RepoInfoKey.NAME: result_name,
+                                    RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA,
+                                    RepoInfoKey.MODIFICATION_INFO: {
+                                        data.repo_info.name: data.repo_info.version}
+                                    })
     ml_repo.add(result)
 
     result_name = data.repo_info.name+'_'+'criticisms'
     if data.y_data is None:
-        result = RawData(data.x_data[data_start_index:data_end_index][criticisms], data.x_coord_names, repo_info = {RepoInfoKey.NAME: result_name,  
-                        RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA, 
-                        RepoInfoKey.MODIFICATION_INFO: {data.repo_info.name: data.repo_info.version}
-                    })
+        result = RawData(data.x_data[data_start_index:data_end_index][criticisms], data.x_coord_names, repo_info={RepoInfoKey.NAME: result_name,
+                                                                                                                  RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA,
+                                                                                                                  RepoInfoKey.MODIFICATION_INFO: {
+                                                                                                                      data.repo_info.name: data.repo_info.version}
+                                                                                                                  })
     else:
-        result = RawData(data.x_data[data_start_index:data_end_index][criticisms], data.x_coord_names, 
-            data.y_data[data_start_index:data_end_index][criticisms], data.y_coord_names, 
-            repo_info = {RepoInfoKey.NAME: result_name,  
-                        RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA, 
-                        RepoInfoKey.MODIFICATION_INFO: {data.repo_info.name: data.repo_info.version}
-                    })
+        result = RawData(data.x_data[data_start_index:data_end_index][criticisms], data.x_coord_names,
+                         data.y_data[data_start_index:data_end_index][criticisms], data.y_coord_names,
+                         repo_info={RepoInfoKey.NAME: result_name,
+                                    RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA,
+                                    RepoInfoKey.MODIFICATION_INFO: {
+                                        data.repo_info.name: data.repo_info.version}
+                                    })
     ml_repo.add(result)
