@@ -214,16 +214,18 @@ class Data:
 
         test_data_names = repo.get_names(MLObjectType.TEST_DATA)
         result = {}
-        for data in test_data_names:
-            test_data = repo.get(data)
-            if test_data.raw_data == training_data.raw_data:
-                test_data_raw = repo.get(
-                    test_data.raw_data, version=test_data.raw_data_version)
-                test_indices = compute_start_end_index(
-                    test_data, test_data_raw)
-                if overlap(training_indices, test_indices):
-                    result[data] = {'training and test data overlap': {
-                        data: test_data.repo_info.version, training_data.repo_info.name: training_data.repo_info.version}}
+        if hasattr(training_data, 'raw_data'):
+            for data in test_data_names:
+                test_data = repo.get(data)
+                if hasattr(test_data, 'raw_data'):
+                    if test_data.raw_data == training_data.raw_data:
+                        test_data_raw = repo.get(
+                            test_data.raw_data, version=test_data.raw_data_version)
+                        test_indices = compute_start_end_index(
+                            test_data, test_data_raw)
+                        if overlap(training_indices, test_indices):
+                            result[data] = {'training and test data overlap': {
+                                data: test_data.repo_info.version, training_data.repo_info.name: training_data.repo_info.version}}
         return result
 
     @staticmethod
