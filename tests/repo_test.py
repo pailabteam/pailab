@@ -540,7 +540,24 @@ class RepoTest(unittest.TestCase):
         # now test add_test_data
         ml_repo.add_test_data('test_data_dummy', 'raw_data/test1')
 
-
+    def test_add_label(self):
+        """Test adding a label and if adding same label does not change anything
+        """
+        names = self.repository.get_names(MLObjectType.CALIBRATED_MODEL)
+        model = self.repository.get(names[0])
+        self.repository.set_label('test_label', model.repo_info.name, model.repo_info.version)
+        label = self.repository.get('test_label')
+        if isinstance(label, list):
+            self.assertEqual(len(label), 1)
+        if label is None:
+            self.assertEqual(1,0)
+        # add label again althogu neither model nor version have been changed
+        self.repository.set_label('test_label', model.repo_info.name, model.repo_info.version)
+        
+        if isinstance(label, list):
+            self.assertEqual(len(label), 1)
+        if label is None:
+            self.assertEqual(1,0)
         
 
 class MLRepoConstructorTest(unittest.TestCase):

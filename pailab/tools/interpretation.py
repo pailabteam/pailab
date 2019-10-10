@@ -288,6 +288,115 @@ def compute_ice(ml_repo, x_values, data, model=None, model_label=None, model_ver
     result.data_version = data_.repo_info.version
     return result
 
+def _compute_MMD_square(X,Y = None, metric = 'rbf', k_XX=None, k_YY=None, **kwds):
+    """Compute the Maximum Mean Dicreapency (MMD) to measure how close two distributions are.
+    
+    Args:
+        X (numpy nd-array): X points used to approximate first distribution. 
+        Y (numpy nd-array): Y points used to approximate second distribution. 
+        metric (str or callable, optional): The metric to use when calculating kernel between instances in a feature array.
+            If metric is a string, it must be one of the metrics in sklearn.metrics.pairwise.PAIRWISE_KERNEL_FUNCTIONS. 
+            If metric is precomputed, X is assumed to be a kernel matrix. Alternatively, if metric is a callable function, 
+            it is called on each pair of instances (rows) and the resulting value recorded. 
+            The callable should take two arrays from X as input and return a value indicating the distance between them. 
+            Currently, sklearn provides the following strings: ‘additive_chi2’, ‘chi2’, ‘linear’, ‘poly’, ‘polynomial’, ‘rbf’,
+                                                ‘laplacian’, ‘sigmoid’, ‘cosine’ 
+        **kwds: optional keyword parameters
+            Any further parameters are passed directly to the kernel function.
+    
+    Returns:
+        float: The squared MDM computed by [description]
+    """
+    if not has_sklearn:
+        raise Exception('This method needs functionality form sklearn but sklearn is not installed.')
+    m = float(X.shape[0])
+   
+    if k_XX is None:
+        k_XX = pairwise_kernels(X, metric=metric, **kwds).sum()/(m**2) 
+    if Y is None:
+        return  k_XX  
+    n = float(Y.shape[0])
+    if k_YY is None:
+        k_YY = pairwise_kernels(Y, metric=metric, **kwds).sum()/(n**2)
+    k_XY = pairwise_kernels(X, Y=Y, metric=metric, **kwds).sum()/(m*n)
+    return k_XX + k_YY - 2.0*k_XY
+
+def _get_MMD2_X_vs_X_percentile(X, Y,  percentile = 0.1, scale = True, metric = 'rbf', **kwds):
+    """This method compares the distribution of X and of values of X whose indices belong to the respective percentile of Y.
+    
+    Args:
+        X (ndarray): X values for which the squared Maximum Mean Discrepancy to the subset of X described by indices defined as percentile of Y is computed.
+        Y (ndarray): Y values used to compute indices belonging to the percentile.
+        percentile (float, optional): The percentile used. Defaults to 0.1.
+        scale (bool, optional): If True, the x-values are scaled to zero mean and unit variance. Defaults to True.
+        metric (str or callable, optional): The metric to use when calculating kernel between instances in a feature array.
+            If metric is a string, it must be one of the metrics in sklearn.metrics.pairwise.PAIRWISE_KERNEL_FUNCTIONS. 
+            If metric is precomputed, X is assumed to be a kernel matrix. Alternatively, if metric is a callable function, 
+            it is called on each pair of instances (rows) and the resulting value recorded. 
+            The callable should take two arrays from X as input and return a value indicating the distance between them. 
+            Currently, sklearn provides the following strings: ‘additive_chi2’, ‘chi2’, ‘linear’, ‘poly’, ‘polynomial’, ‘rbf’,
+                                                ‘laplacian’, ‘sigmoid’, ‘cosine’ 
+        **kwds: optional keyword parameters that are passed directly to the kernel function.
+    
+    Returns:
+        ndarray: Numpy nd array containing the respective squared MMD between the diffrent distributions.
+    """
+    result = np.empty([X.shape[1], Y.shape[1]])
+    if scale:
+        _X = preprocessing.StandardScaler().fit_transform(X)
+    else:
+        _X = X
+    k_xx = [0]*X.shape[1]
+    for i in range(X.shape[1]):
+        tmp = np.reshape(_X[:,i],(X.shape[0], 1, ))
+        #print('tmp: ' + str(tmp))
+        k_xx[i] = _compute_MMD_square(tmp, metric = metric, **kwds)
+
+    for i in range(Y.shape[1]):
+        sorted_indices = np.argsort(Y[:,i])
+        i_start = int( (1.0-percentile)*len(sorted_indices))
+        indices = sorted_indices[i_start:]
+        #print('x_percentile: ' + str(x_percentile))
+        for j in range(X.shape[1]):
+            x_percentile = np.reshape(_X[indices,j], (len(indices), 1, ) )
+            #k_yy = _compute_MMD_square(x_percentile, metric = metric, **kwds)
+            x = np.reshape(_X[:,j], (len(sorted_indices), 1, ))
+            #print('k_xx: ' + str(k_xx[i]) + '   k_yy: ' + str(k_yy))
+            result[j,i] = _compute_MMD_square(x, x_percentile, k_XX = k_xx[j], metric = metric, **kwds)
+    return result
+
+
+@ml_cache
+def _get_MMD2_X_vs_abs_ptw_error_percentile(X, Y_pred, x_coords = None, y_coords = None, percentile = 0.1, scale = True, metric = 'rbf', **kwds):
+    """This method compares the distribution of X and of values of the pointwise absolut errors between Y_target and Y_pred.
+    
+    Args:
+        X (DataSet/RawData): X values for which the squared Maximum Mean Discrepancy to the subset of X described by indices defined as percentile of Y is computed.
+        Y_pred (DataSet/RawData): predicted Y values
+        percentile (float, optional): The percentile used. Defaults to 0.1.
+        scale (bool, optional): If True, the x-values are scaled to zero mean and unit variance. Defaults to True.
+        metric (str or callable, optional): The metric to use when calculating kernel between instances in a feature array.
+            If metric is a string, it must be one of the metrics in sklearn.metrics.pairwise.PAIRWISE_KERNEL_FUNCTIONS. 
+            If metric is precomputed, X is assumed to be a kernel matrix. Alternatively, if metric is a callable function, 
+            it is called on each pair of instances (rows) and the resulting value recorded. 
+            The callable should take two arrays from X as input and return a value indicating the distance between them. 
+            Currently, sklearn provides the following strings: ‘additive_chi2’, ‘chi2’, ‘linear’, ‘poly’, ‘polynomial’, ‘rbf’,
+                                                ‘laplacian’, ‘sigmoid’, ‘cosine’ 
+        **kwds: optional keyword parameters that are passed directly to the kernel function.
+    
+    Returns:
+        ndarray: Numpy nd array containing the respective squared MMD between the diffrent distributions.
+    """
+    if y_coords is None:
+        ptw_error = np.abs(X.y_data - Y_pred.x_data)
+    else:
+        ptw_error = np.abs(X.y_data[:, y_coords] - Y_pred.x_data[:,y_coords])
+    if x_coords is None:
+        return _get_MMD2_X_vs_X_percentile(X.x_data, ptw_error, percentile=percentile, scale=scale, metric=metric, **kwds)
+    else:
+        return _get_MMD2_X_vs_X_percentile(X.x_data[:, x_coords], ptw_error, percentile=percentile, scale=scale, metric=metric, **kwds)
+
+
 def _compute_MMD2(X, prototypes, metric = 'rbf', **kwds):
     kernel_matrix = pairwise_kernels(X, metric=metric, **kwds)
     m = float(len(prototypes))
