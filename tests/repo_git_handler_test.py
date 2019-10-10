@@ -71,8 +71,9 @@ class RepoGitStorageTest(unittest.TestCase):
                                                                                               'modifier_2': self._modifier2_versions[-1]}})
                 self._object_versions.append(self._storage.add(
                     repo_objects.create_repo_obj_dict(obj)))
-            time.sleep(0.1)
+                time.sleep(2)
 
+    @staticmethod
     def remove_git_repo(name):
         try:
             if os.path.exists(name):
@@ -83,9 +84,10 @@ class RepoGitStorageTest(unittest.TestCase):
     def tearDown(self):
         self._storage._conn.close()
         RepoGitStorageTest.remove_git_repo(self.git_dir)
-        
+
     def test_get_by_version(self):
         '''Test get interface where only version of object is specified
+        
         '''
         self.assertEqual(self._storage.get_latest_version(
             'obj'), self._object_versions[-1])
@@ -103,16 +105,16 @@ class RepoGitStorageTest(unittest.TestCase):
             self._object_versions[1], self._object_versions[3]))
         self.assertEqual(len(obj), 3)
         for i in range(1, 4):
-            self.assertEqual(
-                obj[i-1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[i])
+            self.assertTrue(
+                obj[i-1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
         # list of version number
         obj = self._storage.get(
             'obj', versions=[self._object_versions[1], self._object_versions[3]])
         self.assertEqual(len(obj), 2)
-        self.assertEqual(
-            obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[1])
-        self.assertEqual(
-            obj[1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[3])
+        self.assertTrue(
+            obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
+        self.assertTrue(
+            obj[1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
 
     def test_get_by_modifier_version(self):
         '''Test get interface where version of modifier objects are specified
@@ -121,45 +123,45 @@ class RepoGitStorageTest(unittest.TestCase):
         obj = self._storage.get('obj', modifier_versions={
                                 'modifier_1': self._modifier1_versions[0]})
         self.assertEqual(len(obj), 2)
-        self.assertEqual(
-            obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[0])
-        self.assertEqual(
-            obj[1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[1])
+        self.assertTrue(
+            obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
+        self.assertTrue(
+            obj[1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
         obj = self._storage.get('obj', modifier_versions={
                                 'modifier_1': self._modifier1_versions[0]})
         # range of modifier versions
         obj = self._storage.get('obj', modifier_versions={
                                 'modifier_1': (self._modifier1_versions[0], self._modifier1_versions[1])})
         self.assertEqual(len(obj), 4)
-        self.assertEqual(
-            obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[0])
-        self.assertEqual(
-            obj[1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[1])
-        self.assertEqual(
-            obj[2]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[2])
-        self.assertEqual(
-            obj[3]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[3])
+        self.assertTrue(
+            obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
+        self.assertTrue(
+            obj[1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
+        self.assertTrue(
+            obj[2]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
+        self.assertTrue(
+            obj[3]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
         # list of modifier versions
         obj = self._storage.get('obj', modifier_versions={
                                 'modifier_1': [self._modifier1_versions[0], self._modifier1_versions[2]]})
         self.assertEqual(len(obj), 4)
-        self.assertEqual(
-            obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[0])
-        self.assertEqual(
-            obj[1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[1])
-        self.assertEqual(
-            obj[2]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[4])
-        self.assertEqual(
-            obj[3]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[5])
+        self.assertTrue(
+            obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions)
+        self.assertTrue(
+            obj[1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
+        self.assertTrue(
+            obj[2]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
+        self.assertTrue(
+            obj[3]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
         # list of modifier versions for two different modifiers
         obj = self._storage.get('obj', modifier_versions={
                                 'modifier_1': [self._modifier1_versions[0], self._modifier1_versions[2]],
                                 'modifier_2': [self._modifier2_versions[0], self._modifier2_versions[1]]})
         self.assertEqual(len(obj), 2)
-        self.assertEqual(
-            obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[0])
-        self.assertEqual(
-            obj[1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[1])
+        self.assertTrue(
+            obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
+        self.assertTrue(
+            obj[1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
 
     def test_delete(self):
         def check_file_exists(obj, storage):
@@ -183,7 +185,8 @@ class RepoGitStorageTest(unittest.TestCase):
     def test_pull(self):
         '''test if pull works correctly
         '''
-        RepoGitStorageTest.remove_git_repo(self.git_dir + '_2') # remove directory of second repo
+        RepoGitStorageTest.remove_git_repo(
+            self.git_dir + '_2')  # remove directory of second repo
         cloned = Repo.clone_from(self.git_dir, self.git_dir + '_2')
         storage = git_handler.RepoObjectGitStorage(
             folder=self.git_dir)
@@ -195,13 +198,16 @@ class RepoGitStorageTest(unittest.TestCase):
         cloned_storage.pull()
         obj = cloned_storage.get('new_obj')
         cloned_storage._conn.close()
-        RepoGitStorageTest.remove_git_repo(self.git_dir + '_2') # remove directory of second repo
+        # remove directory of second repo
+        RepoGitStorageTest.remove_git_repo(self.git_dir + '_2')
 
     def test_push(self):
         '''test if push works correctly
         '''
-        RepoGitStorageTest.remove_git_repo(self.git_dir + '_2') # remove directory of second repo
-        RepoGitStorageTest.remove_git_repo('remote') # remove directory of second repo
+        RepoGitStorageTest.remove_git_repo(
+            self.git_dir + '_2')  # remove directory of second repo
+        # remove directory of second repo
+        RepoGitStorageTest.remove_git_repo('remote')
         remote = Repo.init('remote', bare=True)
         cloned = Repo.clone_from('remote', self.git_dir + '_2')
         cloned_storage = git_handler.RepoObjectGitStorage(
@@ -211,8 +217,11 @@ class RepoGitStorageTest(unittest.TestCase):
         cloned_storage.add(repo_objects.create_repo_obj_dict(obj))
         cloned_storage.push()
         cloned_storage._conn.close()
-        RepoGitStorageTest.remove_git_repo(self.git_dir + '_2') # remove directory of second repo
-        RepoGitStorageTest.remove_git_repo('remote') # remove directory of second repo
+        # remove directory of second repo
+        RepoGitStorageTest.remove_git_repo(self.git_dir + '_2')
+        # remove directory of second repo
+        RepoGitStorageTest.remove_git_repo('remote')
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -8,12 +8,13 @@ import os
 from datetime import datetime
 from numpy import linalg
 from numpy import inf, load
+import numpy as np
 from enum import Enum
 from copy import deepcopy
 from types import SimpleNamespace
 import logging
 import pailab.ml_repo.repo_objects as repo_objects
-from pailab.ml_repo.repo_objects import RepoInfoKey, DataSet, MeasureConfiguration
+from pailab.ml_repo.repo_objects import RepoInfoKey, RawData, DataSet, MeasureConfiguration
 from pailab.ml_repo.repo_objects import repo_object_init, RepoInfo, RepoObject  # pylint: disable=E0401
 import pailab.ml_repo.repo_store as repo_store
 from pailab.ml_repo.repo_store_factory import RepoStoreFactory, NumpyStoreFactory
@@ -85,11 +86,11 @@ class MLObjectType(Enum):
     def _get_key(category): 
         """ Returns a standardized key for the given category
 
-        Arguments:
-            category {MLObjectType or str (name or value of MLObjectType)} -- MLObjectType or string defining the enum
+        Args:
+            category (MLObjectType or str (name or value of MLObjectType)): MLObjectType or string defining the enum
 
         Raises:
-            Exception -- If no MLObjectType exists matching the given category or if category is of wrong type
+            Exception: If no MLObjectType exists matching the given category or if category is of wrong type
 
         Returns:
             str -- string which can be used e.g. in a dictionary
@@ -122,8 +123,8 @@ class Mapping(RepoObject):
     def set_fields(self, kwargs):
         """ Set  fields from a dictionary
         
-        Arguments:
-            kwargs {dictionary} -- sets the fields in the mapping
+        Args:
+            kwargs (dictionary): sets the fields in the mapping
         """
 
         if not kwargs is None:
@@ -140,12 +141,12 @@ class Mapping(RepoObject):
     def add(self, category, name):
         """ Add a object to the category mapping if it does not already exists
         
-        Arguments:
-            category {MLObjectType} -- The category of the object to be added
-            name {str} -- The name of the object to be added
+        Args:
+            category (MLObjectType): The category of the object to be added
+            name (str): The name of the object to be added
         
         Raises:
-            Exception -- Raises an exception if a second training_data set should be added
+            Exception: Raises an exception if a second training_data set should be added
         
         Returns:
             bool -- true, if mapping has changed, false otherwise
@@ -161,8 +162,8 @@ class Mapping(RepoObject):
     def __getitem__(self, category):
         """ Get an item
         
-        Arguments:
-            category {MLObjectType} -- The category of the object to return
+        Args:
+            category (MLObjectType): The category of the object to return
         
         Returns:
             [object] -- Key of specified category.
@@ -190,8 +191,8 @@ class Mapping(RepoObject):
 def _add_modification_info(repo_obj, *args):
     """ Add/update modificaion info to a repo object from a list if repo objects which were used to create it.
 
-    Arguments:
-        repo_obj {repoobject} -- the object the modification info is added to
+    Args:
+        repo_obj (repoobject): the object the modification info is added to
     """
 
     mod_info =  repo_obj.repo_info[RepoInfoKey.MODIFICATION_INFO]
@@ -208,6 +209,7 @@ def _add_modification_info(repo_obj, *args):
                 #mod_info[k] = w
     
 # region Jobs
+
 
 class Job(RepoObject, abc.ABC):
     """ A class for the jobs
@@ -235,9 +237,9 @@ class Job(RepoObject, abc.ABC):
         def _get_version(self, name, orig_version):
             """ Get the version of the object
             
-            Arguments:
-                name {str} -- The name of the object
-                orig_version {[type]} -- [description]
+            Args:
+                name (str): The name of the object
+                orig_version ([type]): [description]
             
             Returns:
                 [type] -- [description]
@@ -254,18 +256,16 @@ class Job(RepoObject, abc.ABC):
                 throw_error_not_exist=True, throw_error_not_unique=True, adjust_modification_info = True):
             """ Get function
             
-            Arguments:
-                name {str} -- The name of the object to return
-            
-            Keyword Arguments:
-                version {str} -- An explicit version of the object can be returned (default: {None})
-                full_object {bool} -- Determines whether to return the full object - meaning including large object parts (default: {False})
-                modifier_versions {str} -- [description] (default: {None})
-                obj_fields {[type]} -- [description] (default: {None})
-                repo_info_fields {[type]} -- [description] (default: {None})
-                throw_error_not_exist {bool} -- true - throw error if not exists, else return [] (default: {True})
-                throw_error_not_unique {bool} -- true - throw error if item is not unique, else return [] (default: {True})
-                adjust_modification_info {bool} -- [description] (default: {True})
+            Args:
+                name (str): The name of the object to return
+                version (str): An explicit version of the object can be returned. Defaults to None.
+                full_object (bool): Determines whether to return the full object - meaning including large object parts. Defaults to False.
+                modifier_versions (str): [description]. Defaults to None.
+                obj_fields ([type]): [description]. Defaults to None.
+                repo_info_fields ([type]): [description]. Defaults to None.
+                throw_error_not_exist (bool): true - throw error if not exists, else return []. Defaults to True.
+                throw_error_not_unique (bool): true - throw error if item is not unique, else return []. Defaults to True.
+                adjust_modification_info (bool): [description]. Defaults to True.
             """
 
             new_v = self._get_version(name, version)
@@ -297,12 +297,10 @@ class Job(RepoObject, abc.ABC):
         def add(self, obj, message , category = None):
             """ Add an object
             
-            Arguments:
-                obj {[type]} -- The object to add
-                message {str} -- A commit message
-            
-            Keyword Arguments:
-                category {MLObjectType} -- The object type, if None the type is determined by the object (default: {None})
+            Args:
+                obj ([type]): The object to add
+                message (str): A commit message
+                category (MLObjectType): The object type, if None the type is determined by the object. Defaults to None.
             """
 
             self.ml_repo.add(obj, message, category = category)
@@ -315,9 +313,9 @@ class Job(RepoObject, abc.ABC):
         def get_training_data(self, obj_version, full_object, model = None, model_version = repo_store.RepoStore.LAST_VERSION):
             """ Get the training data
             
-            Arguments:
-                obj_version {str} -- The object version to return
-                full_object {bool} --  Determines whether to return the full object - meaning including large object parts
+            Args:
+                obj_version (str): The object version to return
+                full_object (bool):  Determines whether to return the full object - meaning including large object parts
             
             Returns:
                 [type] -- training data
@@ -333,8 +331,8 @@ class Job(RepoObject, abc.ABC):
     def add_predecessor_job(self, job):
         """ Add job as predecessor which must have been run successfull before the job can be started
 
-        Arguments:
-            predecessors {list o jobids} -- predecessors
+        Args:
+            predecessors (list o jobids): predecessors
         """
         
         if isinstance(job, tuple):
@@ -345,8 +343,8 @@ class Job(RepoObject, abc.ABC):
     def set_predecessor_jobs(self, predecessors):
         """ Sets the predecessor jobs
         
-        Arguments:
-            predecessors {list of strings} -- the predecessors to be added to the job
+        Args:
+            predecessors (list of strings): the predecessors to be added to the job
         """
 
         self._predecessors=[]
@@ -367,9 +365,9 @@ class Job(RepoObject, abc.ABC):
     def run(self, ml_repo, jobid):
         """ Run a job
         
-        Arguments:
-            ml_repo {MLrepository} -- repository used to get and store the data
-            jobid {str} -- the job id to be executed
+        Args:
+            ml_repo (MLrepository): repository used to get and store the data
+            jobid (str): the job id to be executed
         
         Raises:
             e -- The execution error to be raised
@@ -396,8 +394,8 @@ class Job(RepoObject, abc.ABC):
     def check_rerun(self, ml_repo):
         """ Check whether the job must be executed again
         
-        Arguments:
-            ml_repo {MLrepository} -- repository used to get and store the data
+        Args:
+            ml_repo (MLrepository): repository used to get and store the data
         
         Returns:
             bool -- Info whether the job must be rerun
@@ -415,9 +413,9 @@ class Job(RepoObject, abc.ABC):
     def _run(self, ml_repo, jobid):
         """ Run the job with data from the given repo
 
-        Arguments:
-            repo {MLrepository} -- repository used to get and store the data
-            jobid {str} -- the job id to be executed
+        Args:
+            repo (MLrepository): repository used to get and store the data
+            jobid (str): the job id to be executed
         """
 
         pass
@@ -426,8 +424,8 @@ class Job(RepoObject, abc.ABC):
     def get_modifier_versions(self, ml_repo):
         """ Get the modifier versions
         
-        Arguments:
-            repo {MLrepository} -- repository used to get and store the data
+        Args:
+            repo (MLrepository): repository used to get and store the data
         
         Returns:
             tuple of string, dict -- return the object name and the modifiers
@@ -444,16 +442,14 @@ class EvalJob(Job):
                 repo_info = RepoInfo()):
         """ Init function for the EvalJob
         
-        Arguments:
-            model {[type]} -- [description]
-            data {[type]} -- [description]
-            user {str} -- The user
-        
-        Keyword Arguments:
-            eval_function_version {str} -- version of the evaluation function (default: {repo_store.RepoStore.LAST_VERSION})
-            model_version {str} -- version of the model (default: {repo_store.RepoStore.LAST_VERSION})
-            data_version {str} -- version of the data (default: {repo_store.RepoStore.LAST_VERSION})
-            repo_info {[type]} -- [description] (default: {RepoInfo()})
+        Args:
+            model ([type]): [description]
+            data ([type]): [description]
+            user (str): The user
+            eval_function_version (str): version of the evaluation function. Defaults to repo_store.RepoStore.LAST_VERSION.
+            model_version (str): version of the model. Defaults to repo_store.RepoStore.LAST_VERSION.
+            data_version (str): version of the data. Defaults to repo_store.RepoStore.LAST_VERSION.
+            repo_info ([type]): [description]}). Defaults to RepoInfo().
         """
 
         super(EvalJob, self).__init__(repo_info)
@@ -469,11 +465,11 @@ class EvalJob(Job):
     def _run(self, repo, jobid):
         """ Run the job with data from the given repo
 
-        Arguments:
-            repo {MLrepository} -- repository used to get and store the data
-            jobid {str} -- the job id to be executed
+        Args:
+            repo (MLrepository): repository used to get and store the data
+            jobid (str): the job id to be executed
         """
-
+        
         logging.info('Start evaluation job ' + str(jobid) +' on model ' + self.model + ' ' + str(self.model_version) + ' ')
         model = repo.get(self.model, self.model_version, full_object = True)
         model_definition_name = self.model.split('/')[0]
@@ -499,12 +495,18 @@ class EvalJob(Job):
             data.x_data = x_data
             data.x_coord_names = x_coord_names
         y = eval_func.create()(model, data)
-        
-        result = repo_objects.RawData(y, data.y_coord_names, repo_info={
+        y_name = data.y_coord_names
+        if y_name is None:
+            if len(x_coord_names) == y.shape[1]: # if y_name is None, we just use the x-coord names (maybe we have an autoencoder?)
+                y_name = x_coord_names
+            else:
+                raise Exception('No y_coord_names defined.')
+        result = repo_objects.RawData(y, y_name, repo_info={
                             RepoInfoKey.NAME: MLRepo.get_eval_name(model_definition, data),
                             RepoInfoKey.CATEGORY: MLObjectType.EVAL_DATA.value
                             }
                             )
+
         result.repo_info.category =  MLObjectType.EVAL_DATA.value
          # create modification info
         _add_modification_info(result, model, model_definition, data, eval_func)
@@ -521,8 +523,8 @@ class EvalJob(Job):
     def get_modifier_versions(self, repo):
         """ Get the modifier versions
         
-        Arguments:
-            repo {MLrepository} -- repository used to get and store the data
+        Args:
+            repo (MLrepository): repository used to get and store the data
         
         Returns:
             tuple of string, dict -- return the object name and the modifiers
@@ -570,9 +572,9 @@ class TrainingJob(Job):
     def _run(self, repo, jobid):
         """ Run the job with data from the given repo
 
-        Arguments:
-            repo {MLrepository} -- repository used to get and store the data
-            jobid {str} -- the job id to be executed
+        Args:
+            repo (MLrepository): repository used to get and store the data
+            jobid (str): the job id to be executed
         """
 
         model = repo.get(self.model, self.model_version)
@@ -697,8 +699,8 @@ class TrainingJob(Job):
     def get_modifier_versions(self, repo):
         """ Get the modifier versions
         
-        Arguments:
-            repo {MLrepository} -- repository used to get and store the data
+        Args:
+            repo (MLrepository): repository used to get and store the data
         
         Returns:
             tuple of string, dict -- return the object name and the modifiers
@@ -750,15 +752,13 @@ class MeasureJob(Job):
                 model_version=repo_store.RepoStore.LAST_VERSION, repo_info = RepoInfo()):
         """ Constructor for the MeasureJob class
 
-        Arguments:
-            measure_type {str} -- string describing the measure type
-            coordinates {str or list} -- either a string describing the coordinate (or simply all coordinates if the string equals MeasureConfiguration._ALL_COORDINATES) or a list of strings
-            data_name {str} -- name of data for which the measure shall be calculated
-            model_name {str} -- name of model for which the measure shall be calculated
-
-        Keyword Arguments:
-            data_version {versionnumber} -- version of data to be used (default: {repo_store.RepoStore.LAST_VERSION})
-            model_version {versionnumber} -- version of model to be used (default: {repo_store.RepoStore.LAST_VERSION})
+        Args:
+            measure_type (str): string describing the measure type
+            coordinates (str or list): either a string describing the coordinate (or simply all coordinates if the string equals MeasureConfiguration._ALL_COORDINATES) or a list of strings
+            data_name (str): name of data for which the measure shall be calculated
+            model_name (str): name of model for which the measure shall be calculated
+            data_version (versionnumber): version of data to be used. Defaults to repo_store.RepoStore.LAST_VERSION.
+            model_version (versionnumber): version of model to be used. Defaults to repo_store.RepoStore.LAST_VERSION.
         """
 
         super(MeasureJob, self).__init__(repo_info)
@@ -772,9 +772,9 @@ class MeasureJob(Job):
     def _run(self, repo, jobid):
         """ Run the job with data from the given repo
 
-        Arguments:
-            repo {MLrepository} -- repository used to get and store the data
-            jobid {str} -- the job id to be executed
+        Args:
+            repo (MLrepository): repository used to get and store the data
+            jobid (str): the job id to be executed
         """
 
         logging.info('Start measure job ' + self.repo_info.name)
@@ -820,8 +820,8 @@ class MeasureJob(Job):
     def get_modifier_versions(self, repo):
         """ Get the modifier versions
         
-        Arguments:
-            repo {MLrepository} -- repository used to get and store the data
+        Args:
+            repo (MLrepository): repository used to get and store the data
         
         Returns:
             tuple of string, dict -- return the object name and the modifiers
@@ -838,9 +838,9 @@ class MeasureJob(Job):
     def _compute(self, target_data, eval_data):
         """ Computes the specified error measure
         
-        Arguments:
-            target_data {[type]} -- the target data
-            eval_data {[type]} -- the evaluated data
+        Args:
+            target_data ([type]): the target data
+            eval_data ([type]): the evaluated data
         
         Raises:
             NotImplementedError -- If the measuretype is not implemented, raise an exception
@@ -861,9 +861,9 @@ class MeasureJob(Job):
     def _compute_max(self, target_data, eval_data):
         """ Computes the maximum error measure
         
-        Arguments:
-            target_data {[type]} -- the target data
-            eval_data {[type]} -- the evaluated data
+        Args:
+            target_data ([type]): the target data
+            eval_data ([type]): the evaluated data
         
         Returns:
             double -- the error
@@ -875,9 +875,9 @@ class MeasureJob(Job):
     def _compute_r2(self, target_data, eval_data):
         """ Computes the r2 error measure
         
-        Arguments:
-            target_data {[type]} -- the target data
-            eval_data {[type]} -- the evaluated data
+        Args:
+            target_data ([type]): the target data
+            eval_data ([type]): the evaluated data
         
         Returns:
             double -- the error
@@ -889,9 +889,9 @@ class MeasureJob(Job):
     def _compute_mse(self, target_data, eval_data):
         """ Computes the mean squared error error measure
         
-        Arguments:
-            target_data {[type]} -- the target data
-            eval_data {[type]} -- the evaluated data
+        Args:
+            target_data ([type]): the target data
+            eval_data ([type]): the evaluated data
         
         Returns:
             double -- the error
@@ -995,11 +995,11 @@ class MLRepo:
             - best practice standardized plotting for investigating model performance and model behaviour
             - automated quality checks
 
-        Keyword Arguments:
-            workspace {[type]} -- [description] (default: {None})
-            user {str} -- the user (default: {None})
-            config {dict} -- the configuration to use (default: {None})
-            save_config {bool} -- determines whether to save the configuration or not (default: {False})
+        Args:
+            workspace ([type]): [description]. Defaults to None.
+            user (str): the user. Defaults to None.
+            config (dict): the configuration to use. Defaults to None.
+            save_config (bool): determines whether to save the configuration or not. Defaults to False.
 
     """
     
@@ -1039,19 +1039,20 @@ class MLRepo:
     def __init__(self,  workspace = None, user=None, config = None, save_config = False):
         """ Constructor of MLRepo
         
-        Keyword Arguments:
-            workspace {[type]} -- [description] (default: {None})
-            user {str} -- the user (default: {None})
-            config {dict} -- the configuration to use (default: {None})
-            save_config {bool} -- determines whether to save the configuration or not (default: {False})
+        Args:
+            workspace ([type]): [description]. Defaults to None.
+            user (str): the user. Defaults to None.
+            config (dict): the configuration to use. Defaults to None.
+            save_config (bool): determines whether to save the configuration or not. Defaults to False.
         
         Raises:
-            Exception -- Raises an exception if more than one mapping is found
+            Exception: Raises an exception if more than one mapping is found
         """
 
         self._config = config
         if config is None:
             if workspace is not None:
+                logger.info('Reading config from workspace ' + workspace)
                 with open(workspace + '/.config.json', 'r') as f:
                     self._config = json.load(f)
             else:
@@ -1092,12 +1093,10 @@ class MLRepo:
     def _add(self, repo_object, message='', category = None):
         """ Add a repo_object to the repository.
         
-        Arguments:
-            repo_object {RepoObject} -- repo_object to be added, will be modified so that it contains the version number
-        
-        Keyword Arguments:
-            message {str} -- commit message (default: {''})
-            category {MLObjectType} -- Category of repo_object which overwrites the objects category. (default: {None})
+        Args:
+            repo_object (RepoObject): repo_object to be added, will be modified so that it contains the version number
+            message (str): commit message. Defaults to ''.
+            category (MLObjectType): Category of repo_object which overwrites the objects category.. Defaults to None.
         
         Returns:
             tuple of string and bool -- version number of object added and boolean if mapping has changed
@@ -1128,11 +1127,11 @@ class MLRepo:
         Updates a repo object without incrementing version number or adding commit message. This should be only used internally by the jobs
             to update the job objects according to their state, modification info and runtime.
         
-        Arguments:
-            job_object {RepoObject} -- the job object to be updated
+        Args:
+            job_object (RepoObject): the job object to be updated
         
         Raises:
-            Exception -- If the provided object is not a job object an exception is raised.
+            Exception: If the provided object is not a job object an exception is raised.
         """
 
         obj_dict = repo_objects.create_repo_obj_dict(job_object)
@@ -1146,12 +1145,10 @@ class MLRepo:
         Raises an exception if the category of the object is not defined in the object and if it is not defined with the category argument.
         It raises an exception if an object with this id does already exist.
         
-        Arguments:
-            repo_object {RepoObject} -- repo_object or list of repo_objects to be added, will be modified so that it contains the version number
-        
-        Keyword Arguments:
-            message {str} -- commit message (default: {''})
-            category {MLObjectType} -- Category of repo_object which overwrites the objects category. (default: {None})
+        Args:
+            repo_object (RepoObject): repo_object or list of repo_objects to be added, will be modified so that it contains the version number
+            message (str): commit message. Defaults to ''.
+            category (MLObjectType): Category of repo_object which overwrites the objects category.. Defaults to None.
         
         Returns:
             str or dictionary -- version number of object added or dictionary of names and versions of objects added
@@ -1187,14 +1184,14 @@ class MLRepo:
         Otherwise, the model is loaded and the training data is used as defined in the model. If in this case a model is not specified the
         method throws an exception.
 
-        Keyword Arguments:
-            version (str): version of data object (default: {repo_store.RepoStore.LAST_VERSION})
-            full_object (bool): if True, the complete data is returned including numpy data (default: {True})
+        Args:
+            version (str): version of data object. Defaults to repo_store.RepoStore.LAST_VERSION.
+            full_object (bool): if True, the complete data is returned including numpy data. Defaults to True.
             model (str): Name of model definition for which the training data will be returned.
             model_version (str): Version of model definition for which teh trainin data will be returned.
         """
         
-        if self._mapping[MLObjectType.TRAINING_DATA] is None:
+        if self._mapping[MLObjectType.TRAINING_DATA] is None or len(self._mapping[MLObjectType.TRAINING_DATA])==0:
             raise Exception("No training_data in repository.")
         training_data = None
         if len(self._mapping[MLObjectType.TRAINING_DATA]) > 1:
@@ -1208,13 +1205,127 @@ class MLRepo:
             training_data =  self._mapping[MLObjectType.TRAINING_DATA][0]
         return self.get(training_data, version, full_object)
 
+    def add_raw_data(self, name, data, input_names = None, data_y = None, target_names = None, file_format = None, axis = 1):
+        """Adds a RawData object to the repository.
+
+        This methods creates/reads from the given data/file a RawData object and adds it to the repository. 
+
+        Examples:
+            Read data from csv file 'test_data.csv' and use columns with headers 'x0', 'x1' as input data and column with label 'x2' as target, store the results under name 'my_data'::
+
+                >>ml_repo.add_raw_data('my_data', 'test_data.csv', ['x0', 'x1], file_format = 'csv')
+
+            Create data from a DataFrame test where the columns 'x0', 'x1' are used as input and no target is specified::
+
+                >>ml_repo.add_raw_data('my_data', test, ['x0', 'x1])
+
+            
+        
+        Args:
+            name (str): Name of RawData in repository (if name does not start with 'raw_data/' this is added.
+            data (str, numpy ndarray or pandas DataFrame): Eithr a pandas DataFarme, a numpy ndarray or a string that is interpreted as filename of the underling data.
+            input_names (iterable of str, optional): List of the input variables names. Defaults to None.
+            data_y (str or numpy ndarray, optional):Either a numpy ndarray or a string defining the filename of th y-data (not valid if file_format=='csv'). Defaults to None.
+            target_names (iterable of str, optional): List of the target variables names. Defaults to None.
+            file_format ('csv' or 'numpy', optional): File type which can be either csv or numpy (numpy means an ndarray stored with numpy.save). Defaults to None.
+            axis (int, optional): If only an ndarray is given but target variables are defined, this array will b split into weo arrays (one for input, one for target) along this axis. Defaults to 1.
+        
+        Returns:
+             str: version number of RawData object added
+        """
+        _data_x = None
+        _data_y = None
+        # read from file
+        if isinstance(data, str):
+            if file_format is None:
+                raise Exception('Please specify a file format.') # pragma: no cover
+            # we assume that data represents a filename of the file containing the data
+            if file_format == 'csv':
+                try:
+                    import pandas as pd
+                    data = pd.read_csv(data)
+                    if data_y is not None:
+                        raise Exception('Cannot define separate y-data using csv file to read RawData from.')
+                except ImportError:
+                    raise Exception('Cannot add RawData: To read csv pandas needs to be installed.') # pragma: no cover
+            elif file_format == 'numpy':
+                data = np.load(data)
+                if isinstance(data_y, str):
+                    data_y = np.load(data_y)
+            else:
+                raise Exception('Unknown file format ' + file_format)
+            return self.add_raw_data(name, data, input_names, data_y, target_names, axis=axis)
+        # use objects directly
+        else:
+            # check if pandas is installed and if the given data object is a DataFrame
+            try:
+                import pandas as pd
+                if isinstance(data, pd.DataFrame):
+                    _data_x = data.loc[:, input_names].values
+                    if target_names is not None:
+                        _data_y = data.loc[:, target_names].values
+            except ImportError:
+                pass # pragma: no cover
+            if isinstance(data, np.ndarray):
+                if data_y is not None:
+                    _data_x = data
+                    _data_y = data_y
+                elif target_names is not None:
+                    tmp = np.split(data,[len(input_names)], axis=1)
+                    _data_x = tmp[0]
+                    _data_y = tmp[1]
+                else:
+                    _data_x = data
+        if _data_x is None:
+            raise Exception('Cannot add given data: The data is neither a filename, nor a pandas DataFrame nor a numpy ndarray.') # pragma: no cover
+        path = name
+        if not 'raw_data' in path:
+            path = 'raw_data/' + name
+        raw_data = RawData(_data_x, input_names, _data_y, 
+                target_names, repo_info = {RepoInfoKey.NAME: path})
+        return self.add(raw_data)
+
+    def add_training_data(self, name, raw_data_name, start_index = 0, end_index = None, raw_data_version='last'):
+        """Add training data as a DataSet to the repository.
+        
+            This method defines a DataSet and adds it to the repository. A DataSet is a logical unit based on a RawData object and defines the range of data
+            that is taken from the respective RawData data.
+
+        Args:
+            name (str): Name of respective object in repository.
+            raw_data_name (str): Name of the underlying RawData object that is used as basis.
+            start_index (int, optional): Start index where training data starts from underlying RawData. Defaults to 0.
+            end_index (int, optional): End index where training data end. Defaults to None.
+            raw_data_version (str): Version of underlying RawData (if 'last', always the latest RawData will be used to derive the respective DataSet). Defaults to 'last'
+        """
+        training_data = repo_objects.DataSet(raw_data_name, start_index, end_index, 
+                raw_data_version, repo_info = {RepoInfoKey.NAME: name, RepoInfoKey.CATEGORY: MLObjectType.TRAINING_DATA})
+        return self.add(training_data)
+
+    def add_test_data(self, name, raw_data_name, start_index = 0, end_index = None, raw_data_version='last'):
+        """Add test data as a DataSet to the repository.
+        
+            This method defines a DataSet and adds it to the repository. A DataSet is a logical unit based on a RawData object and defines the range of data
+            that is taken from the respective RawData data.
+
+        Args:
+            name (str): Name of respective object in repository.
+            raw_data_name (str): Name of the underlying RawData object that is used as basis.
+            start_index (int, optional): Start index where test data starts from underlying RawData. Defaults to 0.
+            end_index (int, optional): End index where test data end. Defaults to None.
+            raw_data_version (str): Version of underlying RawData (if 'last', always the latest RawData will be used to derive the respective DataSet). Defaults to 'last'
+        """
+        test_data = repo_objects.DataSet(raw_data_name, start_index, end_index, 
+                raw_data_version, repo_info = {RepoInfoKey.NAME: name, RepoInfoKey.CATEGORY: MLObjectType.TEST_DATA})
+        return self.add(test_data)
+    
     def add_eval_function(self, f, repo_name = None):
         """ Add the function to evaluate the model
 
-        Arguments:
-            module_name {str} -- module where function is located
-            function_name {str} -- function name
-            repo_name {str} -- identifier of the repo object used to store the information (default: None), if None, the name is set to module_name.function_name
+        Args:
+            module_name (str): module where function is located
+            function_name (str): function name
+            repo_name (str): identifier of the repo object used to store the information, if None, the name is set to module_name.function_name. Defaults to None.
         """
 
         self._add_function(f, MLObjectType.MODEL_EVAL_FUNCTION, repo_name)
@@ -1222,10 +1333,10 @@ class MLRepo:
     def add_training_function(self, f, repo_name = None):
         """ Add function to train a model
 
-        Arguments:
-            module_name {str} -- module where function is located
-            function_name {str} -- function name
-            repo_name {tring} -- identifier of the repo object used to store the information (default: None), if None, the name is set to module_name.function_name
+        Args:
+            module_name (str): module where function is located
+            function_name (str): function name
+            repo_name (tring): identifier of the repo object used to store the information, if None, the name is set to module_name.function_name. Defaults to None.
         """
 
         self._add_function(f, MLObjectType.TRAINING_FUNCTION, repo_name)
@@ -1233,10 +1344,10 @@ class MLRepo:
     def add_preprocessing_fitting_function(self, f, repo_name = None):
         """ Add function to fit a preprocessor
 
-        Arguments:
-            module_name {str} -- module where function is located
-            function_name {str} -- function name
-            repo_name {tring} -- identifier of the repo object used to store the information (default: None), if None, the name is set to module_name.function_name
+        Args:
+            module_name (str): module where function is located
+            function_name (str): function name
+            repo_name (tring): identifier of the repo object used to store the information, if None, the name is set to module_name.function_name. Defaults to None.
         """
 
         self._add_function(f, MLObjectType.PREPROCESSING_FITTING_FUNCTION, repo_name)
@@ -1244,10 +1355,10 @@ class MLRepo:
     def add_preprocessing_transforming_function(self, f, repo_name = None):
         """ Add function to transform the data by a preprocessor
 
-        Arguments:
-            module_name {str} -- module where function is located
-            function_name {str} -- function name
-            repo_name {str} -- identifier of the repo object used to store the information (default: None), if None, the name is set to module_name.function_name
+        Args:
+            module_name (str): module where function is located
+            function_name (str): function name
+            repo_name (str): identifier of the repo object used to store the information, if None, the name is set to module_name.function_name. Defaults to None.
         """
 
         self._add_function(f, MLObjectType.PREPROCESSING_TRANSFORMING_FUNCTION, repo_name)
@@ -1256,11 +1367,11 @@ class MLRepo:
         """ Add function to the repository
         private function to reduce repeating code
 
-        Arguments:
-            module_name {str} -- module where function is located
-            function_name {str} -- function name
+        Args:
+            module_name (str): module where function is located
+            function_name (str): function name
             category{MLObjectType} -- the function category
-            repo_name {str} -- identifier of the repo object used to store the information (default: None), if None, the name is set to module_name.function_name
+            repo_name (str): identifier of the repo object used to store the information, if None, the name is set to module_name.function_name. Defaults to None.
         """
 
         name = repo_name
@@ -1275,19 +1386,17 @@ class MLRepo:
                     preprocessors = None):
         """ Add a new model to the repo
         
-        Arguments:
-            model_name {str} -- identifier of the model
-        
-        Keyword Arguments:
-            model_eval {str} -- identifier of the evaluation function in the repo to evaluate the model, 
+        Args:
+            model_name (str): identifier of the model
+            model_eval (str): identifier of the evaluation function in the repo to evaluate the model, 
                                     if None and there is only one evaluation function in the repo, this function will be used
-            model_training {str} -- identifier of the training function in the repo to train the model, 
+            model_training (str): identifier of the training function in the repo to train the model, 
                                     if None and there is only one evaluation function in the repo, this function will be used
-            model_param {str} -- identifier of the model parameter in the repo (default: {None}), if None and there is exactly one ModelParameter in teh repo, this will be used,
+            model_param (str): identifier of the model parameter in the repo, if None and there is exactly one ModelParameter in teh repo, this will be used,. Defaults to None.
                                     otherwise it is assumed that no model_params are needed
-            training_param {str} -- identifier of the training parameter (default: {None}), if None and there is only one training_parameter object in the repo, 
+            training_param (str): identifier of the training parameter, if None and there is only one training_parameter object in the repo, . Defaults to None.
                                     this will be used. If an empty string is given as training parameter, we assume that the algorithm does not need a training pram.
-            preprocessors {list} -- list of preprocessors to be execute (default: {None})
+            preprocessors (list): list of preprocessors to be execute. Defaults to None.
                                     this is a list of strings
         """
 
@@ -1333,11 +1442,9 @@ class MLRepo:
         
             If the measure already exists, it returns the message
 
-        Arguments:
-            measure {str} -- string defining the measure, i.e MAX,...
-        
-        Keyword Arguments:
-            coordinates {list of str} -- list of strings defining the coordinates (by name) used for the measure (default: {None}), if None, all coordinates will be used
+        Args:
+            measure (str): string defining the measure, i.e MAX,...
+            coordinates (list of str): list of strings defining the coordinates (by name) used for the measure, if None, all coordinates will be used. Defaults to None.
         """
 
         #if a measure configuration already exists, use this, otherwise creat a new one
@@ -1359,18 +1466,16 @@ class MLRepo:
                          preprocessor_param = None):
         """ Add a new preprocessor to the repo
         
-        Arguments:
-            preprocessor_name {str} -- identifier of the preprocessor
-        
-        Keyword Arguments:
-            transforming_function {str} -- identifier of the transforming function in the repo, 
+        Args:
+            preprocessor_name (str): identifier of the preprocessor
+            transforming_function (str): identifier of the transforming function in the repo, 
                                     if None and there is only one transforming function in the repo, this function will be used
-            fitting_function {str} -- identifier of the fitting function in the repo to fit the preprocessor,
+            fitting_function (str): identifier of the fitting function in the repo to fit the preprocessor,
                                     if None the preprocessor does not need to be fitted
-            preprocessor_param {str} -- identifier of the preprocessor parameter (default: {None})
+            preprocessor_param (str): identifier of the preprocessor parameter. Defaults to None.
         
         Raises:
-            Exception -- Raises an error if the preprocessing transforming function is not in repo
+            Exception: Raises an error if the preprocessing transforming function is not in repo
         """
 
         transforming_func = transforming_function
@@ -1410,21 +1515,19 @@ class MLRepo:
              throw_error_not_exist=True, throw_error_not_unique=True):
         """ Get repo objects. It throws an exception, if an object with the name does not exist.
         
-        Arguments:
-            name {str} -- the object name
-        
-        Keyword Arguments:
-            version {str} -- object version, default is latest (-1). If the fields are nested (an element of a dictionary which is an element of a 
-                    dictionary, use path notation to the element, i.e. p/elem1/elem2 to get p[elem1][elem2]) (default: {repo_store.RepoStore.LAST_VERSION})
-            full_object {bool} -- flag to determine whether the numpy objects are loaded (True->load) (default: {False})
-            modifier_versions {[type]} -- [description] (default: {None})
-            obj_fields {[type]} -- [description] (default: {None})
-            repo_info_fields {[type]} -- [description] (default: {None})
-            throw_error_not_exist {bool} -- true - throw error if not exists, else return [] (default: {True})
-            throw_error_not_unique {bool} -- true - throw error if item is not unique, else return [] (default: {True})
+        Args:
+            name (str): the object name
+            version (str): object version, default is latest (-1). If the fields are nested (an element of a dictionary which is an element of a 
+                    dictionary, use path notation to the element, i.e. p/elem1/elem2 to get p[elem1][elem2]). Defaults to repo_store.RepoStore.LAST_VERSION.
+            full_object (bool): flag to determine whether the numpy objects are loaded (True->load). Defaults to False.
+            modifier_versions ([type]): [description]. Defaults to None.
+            obj_fields ([type]): [description]. Defaults to None.
+            repo_info_fields ([type]): [description]. Defaults to None.
+            throw_error_not_exist (bool): true - throw error if not exists, else return []. Defaults to True.
+            throw_error_not_unique (bool): true - throw error if item is not unique, else return []. Defaults to True.
         
         Raises:
-            Exception -- raises an exception if no object with the specific name is found
+            Exception: raises an exception if no object with the specific name is found
         
         Returns:
             RepoObject or list thereof -- The repo object
@@ -1472,12 +1575,12 @@ class MLRepo:
         It deletes the object. If other objects were modified by this object, it throws an exception
         that first the modified objects must be deleted.
         
-        Arguments:
-            name {str} -- name of the object
-            version {str} -- version of the object
+        Args:
+            name (str): name of the object
+            version (str): version of the object
         
         Raises:
-            Exception -- If the object has depending objects, it can not be deleted and an error is thrown.
+            Exception: If the object has depending objects, it can not be deleted and an error is thrown.
         """
 
         dependent_objects = self._ml_repo._get_by_modification_info(name, version, [k.value for k in MLObjectType])
@@ -1492,8 +1595,8 @@ class MLRepo:
     def get_calibrated_model_name(model_name):
         """ For a model name the calibrated model name is returned
         
-        Arguments:
-            model_name {str} -- model name
+        Args:
+            model_name (str): model name
         
         Returns:
             string -- the calibrated model name
@@ -1506,8 +1609,8 @@ class MLRepo:
     def get_eval_name( model, data ):
         """ Return name of the object containing evaluation results
         
-        Arguments:
-            model {ModelDefinition object or str} -- 
+        Args:
+            model (ModelDefinition object or str): 
             data {RawData or DataSet object or str} --
         
         Returns:
@@ -1525,8 +1628,8 @@ class MLRepo:
     def get_names(self, ml_obj_type):
         """ Get the list of names of all repo_objects from a given repo_object_type in the repository.
         
-        Arguments:
-            ml_obj_type {MLObjectType} -- MLObjectType specifying the types of objects names are returned for.
+        Args:
+            ml_obj_type (MLObjectType): MLObjectType specifying the types of objects names are returned for.
         
         Returns:
             list of strings -- list of object names for the given category.
@@ -1541,16 +1644,14 @@ class MLRepo:
                     version_end=repo_store.RepoStore.LAST_VERSION):
         """ Return a list of histories of object member variables without bigobjects
         
-        Arguments:
-            name {str} -- the object name
-        
-        Keyword Arguments:
-            repo_info_fields {list of strings} -- List of fields from repo_info which will be returned in the dictionary. 
-                                If List contains flag 'ALL', all fields will be returned. (default: {None})
-            obj_member_fields {list of strings} -- List of member atributes from repo_object which will be returned in the dictionary. 
-                                If List contains flag 'ALL', all attributes will be returned. (default: {None})
-            version_start {str} -- only display versions after version_start (default: {repo_store.RepoStore.FIRST_VERSION})
-            version_end {str} -- only display versions up to version_end (default: {repo_store.RepoStore.LAST_VERSION})
+        Args:
+            name (str): the object name
+            repo_info_fields (list of strings): List of fields from repo_info which will be returned in the dictionary. 
+                                If List contains flag 'ALL', all fields will be returned.. Defaults to None.
+            obj_member_fields (list of strings): List of member atributes from repo_object which will be returned in the dictionary. 
+                                If List contains flag 'ALL', all attributes will be returned.. Defaults to None.
+            version_start (str): only display versions after version_start. Defaults to repo_store.RepoStore.FIRST_VERSION.
+            version_end (str): only display versions up to version_end. Defaults to repo_store.RepoStore.LAST_VERSION.
         
         Returns:
             str or list of strings -- returns a list of the objects
@@ -1564,9 +1665,9 @@ class MLRepo:
     def get_commits(self,  version_start=repo_store.RepoStore.FIRST_VERSION, version_end=repo_store.RepoStore.LAST_VERSION):
         """ gets the commits
         
-        Keyword Arguments:
-            version_start {str} -- only display versions after version_start (default: {repo_store.RepoStore.FIRST_VERSION})
-            version_end {str} -- only display versions up to version_end (default: {repo_store.RepoStore.LAST_VERSION})
+        Args:
+            version_start (str): only display versions after version_start. Defaults to repo_store.RepoStore.FIRST_VERSION.
+            version_end (str): only display versions up to version_end. Defaults to repo_store.RepoStore.LAST_VERSION.
         
         Returns:
             list of commit infos -- returns a list of commit infots
@@ -1581,11 +1682,9 @@ class MLRepo:
         """ Returns version of object created on latest data (modulo specified versions)
             If the object does not exist, it returns None.
         
-        Arguments:
-            name {str} -- name of object checked
-        
-        Keyword Arguments:
-            modification_info {dict} -- dictionay containing objects and their version used within the check (objects not contained are assumed to be LAST_VERSION) (default: {{}})
+        Args:
+            name (str): name of object checked
+            modification_info (dict): dictionay containing objects and their version used within the check (objects not contained are assumed to be LAST_VERSION). Defaults to {}.
         
         Returns:
             object -- the latests repo object
@@ -1612,8 +1711,8 @@ class MLRepo:
     def run(self, job):
         """ Executes a job
         
-        Arguments:
-            job {Job} -- The job object to be executed
+        Args:
+            job (Job): The job object to be executed
         
         Returns:
             [type] -- Return the name and version of the job or a message that the job does not need to be rerun
@@ -1633,15 +1732,15 @@ class MLRepo:
                     model_param_version = repo_store.RepoStore.LAST_VERSION, run_descendants = False):
         """ Run the training algorithm. 
         
-        Keyword Arguments:
-            model {str} -- the identifyer of the model (default: {None})
-            message {str} -- the commit message (default: {None})
-            model_version {str} -- the version of the model (default: {repo_store.RepoStore.LAST_VERSION})
-            training_function_version {str} -- the version of the training function (default: {repo_store.RepoStore.LAST_VERSION})
-            training_data_version {str} -- the version of the training data (default: {repo_store.RepoStore.LAST_VERSION})
-            training_param_version {str} -- the version of the training parameter (default: {repo_store.RepoStore.LAST_VERSION})
-            model_param_version {str} --the version of the model parameter (default: {repo_store.RepoStore.LAST_VERSION})
-            run_descendants {bool} -- if True also run all decendant jobs (default: {False})
+        Args:
+            model (str): the identifyer of the model. Defaults to None.
+            message (str): the commit message. Defaults to None.
+            model_version (str): the version of the model. Defaults to repo_store.RepoStore.LAST_VERSION.
+            training_function_version (str): the version of the training function. Defaults to repo_store.RepoStore.LAST_VERSION.
+            training_data_version (str): the version of the training data. Defaults to repo_store.RepoStore.LAST_VERSION.
+            training_param_version (str): the version of the training parameter. Defaults to repo_store.RepoStore.LAST_VERSION.
+            model_param_version {str} --the version of the model parameter. Defaults to repo_store.RepoStore.LAST_VERSION.
+            run_descendants (bool): if True also run all decendant jobs. Defaults to False.
         
         Returns:
             [type] -- return name and version or message
@@ -1674,12 +1773,12 @@ class MLRepo:
     def _get_default_object_name(self, obj_name, obj_category):
         """ Returns unique object name of given category if given object_name is None
         
-        Arguments:
-            obj_name {str or None} -- if not None, the given string will simply be returned
-            obj_category {MLObjectType} -- category of object
+        Args:
+            obj_name (str or None): if not None, the given string will simply be returned
+            obj_category (MLObjectType): category of object
         
         Raises:
-            Exception -- If not exactly one object of desired type exists in repo
+            Exception: If not exactly one object of desired type exists in repo
         
         Returns:
             str -- Resulting object name
@@ -1770,14 +1869,14 @@ class MLRepo:
         datasets={}, predecessors = [], run_descendants=False, labels = None):
         """ Evaluate the model on all datasets. 
         
-        Keyword Arguments:
-            model {str} -- name of model to evaluate, if None and only one model exists (default: {None})
-            message {str} -- message inserted into commit, if None: an automated message is created (default: {None})
-            model_version {str} -- version of model to be evaluated. (default: {repo_store.RepoStore.LAST_VERSION})
-            datasets {dict} -- dictionary of datasets (names and version numbers) on which the model is evaluated.  (default: {{}})
-            predecessors {list} -- list of jobs which shall have been completed successfull before the evaluation is started. Default is all datasets from testdata on latest version. (default: {[]})
-            run_descendants {bool} -- if True also run all decendant jobs (default: {False})
-            labels {[type]} -- [description] (default: {None})
+        Args:
+            model (str): name of model to evaluate, if None and only one model exists. Defaults to None.
+            message (str): message inserted into commit, if None: an automated message is created. Defaults to None.
+            model_version (str): version of model to be evaluated.. Defaults to repo_store.RepoStore.LAST_VERSION.
+            datasets (dict): dictionary of datasets (names and version numbers) on which the model is evaluated. . Defaults to {}.
+            predecessors (list): list of jobs which shall have been completed successfull before the evaluation is started. Default is all datasets from testdata on latest version.. Defaults to [].
+            run_descendants (bool): if True also run all decendant jobs. Defaults to False.
+            labels ([type]): [description]. Defaults to None.
         
         Returns:
             list of strings -- a list of the job ids
@@ -1801,14 +1900,14 @@ class MLRepo:
     def run_measures(self, model=None, message=None, model_version=repo_store.RepoStore.LAST_VERSION, datasets={}, measures = {}, predecessors = [], labels=None):
         """ Run the measures
         
-        Keyword Arguments:
-            model {str} -- name of model to evaluate, if None and only one model exists (default: {None})
-            message {str} -- message inserted into commit, if None: an automated message is created (default: {None})
-            model_version {str} -- version of model to be evaluated. (default: {repo_store.RepoStore.LAST_VERSION})
-            datasets {dict} -- dictionary of datasets (names and version numbers) on which the model is evaluated.  (default: {{}})
-            predecessors {list} -- list of jobs which shall have been completed successfull before the evaluation is started. Default is all datasets from testdata on latest version. (default: {[]})
-            run_descendants {bool} -- if True also run all decendant jobs (default: {False})
-            labels {[type]} -- [description] (default: {None})
+        Args:
+            model (str): name of model to evaluate, if None and only one model exists. Defaults to None.
+            message (str): message inserted into commit, if None: an automated message is created. Defaults to None.
+            model_version (str): version of model to be evaluated.. Defaults to repo_store.RepoStore.LAST_VERSION.
+            datasets (dict): dictionary of datasets (names and version numbers) on which the model is evaluated. . Defaults to {}.
+            predecessors (list): list of jobs which shall have been completed successfull before the evaluation is started. Default is all datasets from testdata on latest version.. Defaults to [].
+            run_descendants (bool): if True also run all decendant jobs. Defaults to False.
+            labels ([type]): [description]. Defaults to None.
         
         Returns:
             list of strings -- a list of the job ids
@@ -1860,9 +1959,9 @@ class MLRepo:
     def run_tests(self, test_definitions = None, predecessors = []):
         """ Run tests for a specific model version.
         
-        Keyword Arguments:
-            test_definitions {list or set} -- List or set of names of the test definitions which shall be executed. If None, all test definitions are executed. (default: {None})
-            predecessors {list} -- list of jobs which shall have been completed successfull before the evaluation is started. Default is all datasets from testdata on latest version. (default: {[]})
+        Args:
+            test_definitions (list or set): List or set of names of the test definitions which shall be executed. If None, all test definitions are executed.. Defaults to None.
+            predecessors (list): list of jobs which shall have been completed successfull before the evaluation is started. Default is all datasets from testdata on latest version.. Defaults to [].
         
         Returns:
             str -- ticket number of job
@@ -1888,23 +1987,29 @@ class MLRepo:
             It checks if a model with this version really exists and throws an exception if such a model does not exist.
             This method labels a certain model version.
         
-        Arguments:
-            label_name {str} -- the label name
-        
-        Keyword Arguments:
-            model {str} -- the identifyer of the model (default: {None})
-            model_version {str} -- model version for which the label is set. (default: {repo_store.RepoStore.LAST_VERSION})
-            message {str} -- commit message (default: {''})
+        Args:
+            label_name (str): the label name
+            model (str): the identifyer of the model. Defaults to None.
+            model_version (str): model version for which the label is set.. Defaults to repo_store.RepoStore.LAST_VERSION.
+            message (str): commit message. Defaults to ''.
         """
-        
+        # check if label with same model and model version already exists
         model = self._get_default_object_name(model, MLObjectType.CALIBRATED_MODEL)
+        tmp = self.get(label_name, throw_error_not_exist=False)
+        
         # check if a model with this version exists
         m = self.get(model)
         if model_version == repo_store.RepoStore.LAST_VERSION:
             model_version = m.repo_info[RepoInfoKey.VERSION]
+
+        if not tmp == []:
+            if isinstance(tmp,list):
+                tmp=tmp[0]
+            if tmp.name == model and model_version == tmp.version:
+                return
         label = repo_objects.Label(model, model_version, repo_info={RepoInfoKey.NAME: label_name, 
             RepoInfoKey.CATEGORY: MLObjectType.LABEL.value})
-        self.add(label)        
+        return self.add(label)        
         
     def push(self):
         """ Push changes to an external repo.
@@ -1923,8 +2028,8 @@ class MLRepo:
     def _object_exists(self, name):
         """ checks whether an object exists (True) or not (False)
         
-        Arguments:
-            name {str} -- the name of the object
+        Args:
+            name (str): the name of the object
         
         Returns:
             bool -- True: object exists, False: object does not exist

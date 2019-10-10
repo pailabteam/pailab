@@ -80,16 +80,16 @@ class RepoDiskStorageTest(unittest.TestCase):
             self._object_versions[1], self._object_versions[3]))
         self.assertEqual(len(obj), 3)
         for i in range(1, 4):
-            self.assertEqual(
-                obj[i-1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[i])
+            self.assertTrue(
+                obj[i-1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
         # list of version number
         obj = self._storage.get(
             'obj', versions=[self._object_versions[1], self._object_versions[3]])
         self.assertEqual(len(obj), 2)
-        self.assertEqual(
-            obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[1])
-        self.assertEqual(
-            obj[1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[3])
+        self.assertTrue(
+            obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
+        self.assertTrue(
+            obj[1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
 
     def test_get_by_modifier_version(self):
         '''Test get interface where version of modifier objects are specified
@@ -98,45 +98,58 @@ class RepoDiskStorageTest(unittest.TestCase):
         obj = self._storage.get('obj', modifier_versions={
             'modifier_1': self._modifier1_versions[0]})
         self.assertEqual(len(obj), 2)
-        self.assertEqual(
-            obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[0])
-        self.assertEqual(
-            obj[1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[1])
+        self.assertTrue(
+            obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
+        self.assertTrue(
+            obj[1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
         obj = self._storage.get('obj', modifier_versions={
             'modifier_1': self._modifier1_versions[0]})
         # range of modifier versions
         obj = self._storage.get('obj', modifier_versions={
             'modifier_1': (self._modifier1_versions[0], self._modifier1_versions[1])})
         self.assertEqual(len(obj), 4)
-        self.assertEqual(
-            obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[0])
-        self.assertEqual(
-            obj[1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[1])
-        self.assertEqual(
-            obj[2]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[2])
-        self.assertEqual(
-            obj[3]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[3])
+        self.assertTrue(
+            obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
+        self.assertTrue(
+            obj[1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
+        self.assertTrue(
+            obj[2]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
+        self.assertTrue(
+            obj[3]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
         # list of modifier versions
         obj = self._storage.get('obj', modifier_versions={
             'modifier_1': [self._modifier1_versions[0], self._modifier1_versions[2]]})
         self.assertEqual(len(obj), 4)
-        self.assertEqual(
-            obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[0])
-        self.assertEqual(
-            obj[1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[1])
-        self.assertEqual(
-            obj[2]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[4])
-        self.assertEqual(
-            obj[3]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[5])
+        self.assertTrue(
+            obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
+        self.assertTrue(
+            obj[1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
+        self.assertTrue(
+            obj[2]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
+        self.assertTrue(
+            obj[3]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
         # list of modifier versions for two different modifiers
         obj = self._storage.get('obj', modifier_versions={
             'modifier_1': [self._modifier1_versions[0], self._modifier1_versions[2]],
             'modifier_2': [self._modifier2_versions[0], self._modifier2_versions[1]]})
         self.assertEqual(len(obj), 2)
-        self.assertEqual(
-            obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[0])
-        self.assertEqual(
-            obj[1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value], self._object_versions[1])
+        self.assertTrue(
+            obj[0]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions)
+        self.assertTrue(
+            obj[1]['repo_info'][repo_objects.RepoInfoKey.VERSION.value] in self._object_versions[1])
+
+    def test_delete(self):
+        """Test deletion
+        """
+        obj = self._storage.get('obj') 
+        n_objs = len(self._storage.get('obj', versions = (RepoStore.FIRST_VERSION, RepoStore.LAST_VERSION,)))
+        self._storage._delete('obj', obj[0]['repo_info']['version'])
+        n_objs_new = len(self._storage.get('obj', versions = (RepoStore.FIRST_VERSION, RepoStore.LAST_VERSION,)))
+        self.assertEqual(n_objs-1, n_objs_new)
+
+
+
+
 
 
 if __name__ == '__main__':

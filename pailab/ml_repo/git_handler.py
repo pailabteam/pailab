@@ -27,16 +27,15 @@ class RepoObjectGitStorage(RepoObjectDiskStorage):
         except:
             return False
 
-    def __init__(self, remote = None, **kwargs):
+    def __init__(self, remote=None, **kwargs):
         """ Constructor
-        Arguments:
+        Args:
             remote (str): The remote git repository. Defaults to None which means that there is no remote. If given and the target directory is not under git control, the repo will try to clon from the remote.
-        Keyword Arguments:
             folder (str): directory used to store the objects in files as well as the sqlite database
-            file_format (str: 'pickle'|'json'): The fileformat used to save the objects(default: {'pickle'})
+            file_format (str: 'pickle'|'json'): The fileformat used to save the objects. Defaults to 'pickle'.
 
         """
-            
+
         super(RepoObjectGitStorage, self).__init__(**kwargs)
         # initialize git repo if it does not exist
         if not RepoObjectGitStorage._is_git_repo(self._main_dir):
@@ -53,12 +52,12 @@ class RepoObjectGitStorage(RepoObjectDiskStorage):
                 if not os.path.exists(self._sqlite_db_name()):
                     self._conn.close()
                 self._setup_new()
-        
+
     def _add(self, obj):
         """ Adds an object to the git repository
 
-        Arguments:
-            obj {RepoObject} -- the repo object to add to git
+        Args:
+            obj (RepoObject): the repo object to add to git
         """
 
         super(RepoObjectGitStorage, self)._add(obj)
@@ -70,9 +69,9 @@ class RepoObjectGitStorage(RepoObjectDiskStorage):
     def _delete(self, name, version):
         """ Delete an object from the repo
 
-        Arguments:
-            name {str} -- the identifier of the object
-            version {str} -- the version of the object to delete
+        Args:
+            name (str): the identifier of the object
+            version (str): the version of the object to delete
         """
 
         super(RepoObjectGitStorage, self)._delete(name, version)
@@ -81,23 +80,23 @@ class RepoObjectGitStorage(RepoObjectDiskStorage):
     def replace(self, obj):
         """ Overwrite existing object without incrementing version
 
-        Arguments:
-            obj {RepoObject} -- the repo object to be overwritten
+        Args:
+            obj (RepoObject): the repo object to be overwritten
         """
 
         super(RepoObjectGitStorage, self).replace(obj)
         self.commit('Replace object ' + obj['repo_info']['name'] +
                     ', version ' + obj['repo_info']['version'] + '.')
 
-    def commit(self, message, force = True):
+    def commit(self, message, force=True):
         """ Commits the changes
 
-        Arguments:
+        Args:
             message (str): Commit message
             force (bool): If False, objecs will only be commited if integrity check succeeded.
 
         Raises:
-            Exception -- raises an exception if the integrity check fails
+            Exception: raises an exception if the integrity check fails
         """
         if not force:
             check = self.check_integrity()
@@ -111,11 +110,11 @@ class RepoObjectGitStorage(RepoObjectDiskStorage):
     def push(self, remote_name='origin'):
         """ pushes the changes to the remote git repository
 
-        Keyword Arguments:
-            remote_name {str} -- name of the remote repository (default: {'origin'})
+        Args:
+            remote_name (str): name of the remote repository. Defaults to 'origin'.
 
         Raises:
-            Exception -- raises an exception if the remote does not exist
+            Exception: raises an exception if the remote does not exist
         """
 
         _git_repo = Repo(self._main_dir)
@@ -131,8 +130,8 @@ class RepoObjectGitStorage(RepoObjectDiskStorage):
     def _merge_from_db(self, sqlite_db_2):
         """ merges the changes from the sqlite db
 
-        Arguments:
-            sqlite_db_2 {str} -- filename of the database to be added
+        Args:
+            sqlite_db_2 (str): filename of the database to be added
         """
 
         c = self._conn.cursor()
@@ -149,12 +148,12 @@ class RepoObjectGitStorage(RepoObjectDiskStorage):
     def pull(self, remote_name='origin'):
         """ Pull from the remote git repository
 
-        Keyword Arguments:
-            remote_name {str} -- the name of the remote git repository (default: {'origin'})
+        Args:
+            remote_name (str): the name of the remote git repository. Defaults to 'origin'.
 
         Raises:
-            Exception -- raises an exception if the remote name is not available
-            Exception -- raises an error if the pull fails
+            Exception: raises an exception if the remote name is not available
+            Exception: raises an error if the pull fails
         """
 
         # self._conn.close()

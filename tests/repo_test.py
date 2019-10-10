@@ -138,9 +138,9 @@ def eval_func_test(model, data):
     '''Dummy model eval function for testing
     
         Function retrns independent of data and model a simple numpy array with zeros
-    Arguments:
-        model {} -- dummy model, not used
-        data {} -- dummy data, not used
+    Args:
+        model ():dummy model, not used
+        data ():dummy data, not used
     '''
     return np.zeros([data.x_data.shape[0],1])
 
@@ -148,10 +148,10 @@ def train_func_test(training_param, data):
     '''Dummy model training function for testing
     
         Function returns independent of data and model a simple numpy array with zeros
-    Arguments:
-        model_param {} -- dummy model parameter
-        training_param {} -- dummy training parameter, not used
-        data {} -- dummy trainig data, not used
+    Args:
+        model_param ():dummy model parameter
+        training_param ():dummy training parameter, not used
+        data ():dummy trainig data, not used
     '''
     return TestClass(2,3, repo_info = {}) # pylint: disable=E1123
 
@@ -160,11 +160,11 @@ def preprocessor_transforming_function_test(preprocessor_param, data_x, x_coord_
     '''Dummy preprocessor transforming function for testing
     
         Function returns the input data
-    Arguments:
-        preprocessor_param {} -- dummy preprocessor parameter
-        data_x {} -- dummy input data for transforming
-        x_coord_names {} -- dummy coordinates names for transforming
-        fitted_preprocessor {} -- dummy for a fitted preprocessor
+    Args:
+        preprocessor_param ():dummy preprocessor parameter
+        data_x ():dummy input data for transforming
+        x_coord_names ():dummy coordinates names for transforming
+        fitted_preprocessor ():dummy for a fitted preprocessor
     ''' 
     return data_x, x_coord_names
 
@@ -477,7 +477,89 @@ class RepoTest(unittest.TestCase):
             self.assertEqual(0,1)
         except:
             pass
+
+    def test_add_raw_data(self):
+        """Test the method add_raw_data
+        """
+        raw_data_input = np.zeros((10,3,))
+        # test to add just x_data
+        ml_repo = MLRepo(user = 'unittestuser')
+        ml_repo.add_raw_data('test1', raw_data_input, ['x0', 'x1', 'x2'])
+        raw_data = ml_repo.get('raw_data/test1', full_object = True)
+        self.assertTrue('x0' in raw_data.x_coord_names)
+        self.assertEqual(raw_data.x_data.shape[1], 3)
+        # test to add x and y data from data only
+        ml_repo.add_raw_data('test1', raw_data_input, ['x0', 'x1'], target_names = ['x2'])
+        raw_data = ml_repo.get('raw_data/test1', full_object = True)
+        self.assertTrue('x2' in raw_data.y_coord_names)
+        self.assertEqual(raw_data.x_data.shape[1], 2)
+        self.assertEqual(raw_data.y_data.shape[1], 1)
+        # test to add x and y data with two different input matrices
+        raw_data_y_input = np.zeros( (10,1, ) )
+        ml_repo.add_raw_data('test1', raw_data_input, ['x0', 'x1', 'x2'], raw_data_y_input, target_names = ['y1'])
+        raw_data = ml_repo.get('raw_data/test1', full_object = True)
+        self.assertTrue('y1' in raw_data.y_coord_names)
+        self.assertTrue('x0' in raw_data.x_coord_names)
+        self.assertEqual(raw_data.y_data.shape[1], 1)
+        self.assertEqual(raw_data.x_data.shape[1], 3)
+
+        #test to add data from pandas dataframe
+        import pandas as pd
+        ml_repo.add_raw_data('test1', pd.DataFrame(data = raw_data_input, columns = ['x0', 'x1', 'x2']), ['x0', 'x1'], target_names = ['x2'])
+        raw_data = ml_repo.get('raw_data/test1', full_object = True)
+        self.assertTrue('x2' in raw_data.y_coord_names)
+        self.assertEqual(raw_data.y_data.shape[1], 1)
+
+        # try to read from file
+        try:
+            shutil.rmtree('test_add_raw_data')
+            os.makedirs('test_add_raw_data')
+        except OSError:
+            os.makedirs('test_add_raw_data')
+        tmp = pd.DataFrame(data = raw_data_input, columns = ['x0', 'x1', 'x2'])
+        tmp.to_csv('test_add_raw_data/dummy.csv')
+        ml_repo.add_raw_data('test1', 'test_add_raw_data/dummy.csv', ['x0', 'x1'], target_names = ['x2'], file_format = 'csv')
+        raw_data = ml_repo.get('raw_data/test1', full_object = True)
+        self.assertTrue('x2' in raw_data.y_coord_names)
+        self.assertEqual(raw_data.y_data.shape[1], 1)
+        self.assertEqual(raw_data.x_data.shape[1], 2)
+
+        #try to read from numpy file
+        np.save('test_add_raw_data/dummy.npy', np.zeros((10,3, ) ))
+        ml_repo.add_raw_data('test1', 'test_add_raw_data/dummy.npy', ['x0', 'x1'], target_names = ['x2'], file_format = 'numpy')
+        raw_data = ml_repo.get('raw_data/test1', full_object = True)
+        self.assertTrue('x2' in raw_data.y_coord_names)
+        self.assertEqual(raw_data.y_data.shape[1], 1)
+        self.assertEqual(raw_data.x_data.shape[1], 2)
+        try:
+            shutil.rmtree('test_add_raw_data')
+        except OSError:
+            pass
+        # now test add_training_data
+        ml_repo.add_training_data('training_data_dummy', 'raw_data/test1')
+        # now test add_test_data
+        ml_repo.add_test_data('test_data_dummy', 'raw_data/test1')
+
+    def test_add_label(self):
+        """Test adding a label and if adding same label does not change anything
+        """
+        names = self.repository.get_names(MLObjectType.CALIBRATED_MODEL)
+        model = self.repository.get(names[0])
+        self.repository.set_label('test_label', model.repo_info.name, model.repo_info.version)
+        label = self.repository.get('test_label')
+        if isinstance(label, list):
+            self.assertEqual(len(label), 1)
+        if label is None:
+            self.assertEqual(1,0)
+        # add label again althogu neither model nor version have been changed
+        self.repository.set_label('test_label', model.repo_info.name, model.repo_info.version)
         
+        if isinstance(label, list):
+            self.assertEqual(len(label), 1)
+        if label is None:
+            self.assertEqual(1,0)
+        
+
 class MLRepoConstructorTest(unittest.TestCase):
     def test_default_constructor(self):
         #example with default
@@ -643,12 +725,19 @@ class NumpyHDFStorageTest(unittest.TestCase):
         test_data_get = self.store.get('test_3d', '1')
         self.assertEqual(test_data_get['test_data'].shape, test_data.shape)
         self.assertEqual(test_data[0,0,0], test_data_get['test_data'][0,0,0])
+        # add 4d array
+        test_data = np.full((1,5,5,6), 1.0)
+        self.store.add('test_4d', '1', {'test_data': test_data})
+        test_data_get = self.store.get('test_4d', '1')
+        self.assertEqual(test_data_get['test_data'].shape, test_data.shape)
+        self.assertEqual(test_data[0,0,0,1], test_data_get['test_data'][0,0,0,1])
         
+
     def test_append(self):
         """test appending data to existing numpy data (using one hdf file)
         """
 
-        # add martix
+        # add matrix
         test_data = np.full((1,5), 1.0)
         self.store.add('test_2d', '1', {'test_data': test_data})
         self.store.append('test_2d', '1', '2', {'test_data': np.full((1,5), 2.0)})
@@ -690,6 +779,24 @@ class NumpyHDFStorageTest(unittest.TestCase):
         test_data_get = self.store.get('test_3d', '1')
         self.assertEqual(test_data_get['test_data'].shape, test_data.shape)
         self.assertEqual(test_data[0,0,0], test_data_get['test_data'][0,0,0])
+        self.store.append('test_3d', '1', '2', {'test_data': np.full((1,5,5), 2.0)})
+        test_data_get = self.store.get('test_3d', '2')
+        self.assertEqual(test_data_get['test_data'].shape, (2,5,5,) )
+        self.assertEqual(test_data[0,0,0], test_data_get['test_data'][0,0,0])
+        self.assertEqual(2.0, test_data_get['test_data'][1,1,0])
+
+        # add 4d array
+        test_data = np.full((1,5,5, 7), 1.0)
+        self.store.add('test_4d', '1', {'test_data': test_data})
+        test_data_get = self.store.get('test_4d', '1')
+        self.assertEqual(test_data_get['test_data'].shape, test_data.shape)
+        self.assertEqual(test_data[0,0,0,0], test_data_get['test_data'][0,0,0,0])
+        self.store.append('test_4d', '1', '2', {'test_data': np.full((1,5,5,7), 2.0)})
+        test_data_get = self.store.get('test_4d', '2')
+        self.assertEqual(test_data_get['test_data'].shape, (2,5,5,7,) )
+        self.assertEqual(test_data[0,0,0, 0], test_data_get['test_data'][0,0,0,0])
+        self.assertEqual(2.0, test_data_get['test_data'][1,1,0,0])
+
 
     def test_append_single_files(self):
         """test appending data to existing numpy data (using deifferent hdf files for different versions)
@@ -738,6 +845,29 @@ class NumpyHDFStorageTest(unittest.TestCase):
         self.assertEqual(test_data_get['test_data'].shape, test_data.shape)
         self.assertEqual(test_data[0,0,0], test_data_get['test_data'][0,0,0])
 
+    def test_delete(self):
+        """Test deletion of data.
+        """
+        test_data = np.full((1,5,5,6), 1.0)
+        self.store.add('test_4d', '1', {'test_data': test_data})
+        self.store._delete('test_4d', '1')
+        succeeded = False
+        try:
+            test_data_get = self.store.get('test_4d', '1')
+        except:
+            succeeded = True
+        self.assertTrue(succeeded)
+        self.store._version_files = True
+        # now test branch with different files
+        self.store.add('test_4d', '1', {'test_data': test_data})
+        self.store._delete('test_4d', '1')
+        succeeded = False
+        try:
+            test_data_get = self.store.get('test_4d', '1')
+        except:
+            succeeded = True
+        self.assertTrue(succeeded)
+
 class NumpyHDFRemoteStorageTest(unittest.TestCase):
     class RemoteDummy:
         """Dummy remote class to test NumpyHDFRemoteStorage.
@@ -754,6 +884,8 @@ class NumpyHDFRemoteStorageTest(unittest.TestCase):
         def _upload_file(self,  local_filename, remote_filename):
             shutil.copyfile(local_filename, self.directory + '/' + remote_filename)
 
+        def _delete_file(self, filename):
+            pass
 
     def setUp(self):
         try:
@@ -808,6 +940,19 @@ class NumpyHDFRemoteStorageTest(unittest.TestCase):
         self.store.get('test_1', '1')
         self.assertTrue(os.path.exists('test_numpy_hdf5_remote/test_1_1.hdf5'))
         
+    def test_delete(self):
+        test_data = np.full((1,5), 1.0)
+        self.store._sync_add = True
+        self.store.add('test_1', '1', {'test_data': test_data})
+        self.store._delete('test_1', '1')
+        succeeded = False
+        try:
+            test_data_get = self.store.get('test_1', '1')
+        except:
+            succeeded = True
+        self.assertTrue(succeeded)
+
+
         
 
 

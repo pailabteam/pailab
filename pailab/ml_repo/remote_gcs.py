@@ -46,3 +46,9 @@ class RemoteGCS:
     def file_exists(self, filename):
         filename = filename.replace('\\', '/')
         return storage.Blob(bucket=self._bucket, name=filename).exists(self._storage_client)
+
+    def _delete_file(self,  filename):
+        bucket = self._get_bucket()
+        filename = filename.replace('\\', '/')
+        blob = bucket.blob(filename)
+        blob.delete()

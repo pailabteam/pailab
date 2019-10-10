@@ -3,6 +3,8 @@
 
 This module provides implementations of the :py:class:`pailab.ml_repo.repo_store.NumpyStore` using hdf5 file format.
 """
+import time
+from contextlib import contextmanager
 import h5py
 import os
 import pathlib
@@ -30,7 +32,7 @@ def trace(aFunc):
 
 class NumpyHDFStorage(NumpyStore):
     """ Storage using hdf5 files to store numpy data.
-    
+
     Example:
         Setup storage using folder ``C:\\temp\\data``::
 
@@ -39,8 +41,8 @@ class NumpyHDFStorage(NumpyStore):
         folder (str): main directory where the files will be stored
         version_files (bool): If True, each version is contained in a separate file, otherwise all versions are in one file.
             If you like to work in a distributed environmnt (e.g. multiple users working in parallel) you should set this parameter to True so that no file merge is necessary.
-             (default: {False})
-    
+            . Defaults to False.
+
     """
 
     def __init__(self, folder, version_files=False):
@@ -52,12 +54,10 @@ class NumpyHDFStorage(NumpyStore):
     def _create_file_name(self, name, version, change_if_not_exist=False):
         """ Function to create the file name for an object 
 
-        Arguments:
-            name {str} -- the identifier object
-            version {str} -- the version id
-
-        Keyword Arguments:
-            change_if_not_exist {bool} -- change the name if it does not exist (default: {False})
+        Args:
+            name (str): the identifier object
+            version (str): the version id
+            change_if_not_exist (bool): change the name if it does not exist. Defaults to False.
 
         Returns:
             str -- the filename
@@ -76,25 +76,36 @@ class NumpyHDFStorage(NumpyStore):
     def _delete(self, name, version):
         """ Delete an object with a predefined version
 
-        Arguments:
-            name {str} -- identifier of the object
-            version {str} -- the version id
+        Args:
+            name (str): identifier of the object
+            version (str): the version id
         """
 
-        pass
+        filename = self._create_file_name(name, version)
+        if self._version_files:
+            os.remove(self.main_dir + '/' + filename)
+        else:
+            with h5py.File(self.main_dir + '/' + self._create_file_name(name, version), 'a') as f:
+                grp_name = '/data/' + version + '/'
+                logger.debug('Deleting data ' + name +
+                         ' in hdf5 to group ' + grp_name)
+                del f[grp_name]
+                ref_grp_name = '/ref/' + str(version) + '/'
+                del f[ref_grp_name]
+            
 
     @staticmethod
     @trace
     def _save(data_grp, ref_grp, numpy_dict):
         """ saving the data 
 
-        Arguments:
-            data_grp {[type]} -- the data group
-            ref_grp {[type]} -- the reference group 
-            numpy_dict {numpy dict} -- the numpy dictionary to save
+        Args:
+            data_grp ([type]): the data group
+            ref_grp ([type]): the reference group 
+            numpy_dict (numpy dict): the numpy dictionary to save
 
         Raises:
-            NotImplementedException -- [description]
+            NotImplementedException: [description]
         """
 
         for k, v in numpy_dict.items():
@@ -114,19 +125,25 @@ class NumpyHDFStorage(NumpyStore):
                             tmp = data_grp.create_dataset(
                                 k, data=v, maxshape=(None, v.shape[1], v.shape[2]))
                             ref_grp.create_dataset(
-                                k, data=tmp.regionref[0:v.shape[0], 0:v.shape[1], 0:v.shape[1]])
+                                k, data=tmp.regionref[0:v.shape[0], 0:v.shape[1], 0:v.shape[2]])
                         else:
-                            raise NotImplementedException(
-                                'Not implemenet for dim>3.')
+                            if len(v.shape) == 4:
+                                tmp = data_grp.create_dataset(
+                                    k, data=v, maxshape=(None, v.shape[1], v.shape[2], v.shape[3]))
+                                ref_grp.create_dataset(
+                                    k, data=tmp.regionref[0:v.shape[0], 0:v.shape[1], 0:v.shape[2], 0:v.shape[3]])
+                            else:
+                                raise NotImplementedException(
+                                    'Not implemenet for dim>3.')
 
     @trace
     def add(self, name, version, numpy_dict):
         """ Add numpy data from an object to the storage.
 
-        Arguments:
-            name {str} -- the identifier of the object to add
-            version {str} -- the object version 
-            numpy_dict {numpy dict} -- the numpy dictionary to add
+        Args:
+            name (str): the identifier of the object to add
+            version (str): the object version 
+            numpy_dict (numpy dict): the numpy dictionary to add
         """
 
         tmp = pathlib.Path(self.main_dir + '/' + name + 'hdf')
@@ -145,11 +162,11 @@ class NumpyHDFStorage(NumpyStore):
     def _append_same_file(self, name, version_old, version_new, numpy_dict):
         """ Append data to the same file
 
-        Arguments:
-            name {str} -- the object identifier
-            version_old {str} -- the previous object version
-            version_new {str} -- the next object version
-            numpy_dict {numpy dict} -- the data to add as a numpy dictionary
+        Args:
+            name (str): the object identifier
+            version_old (str): the previous object version
+            version_new (str): the next object version
+            numpy_dict (numpy dict): the data to add as a numpy dictionary
         """
 
         with h5py.File(self.main_dir + '/' + self._create_file_name(name, version_new), 'a') as f:
@@ -186,15 +203,20 @@ class NumpyHDFStorage(NumpyStore):
                             data[old_size:new_shape[0], :, :] = v
                             ref_grp.create_dataset(
                                 k, data=data.regionref[0:new_shape[0], :, :])
+                        else:
+                            if len(data.shape) == 4:
+                                data[old_size:new_shape[0], :, :, :] = v
+                                ref_grp.create_dataset(
+                                    k, data=data.regionref[0:new_shape[0], :, :, :])
 
     def _append_different_file(self, name, version_old, version_new, numpy_dict):
         """ Append data to a different file
 
-        Arguments:
-            name {str} -- the object identifier
-            version_old {str} -- the previous object version
-            version_new {str} -- the next object version
-            numpy_dict {numpy dict} -- the data to add as a numpy dictionary
+        Args:
+            name (str): the object identifier
+            version_old (str): the previous object version
+            version_new (str): the next object version
+            numpy_dict (numpy dict): the data to add as a numpy dictionary
         """
 
         # save data to append in separate file
@@ -229,11 +251,11 @@ class NumpyHDFStorage(NumpyStore):
     def append(self, name, version_old, version_new, numpy_dict):
         """ append data to the an existing object
 
-        Arguments:
-            name {str} -- the object identifier
-            version_old {str} -- the previous object version
-            version_new {str} -- the next object version
-            numpy_dict {numpy dict} -- the data to add as a numpy dictionary
+        Args:
+            name (str): the object identifier
+            version_old (str): the previous object version
+            version_new (str): the next object version
+            numpy_dict (numpy dict): the data to add as a numpy dictionary
         """
 
         if not self._version_files:
@@ -246,17 +268,15 @@ class NumpyHDFStorage(NumpyStore):
     def get(self, name, version, from_index=0, to_index=None):
         """ get the numpy object for a name and a version, rows can be used
 
-        Arguments:
-            name {str} -- identifier of the object
-            version {str} -- version of the object
-
-        Keyword Arguments:
-            from_index {int} -- the index from which the data should be taken (default: {0})
-            to_index {int or None} -- the index to which the data is returned (None means till the end) (default: {None})
+        Args:
+            name (str): identifier of the object
+            version (str): version of the object
+            from_index (int): the index from which the data should be taken. Defaults to 0.
+            to_index (int or None): the index to which the data is returned (None means till the end). Defaults to None.
 
         Raises:
-            Exception -- raises an exception if no object with the name exists
-            Exception -- raises an exception if no object and with the version exists 
+            Exception: raises an exception if no object with the name exists
+            Exception: raises an exception if no object and with the version exists 
 
         Returns:
             numpy array -- the numpy object to return
@@ -292,9 +312,9 @@ class NumpyHDFStorage(NumpyStore):
     def object_exists(self, name, version):
         """ checks whether the object exists
 
-        Arguments:
-            name {str} -- the identifier of the object
-            version {str} -- the version of the object
+        Args:
+            name (str): the identifier of the object
+            version (str): the version of the object
 
         Returns:
             bool -- returns true if the object exists
@@ -313,8 +333,8 @@ class NumpyHDFStorage(NumpyStore):
 def _get_all_files(directory):
     """ Returns set of all files in directory
 
-    Arguments:
-        directory {str} -- the directory
+    Args:
+        directory (str): the directory
 
     Returns:
         set -- set with all filenames (including relative paths)
@@ -331,8 +351,6 @@ def _get_all_files(directory):
             f.add(p)
     return f
 
-import time
-from contextlib import contextmanager
 
 @contextmanager
 def _lock_dir(main_dir, wait_time, timeout):
@@ -347,9 +365,11 @@ def _lock_dir(main_dir, wait_time, timeout):
             _time += wait_time
     yield
     if _time >= timeout:
-        raise Exception('Cannot obtain lock due to timeout. Either increase timeout or remove .lock in ' + main_dir + ' to make everything working.')
+        raise Exception('Cannot obtain lock due to timeout. Either increase timeout or remove .lock in ' +
+                        main_dir + ' to make everything working.')
     if os.path.exists(main_dir + '/.lock'):
         os.remove(main_dir + '/.lock')
+
 
 def _create_remote(remote_type, **kwargs):
     if remote_type == 'gcs':
@@ -380,10 +400,11 @@ class NumpyHDFRemoteStorage(NumpyHDFStorage):
        sync_add (bool): If True, added data will be directly uploaded to the remote
     """
 
-    def __init__(self, folder, remote_store = None,  sync_get = False, sync_add = False):
-        super(NumpyHDFRemoteStorage, self).__init__(folder, version_files = True)
+    def __init__(self, folder, remote_store=None,  sync_get=False, sync_add=False):
+        super(NumpyHDFRemoteStorage, self).__init__(folder, version_files=True)
         if isinstance(remote_store, dict):
-            self._remote_store = _create_remote(remote_store['type'], **remote_store['config'])
+            self._remote_store = _create_remote(
+                remote_store['type'], **remote_store['config'])
         else:
             self._remote_store = remote_store
         # timeout in sec (waiting for another get/pull/push from another process)
@@ -402,26 +423,38 @@ class NumpyHDFRemoteStorage(NumpyHDFStorage):
 
         result = None
         try:
-            result = super(NumpyHDFRemoteStorage, self).get(name, version, from_index, to_index)
+            result = super(NumpyHDFRemoteStorage, self).get(
+                name, version, from_index, to_index)
         except:
             with _lock_dir(self.main_dir, self._wait_time, self._timeout):
-                filename = self._create_file_name(name, version, change_if_not_exist=False)
-                self._remote_store._download_file(self.main_dir + '/' + filename, filename)
-                result = super(NumpyHDFRemoteStorage, self).get(name, version, from_index, to_index)
+                filename = self._create_file_name(
+                    name, version, change_if_not_exist=False)
+                self._remote_store._download_file(
+                    self.main_dir + '/' + filename, filename)
+                result = super(NumpyHDFRemoteStorage, self).get(
+                    name, version, from_index, to_index)
         return result
 
     def add(self, name, version, numpy_dict):
         super(NumpyHDFRemoteStorage, self).add(name, version, numpy_dict)
         if self._sync_add:
             filename = self._create_file_name(name, version)
-            self._remote_store._upload_file( self.main_dir + '/' + filename, filename)
+            self._remote_store._upload_file(
+                self.main_dir + '/' + filename, filename)
+    
+    def _delete(self, name, version):
+        if self._sync_add == False:
+            raise Exception('Deletion only possible with direct synchronizing. Please set sync_add in constructor to True.')
+        super(NumpyHDFRemoteStorage, self)._delete(name, version)
+        filename = self._create_file_name(name, version)
+        self._remote_store._delete_file(filename)
 
     def push(self):
         """ Push changes to an external repo.
         """
 
         with _lock_dir(self.main_dir, self._wait_time, self._timeout):
-            remote_files = {x.name for x in self._remote_store._remote_file_list()}
+            remote_files = {x for x in self._remote_store._remote_file_list()}
             local_files = _get_all_files(self.main_dir)
             if '.lock' in local_files:
                 local_files.remove('.lock')
@@ -439,4 +472,3 @@ class NumpyHDFRemoteStorage(NumpyHDFStorage):
             files_to_pull = remote_files - local_files
             for f in files_to_pull:
                 self._remote_store._download_file(self.main_dir + '/' + f, f)
-
