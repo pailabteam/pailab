@@ -1007,7 +1007,8 @@ class MLRepo:
     def __create_default_config(user, workspace):
         if user is None:
             raise Exception('Please specify a user.')
-        return {'user': user, 'workspace': workspace, 
+        return {'name': 'None',
+                'user': user, 'workspace': workspace, 
                 'repo_store': {
                     'type': 'memory_handler', 
                     'config': {} 
@@ -1036,7 +1037,7 @@ class MLRepo:
                 with open(self._config['workspace']  + '/.config.json', 'w') as f:
                     json.dump(self._config, f, indent=4, separators=(',', ': '))
 
-    def __init__(self,  workspace = None, user=None, config = None, save_config = False):
+    def __init__(self,  workspace = None, user=None, config = None, save_config = False, name = None):
         """ Constructor of MLRepo
         
         Args:
@@ -1060,7 +1061,16 @@ class MLRepo:
         else:
             if 'workspace' in self._config.keys():
                 self._save_config() #we save the config 
-        
+
+        if 'name' not in self._config.keys():
+            if name is None:
+                self._config['name'] = 'NONE'
+            else:
+                self._config['name'] = None
+        else:
+            if name is not None:
+                raise Exception('A name for the repository has already been specified. Given name is ignored.')
+            
         self._numpy_repo = NumpyStoreFactory.get(self._config['numpy_store']['type'], **self._config['numpy_store']['config'])
         self._ml_repo = RepoStoreFactory.get(self._config['repo_store']['type'], **self._config['repo_store']['config'])
         self._job_runner = JobRunnerFactory.get(self._config['job_runner']['type'], self, **self._config['job_runner']['config'])
