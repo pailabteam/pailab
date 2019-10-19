@@ -183,10 +183,11 @@ def measure_history(ml_repo, measure_name, logscale_y=False):
         for d_version in data_versions:
             # if True:
             df = measures.loc[measures['data_version'] == d_version]
-            text = ["model version: " + str(x['model_version']) + '<br>' +
-                    data_name + ': ' + str(x['data_version']) + '<br>'
-                    + 'train_data: ' + str(x['train_data_version'])
-                    for index, x in df.iterrows()]
+            #text = ["model version: " + str(x['model_version']) + '<br>' +
+            #        data_name + ': ' + str(x['data_version']) + '<br>'
+            #        + 'train_data: ' + str(x['train_data_version'])
+            #        ]      
+                    #for index, x in df.iterrows()]
 
             if True:  # len(x) > 1:
                 plot_name = k + ': ' + str(d_version)
@@ -196,7 +197,7 @@ def measure_history(ml_repo, measure_name, logscale_y=False):
                 go.Scatter(
                     x=df['datetime'],
                     y=df['value'],
-                    text=text,
+                    #text=text,
                     name=plot_name,
                     mode='markers'
                 )
@@ -216,7 +217,7 @@ def measure_history(ml_repo, measure_name, logscale_y=False):
     # py.iplot(data, filename='pandas/basic-line-plot')
     fig = go.Figure(data=data, layout=layout)
 
-    iplot(fig)  # , filename='pandas/basic-line-plot')
+    return iplot(fig)  # , filename='pandas/basic-line-plot')
 
 
 def _histogram(plot_dict, n_bins=None, histnorm='percent'):
