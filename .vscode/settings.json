@@ -1,14 +1,27 @@
 {
-    "python.unitTest.unittestArgs": [
+    "python.testing.unittestArgs": [
         "-v",
         "-s",
         "./tests",
         "-p",
-        "*_test.py"
+        "*test*.py"
     ],
-    "python.unitTest.pyTestEnabled": false,
-    "python.unitTest.nosetestsEnabled": false,
-    "python.unitTest.unittestEnabled": true,
+    "python.testing.pytestEnabled": false,
+    "python.testing.nosetestsEnabled": false,
+    "python.testing.unittestEnabled": true,
     "editor.formatOnSave": true,
-    "autoDocstring.docstringFormat": "google"
+    "autoDocstring.docstringFormat": "google",
+    "python.pythonPath": "C:\\Users\\Anwender\\Anaconda3\\python.exe",
+	"python.jediEnabled": false
+    "spellright.language": [
+        "en"
+    ],
+    "spellright.documentTypes": [
+        "markdown",
+        "latex",
+        "plaintext",
+        "restructuredtext"
+    ],
+    "restructuredtext.confPath": "${workspaceFolder}\\doc\\source",
+    "python.linting.enabled": true
 }
