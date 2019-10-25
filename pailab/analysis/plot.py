@@ -19,6 +19,10 @@ try:
 except ImportError:
     has_plotly = False
 
+# the following variable  is used to support th plotting methods within the jupyter_tools widget framework and will be set to true from within 
+# the framework
+use_within_widget = False
+
 logger = logging.getLogger(__name__)
 
 init_notebook_mode(connected=True)
@@ -251,8 +255,10 @@ def _histogram(plot_dict, n_bins=None, histnorm='percent'):
                                         histnorm=histnorm))
 
     fig = go.Figure(data=plot_data, layout=layout)
-
+    if use_within_widget:
+        return fig
     iplot(fig)  # , filename='pandas/basic-line-plot')
+    
 
 
 def histogram_model_error(ml_repo, models, data_name, y_coordinate=None, data_version=LAST_VERSION, n_bins=None,  start_index=0, end_index=-1):
@@ -286,7 +292,7 @@ def histogram_model_error(ml_repo, models, data_name, y_coordinate=None, data_ve
 
 
     """
-    if isinstance(y_coordinate, list):
+    if isinstance(y_coordinate, list) or isinstance(y_coordinate, tuple):
         plot_dict = {'data':{}, 'x0_name': 'pointwise error'}
         for coord in y_coordinate:
             tmp = plot_helper.get_pointwise_model_errors(
@@ -297,7 +303,7 @@ def histogram_model_error(ml_repo, models, data_name, y_coordinate=None, data_ve
     else:    
         plot_dict = plot_helper.get_pointwise_model_errors(
             ml_repo, models, data_name, y_coordinate, start_index=start_index, end_index=end_index)
-    _histogram(plot_dict, n_bins)
+    return _histogram(plot_dict, n_bins)
 
 
 def scatter_model_error(ml_repo, models, data_name, x_coordinate, y_coordinate=None, start_index=0, end_index=-1):
