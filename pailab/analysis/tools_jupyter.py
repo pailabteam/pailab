@@ -1,6 +1,5 @@
-import pailab.analysis.plot as plot
+import pailab.analysis.plot as paiplot
 import pailab.analysis.plot_helper as plt_helper
-from ipywidgets import *
 import ipywidgets as widgets
 import numpy as np
 import copy
@@ -16,6 +15,11 @@ import matplotlib.dates as mdates
 
 # set option so that long lines have a linebreak
 pd.set_option('display.max_colwidth', -1)
+#set widget use to True so that plotlys FigureWidget is used
+paiplot.use_within_widget = True
+
+if paiplot.has_plotly:
+    import plotly.graph_objs as go
 
 beakerX = False
 if beakerX:
@@ -60,6 +64,7 @@ class _MLRepoModel:
     class _ModelModel:
         def __init__(self, ml_repo):
             self._model_info_table = self._setup_model_info_table(ml_repo)
+            self._model_names = ml_repo.get_names(MLObjectType.CALIBRATED_MODEL)
 
         def _setup_model_info_table(self, ml_repo):
             model_rows = []
@@ -77,6 +82,9 @@ class _MLRepoModel:
             model_info_table = pd.DataFrame(model_rows)
             model_info_table.set_index(['model', 'version'], inplace=True)
             return model_info_table
+
+        def get_models(self):
+            return self._model_names
 
         def get_info_table(self):
             return self._model_info_table
@@ -242,7 +250,9 @@ class _ObjectCategorySelector:
         if 'layout' not in kwargs.keys():
             kwargs['layout'] = widgets.Layout(width='300px', height='250px')
         kwargs['value'] = []
-        self._selector = widgets.SelectMultiple(options=selection, **kwargs)
+        self._selector = widgets.SelectMultiple(options=selection, 
+                        #value = [selection[0]], 
+                        **kwargs)
 
     def get_selection(self):
         return [k.split(' ')[0] for k in self._selector.value]
@@ -260,8 +270,10 @@ class _DataSelector:
     """
 
     def __init__(self, **kwargs):
+        names = widget_repo.data.get_data_names()
+        #if len(names) > 0:
         self._selection_widget = widgets.SelectMultiple(
-            options=widget_repo.data.get_data_names(), **kwargs)
+            options=names, value = [names[0]], **kwargs)
 
     def get_widget(self):
         return widgets.VBox(children=[widgets.Label(value='Data'), self._selection_widget])
@@ -388,10 +400,10 @@ class RepoOverview:
             value='<div style="background-color:#c2c2d6"><h4 stype="text-align: center"> Repository: ' 
                 + widget_repo.ml_repo._config['name'] + '</h4>')#, margin = '0px 0px 0px 0px'))
         self._data_statistics = widgets.Output(
-            layout=Layout(width='450px', height='450px'))
+            layout=widgets.Layout(width='450px', height='450px'))
         self._plot_data_statistics()
         self._measures = widgets.Output(
-            layout=Layout(width='450px', height='450px'))
+            layout=widgets.Layout(width='450px', height='450px'))
         self._consistency = self._setup_consistency()
         self._labels = self._setup_labels()
         self._model_stats = self._setup_model_stats()
@@ -421,7 +433,7 @@ class RepoOverview:
             
         if len(widget_repo.labels)>0:
             label_output = widgets.Output(
-                layout=Layout(width='400px', height='100px', overflow_y='auto', overflow_x='auto'))
+                layout=widgets.Layout(width='400px', height='100px', overflow_y='auto', overflow_x='auto'))
             with label_output:
                 clear_output(wait=True)
                 display(pd.DataFrame.from_dict(widget_repo.labels, orient='index'))
@@ -433,7 +445,7 @@ class RepoOverview:
     def _setup_model_stats(self):
         header = widgets.HTML('<div style="background-color:#c2c2d6"><h4 stype="text-align: center">Models</h4>')
         model_stats_output = widgets.Output(
-                layout=Layout(width='400px', height='100px', overflow_y='auto', overflow_x='auto'))
+                layout=widgets.Layout(width='400px', height='100px', overflow_y='auto', overflow_x='auto'))
         with model_stats_output:
             clear_output(wait=True)
             display(pd.DataFrame.from_dict(widget_repo.get_model_statistics(), orient='index'))
@@ -602,84 +614,72 @@ class ConsistencyChecker:
         return self._widget_main
 
 
-# import plotly.graph_objs as go
-# from plotly.offline import download_plotlyjs, init_notebook_mode, iplot
+class ModelErrorHistogram:
+    """Class to plot histograms of model errors. 
+      Please make sure that if you use plotly, also the jupyter plotlywidgets are installed via:
+        jupyter nbextension install --py --sys-prefix plotlywidget
+      otherwise you may encounter problems using this class.
+    
+    Returns:
+        [type]: [description]
+    """
+    def __init__(self):
+        self._data = _DataSelector()
+        self._update_button = widgets.Button(description='update')
+        self._update_button.on_click(self._plot)
+        self._output = widgets.Output()
+        self._coord = widgets.SelectMultiple(
+                options=widget_repo.data._y_coord_names,
+                value=[widget_repo.data._y_coord_names[0]],
+                disabled=False
+                ) 
+        models = widget_repo.model.get_models()
+        self._models = widgets.SelectMultiple(
+                options=models,
+                value=[models[0]],
+                disabled=False
+                ) 
+        self._labels = widgets.SelectMultiple(
+                options=widget_repo.labels,
+                disabled=False
+                ) 
 
-
-class Plotter:
-    def _get_measures(self):
-        measures = self._ml_repo.get_names(MLObjectType.MEASURE)
-        result = []
-        for m in measures:
-            if self._model_selection.value in m:
-                result.append(m)
-        self._data_selection.options = result
-
-    def _get_parameter(self, dummy=None):
-        obj_cat = MLObjectType.TRAINING_PARAM
-        if self._train_model_sel.value == 'model':
-            obj_cat = MLObjectType.MODEL_PARAM
-        parameters = self._ml_repo.get_names(obj_cat)
-        parameter = None
-        for t in parameters:
-            if self._model_selection.value in t:
-                parameter = t
-                break
-
-        if parameter is None:
-            self._param_sel.options = []
-            return
-        param = self._ml_repo.get(parameter)
-        self._param_sel.options = [x for x in param.get_params().keys()]
-
-    def __init__(self, ml_repo):
-        self._ml_repo = widget_repo.ml_repo
-        self._output = widgets.Output(
-            layout=Layout(width='100%', height='100%'))
-        self._model_selection = widgets.RadioButtons(
-            options=self._ml_repo.get_names(MLObjectType.MODEL),
-            #     value='pineapple',
-            description='model:',
-            disabled=False
-        )
-
-        self._train_model_sel = widgets.RadioButtons(
-            options=['training', 'model'],
-            value='model',
-            description='param type:',
-            disabled=False
-        )
-        self._param_sel = widgets.Select(
-            description='parameter',
-            disabled=False
-        )
-        self._get_parameter()
-
-        self._train_model_sel.observe(self._get_parameter, 'value')
-        self._data_selection = widgets.SelectMultiple(options=[])
-        self._get_measures()
-
-        self._plot_button = widgets.Button(description='plot')
-        self._plot_button.on_click(self.plot)
-        self._widget_main = widgets.VBox(children=[
-            widgets.HBox(
-                children=[self._plot_button, self._data_selection,
-                          self._model_selection, self._train_model_sel, self._param_sel]
-            ),
-            self._output]
-        )
-
-    def get_widget(self):
-        return self._widget_main
-
-    def plot(self, d):
+    def _plot(self, d):
         with self._output:
             clear_output(wait=True)
-            data = [x for x in self._data_selection.value]
-            if len(data) > 0 and self._param_sel.value is not None:
-                use_train_param = True
-                if self._train_model_sel.value == 'model':
-                    use_train_param = False
-                plot.measure_by_parameter(self._ml_repo, data, self._param_sel.value,
-                                          data_versions=LAST_VERSION, training_param=use_train_param)
+            models = [x for x in self._models.value]
+            #for x in self._labels.value:
+            #    models.append(x)
+            display(go.FigureWidget(paiplot.histogram_model_error(widget_repo.ml_repo, models, 
+                        self._data.get_selection(), y_coordinate=self._coord.value)))
+
+    @_add_title_and_border('Pointwise Model Error Histogram')
+    def get_widget(self):
+        return widgets.HBox(children=
+                [
+                    widgets.VBox(children=[
+                    widgets.HBox(children=
+                    [
+                        widgets.VBox(children = [
+                                    self._data.get_widget(),
+                                    widgets.VBox(children=[
+                                        widgets.Label(value = 'y-coordinates'),
+                                        self._coord
+                                        ]
+                                    ),
+                        ]),
+                        widgets.VBox(children = [
+                                    widgets.VBox(children=[
+                                        widgets.Label(value = 'Models'),
+                                        self._models
+                                    ]),
+                                    widgets.VBox(children=[
+                                        widgets.Label(value = 'Labels'),
+                                        self._labels
+                                    ])
+                            ]),
+                        ]),
+                    self._update_button]),       
+                    self._output 
+                ])
 
