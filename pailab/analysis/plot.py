@@ -420,7 +420,7 @@ def histogram_data_conditional_error(ml_repo, models, data, x_coordinate, y_coor
                 plot_data[k+':'+str(percentile)] = data
                 plot_data[k] = {'x0': x['x0'][start_index:end_index], 'info': x['info']}
         plot_dict = {'data': plot_data, 'title': tmp['title'] + ', inlcuding distribution w.r.t ' + str(100*percentile) + ' % quantile', 'x0_name' : tmp['x0_name'], 'x1_name': tmp['x1_name']}
-        _histogram(plot_dict, n_bins=n_bins)
+        return _histogram(plot_dict, n_bins=n_bins)
 
 
 def _ice_plotly(ice_results, ice_points = None, height = None, width = None, ice_results_2 = None, clusters = None):
