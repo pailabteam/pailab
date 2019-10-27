@@ -619,9 +619,6 @@ class ModelErrorHistogram:
       Please make sure that if you use plotly, also the jupyter plotlywidgets are installed via:
         jupyter nbextension install --py --sys-prefix plotlywidget
       otherwise you may encounter problems using this class.
-    
-    Returns:
-        [type]: [description]
     """
     def __init__(self):
         self._data = _DataSelector()
@@ -640,7 +637,7 @@ class ModelErrorHistogram:
                 disabled=False
                 ) 
         self._labels = widgets.SelectMultiple(
-                options=widget_repo.labels,
+                options=[x for x in widget_repo.labels.keys()],
                 disabled=False
                 ) 
 
@@ -648,11 +645,12 @@ class ModelErrorHistogram:
         with self._output:
             clear_output(wait=True)
             models = [x for x in self._models.value]
-            #for x in self._labels.value:
-            #    models.append(x)
+            for x in self._labels.value:
+                l = widget_repo.labels[x]
+                models.append( (l['model'], l['version'],) )
             display(go.FigureWidget(paiplot.histogram_model_error(widget_repo.ml_repo, models, 
                         self._data.get_selection(), y_coordinate=self._coord.value)))
-
+            
     @_add_title_and_border('Pointwise Model Error Histogram')
     def get_widget(self):
         return widgets.HBox(children=
@@ -681,5 +679,156 @@ class ModelErrorHistogram:
                         ]),
                     self._update_button]),       
                     self._output 
+                ])
+
+
+class ModelErrorConditionalHistogram:
+    """Plots the distribution of input data along a given axis for the largest absolute pointwise errors in comparison to the distribution of all data.
+    """
+    def __init__(self):
+        self._data = _DataSelector()
+        self._update_button = widgets.Button(description='update')
+        self._update_button.on_click(self._plot)
+        self._output = widgets.Output()
+        self._recommendation_output = widgets.Output()
+        self._output_tab = widgets.Tab(children = [self._output,
+            self._recommendation_output])
+        self._output_tab.set_title(0,'histograms')
+        self._output_tab.set_title(1,'recommendations')
+        self._quantile = widgets.FloatSlider(
+                value=10,
+                min=1,
+                max=50,
+                step=1,
+                readout=True,
+                readout_format='.2f',
+                )
+        self._coord = widgets.Select(
+                options=widget_repo.data._y_coord_names,
+                value=widget_repo.data._y_coord_names[0],
+                disabled=False
+                ) 
+        self._x_coord = widgets.Select(
+                options=widget_repo.data._x_coord_names,
+                value=widget_repo.data._x_coord_names[0],
+                disabled=False
+                ) 
+        models = widget_repo.model.get_models()
+        self._models = widgets.SelectMultiple(
+                options=models,
+                value=[models[0]],
+                disabled=False
+                ) 
+        self._labels = widgets.SelectMultiple(
+                options=[x for x in widget_repo.labels.keys()],
+                disabled=False
+                ) 
+        self._accordion = widgets.Accordion(children = [
+                    self._get_selection_widget(),
+                    self._get_recommendation_widget()
+                    ])
+        self._accordion.set_title(0, 'Selection')
+        self._accordion.set_title(1, 'Recommendation')
+
+
+    def _get_selection_widget(self):
+        return widgets.VBox(children=[
+                    widgets.HBox(children=
+                    [
+                        widgets.VBox(children = [
+                                    self._data.get_widget(),
+                                    widgets.VBox(children=[
+                                        widgets.Label(value = 'y-coordinates'),
+                                        self._coord,
+                                        self._x_coord
+                                        ]
+                                    ),
+                        ]),
+                        widgets.VBox(children = [
+                                    widgets.VBox(children=[
+                                        widgets.Label(value = 'Models'),
+                                        self._models
+                                    ]),
+                                    widgets.VBox(children=[
+                                        widgets.Label(value = 'Labels'),
+                                        self._labels
+                                    ])
+                            ]),
+                        ]),
+                    self._quantile,
+                    self._update_button])
+    
+    def _get_recommendation_widget(self):
+        self._update_recommendation = widgets.Button(description='update')
+        self._max_num_recommendations = widgets.IntText(value=20,
+                                            description='maximum number of recommendations')
+        self._cache_in_repo = widgets.Checkbox(value=True, description='cache MMD in repo')
+        self._scale = widgets.Checkbox(value=True, description='scale x-values to zero mean and unit variance')
+        self._update_recommendation.on_click(self._recommend)
+        self._kernel_selection = widgets.Dropdown(options = [
+                'rbf','linear', 'polynomial', 'sigmoid', 'laplacian', 'chi2'
+            ],
+            value = 'rbf',
+            description = 'kernel')
+        self._gamma = widgets.FloatText(value = 1.0, description='gamma')
+        self._gamma_for_kernel = ['rbf', 'polynomial', 'sigmoid', 'laplacian', 'chi2']
+        self._kernel_selection.observe(self._on_kernel_change, names='value')
+        return widgets.VBox(children=[
+                self._max_num_recommendations,
+                self._cache_in_repo ,
+                self._scale,
+                self._kernel_selection,
+                self._gamma,
+                self._update_recommendation
+            ])
+
+    def _on_kernel_change(self, d):
+        if self._kernel_selection in self._gamma_for_kernel:
+            self._gamma.disabled = False
+        else:
+            self._gamma.disabled = False
+
+    def _plot(self, d):
+        with self._output:
+            clear_output(wait=True)
+            models = [x for x in self._models.value]
+            for x in self._labels.value:
+                l = widget_repo.labels[x]
+                models.append( (l['model'], l['version'],) )
+            display(go.FigureWidget(
+                    paiplot.histogram_data_conditional_error(widget_repo.ml_repo, 
+                            models, self._data.get_selection(), x_coordinate = 0,
+                            y_coordinate = self._coord.value, 
+                            percentile=self._quantile.value/100.0)
+                    ))
+            self._output_tab.selected_index=0
+            
+    def _recommend(self, d):
+        self._output_tab.set_title(1, 'computing...')
+        models = [x for x in self._models.value]
+        for x in self._labels.value:
+            l = widget_repo.labels[x]
+            models.append( (l['model'], l['version'],) )
+        tmp =  pd.DataFrame.from_dict( 
+                plt_helper.get_ptws_error_dist_mmd(widget_repo.ml_repo, models, 
+                    data = [x for x in self._data.get_selection()],
+                    start_index=0, end_index=-1, percentile=self._quantile.value/100.0, 
+                    scale = self._scale.value,
+                    cache = self._cache_in_repo,
+                    metric=self._kernel_selection.value)#,  **kwds)
+            )
+        tmp.sort_values(['mmd'], ascending = False, inplace = True)
+        with self._recommendation_output:
+            clear_output(wait=True)
+            display(tmp.iloc[0:self._max_num_recommendations.value])
+        self._output_tab.selected_index=1
+        self._output_tab.set_title(1, 'recommendations')
+
+    @_add_title_and_border('Data Distribution of Largest Pointwise Errors.')
+    def get_widget(self):
+        return widgets.HBox(children=
+                [
+                    self._accordion,       
+                    self._output_tab
                 ])
 
