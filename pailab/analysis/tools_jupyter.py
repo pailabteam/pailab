@@ -852,3 +852,80 @@ class ModelErrorConditionalHistogram:
                     self._output_tab
                 ])
 
+
+class ScatterModelError:
+    def __init__(self):
+        self._data = _DataSelector()
+        self._update_button = widgets.Button(description='update')
+        self._update_button.on_click(self._plot)
+        self._output = widgets.Output()
+        self._coord = widgets.Select(
+                options=widget_repo.data._y_coord_names,
+                value=widget_repo.data._y_coord_names[0],
+                disabled=False
+                ) 
+        self._x_coord = widgets.Select(
+                options=widget_repo.data._x_coord_names,
+                value=widget_repo.data._x_coord_names[0],
+                disabled=False
+                ) 
+        models = widget_repo.model.get_models()
+        self._models = widgets.SelectMultiple(
+                options=models,
+                value=[models[0]],
+                disabled=False
+                ) 
+        self._labels = widgets.SelectMultiple(
+                options=[x for x in widget_repo.labels.keys()],
+                disabled=False
+                ) 
+    
+    def _get_selection_widget(self):
+        return widgets.VBox(children=[
+                    widgets.HBox(children=
+                    [
+                        widgets.VBox(children = [
+                                    self._data.get_widget(),
+                                    widgets.VBox(children=[
+                                        widgets.Label(value = 'y-coordinates'),
+                                        self._coord,
+                                        widgets.Label(value = 'x-coordinates'),
+                                        self._x_coord
+                                        ]
+                                    ),
+                        ]),
+                        widgets.VBox(children = [
+                                    widgets.VBox(children=[
+                                        widgets.Label(value = 'Models'),
+                                        self._models
+                                    ]),
+                                    widgets.VBox(children=[
+                                        widgets.Label(value = 'Labels'),
+                                        self._labels
+                                    ])
+                            ]),
+                        ]),
+                    self._update_button])
+    
+    def _plot(self, d):
+        with self._output:
+            clear_output(wait=True)
+            models = [x for x in self._models.value]
+            for x in self._labels.value:
+                l = widget_repo.labels[x]
+                models.append( (l['model'], l['version'],) )
+            display(go.FigureWidget(
+                    paiplot.scatter_model_error(widget_repo.ml_repo, 
+                            models, self._data.get_selection(), 
+                            x_coordinate = self._x_coord.value,
+                            y_coordinate = self._coord.value)
+                    ))
+            
+    @_add_title_and_border('Scatter Plot Pointwise Errors.')
+    def get_widget(self):
+        return widgets.HBox(children=
+                [
+                    self._get_selection_widget(),
+                    self._output
+                ])
+
