@@ -1,6 +1,7 @@
 import unittest
 import os
 import numpy as np
+import tempfile
 
 from pailab import RepoInfoKey, MLObjectType, repo_object_init, RepoInfoKey, DataSet, RawData, MLRepo  # pylint: disable=E0401
 from pailab.ml_repo.repo import NamingConventions
@@ -558,7 +559,25 @@ class RepoTest(unittest.TestCase):
             self.assertEqual(len(label), 1)
         if label is None:
             self.assertEqual(1,0)
-        
+
+    def test_workspace_and_name(self):
+        """Test workspace functionality with focus on naming the repo
+        """
+        with tempfile.TemporaryDirectory() as workspace: # check with workspace without config fle
+            ml_repo = MLRepo(user = 'unittestuser', workspace = workspace)
+            ml_repo_2 = MLRepo(user = 'unittestuser', workspace = workspace, name = 'test_repo')
+            self.assertEqual(ml_repo_2._config['name'], 'test_repo')
+
+        with tempfile.TemporaryDirectory() as workspace: # check with workspace without config fle
+            ml_repo = MLRepo(user = 'unittestuser', workspace = workspace, name = 'test_repo')
+            ml_repo_2 = MLRepo(user = 'unittestuser', workspace = workspace) 
+            self.assertEqual(ml_repo_2._config['name'], 'test_repo')
+
+        with tempfile.TemporaryDirectory() as workspace: # check with workspace without config fle
+            ml_repo = MLRepo(user = 'unittestuser', workspace = workspace, name = 'test_repo')
+            with self.assertRaises(Exception): MLRepo(user = 'unittestuser', workspace = workspace)
+            
+
 
 class MLRepoConstructorTest(unittest.TestCase):
     def test_default_constructor(self):

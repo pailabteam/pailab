@@ -1030,7 +1030,6 @@ class MLRepo:
         """
 
         if 'workspace' in self._config.keys():
-            
             if self._config['workspace']  is not None:
                 if not os.path.exists(self._config['workspace'] ):
                  os.makedirs(self._config['workspace'])
@@ -1066,7 +1065,8 @@ class MLRepo:
             if name is None:
                 self._config['name'] = 'NONE'
             else:
-                self._config['name'] = None
+                self._config['name'] = name
+                save_config = True
         else:
             if name is not None:
                 raise Exception('A name for the repository has already been specified. Given name is ignored.')
