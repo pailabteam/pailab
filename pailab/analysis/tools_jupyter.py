@@ -740,6 +740,7 @@ class ModelErrorConditionalHistogram:
                                     widgets.VBox(children=[
                                         widgets.Label(value = 'y-coordinates'),
                                         self._coord,
+                                        widgets.Label(value = 'x-coordinates'),
                                         self._x_coord
                                         ]
                                     ),
@@ -773,20 +774,34 @@ class ModelErrorConditionalHistogram:
         self._gamma = widgets.FloatText(value = 1.0, description='gamma')
         self._gamma_for_kernel = ['rbf', 'polynomial', 'sigmoid', 'laplacian', 'chi2']
         self._kernel_selection.observe(self._on_kernel_change, names='value')
+        self._recommendation_selection = widgets.IntText(description='recommendation id')
+        self._recomendation_selection_apply = widgets.Button(description='apply recommendation')
+        self._recomendation_selection_apply.on_click(self._apply_recommend)
         return widgets.VBox(children=[
                 self._max_num_recommendations,
                 self._cache_in_repo ,
                 self._scale,
                 self._kernel_selection,
                 self._gamma,
-                self._update_recommendation
+                self._update_recommendation,
+                self._recommendation_selection,
+                self._recomendation_selection_apply
             ])
+        self._recommendation_table = None
 
     def _on_kernel_change(self, d):
         if self._kernel_selection in self._gamma_for_kernel:
             self._gamma.disabled = False
         else:
-            self._gamma.disabled = False
+            self._gamma.disabled = True
+
+    def _apply_recommend(self, d):
+        if self._recommendation_selection.value is not None:
+            self._coord.value=self._recommendation_table['y-coord'][self._recommendation_selection.value]
+            self._x_coord.value=self._recommendation_table['x-coord'][self._recommendation_selection.value]
+            self._models.value = [self._recommendation_table['model'][self._recommendation_selection.value]]
+            self._data.value = [self._recommendation_table['data'][self._recommendation_selection.value]]
+            self._plot(None)
 
     def _plot(self, d):
         with self._output:
@@ -797,7 +812,8 @@ class ModelErrorConditionalHistogram:
                 models.append( (l['model'], l['version'],) )
             display(go.FigureWidget(
                     paiplot.histogram_data_conditional_error(widget_repo.ml_repo, 
-                            models, self._data.get_selection(), x_coordinate = 0,
+                            models, self._data.get_selection(), 
+                            x_coordinate = self._x_coord.value,
                             y_coordinate = self._coord.value, 
                             percentile=self._quantile.value/100.0)
                     ))
@@ -809,20 +825,24 @@ class ModelErrorConditionalHistogram:
         for x in self._labels.value:
             l = widget_repo.labels[x]
             models.append( (l['model'], l['version'],) )
-        tmp =  pd.DataFrame.from_dict( 
+        self._recommendation_table =  pd.DataFrame.from_dict( 
                 plt_helper.get_ptws_error_dist_mmd(widget_repo.ml_repo, models, 
                     data = [x for x in self._data.get_selection()],
                     start_index=0, end_index=-1, percentile=self._quantile.value/100.0, 
                     scale = self._scale.value,
                     cache = self._cache_in_repo,
-                    metric=self._kernel_selection.value)#,  **kwds)
+                    metric=self._kernel_selection.value, 
+                    gamma = self._gamma.value)#,  **kwds)
             )
-        tmp.sort_values(['mmd'], ascending = False, inplace = True)
+        del self._recommendation_table['model version']
+        del self._recommendation_table['data version']
+        self._recommendation_table.sort_values(['mmd'], ascending = False, inplace = True)
         with self._recommendation_output:
             clear_output(wait=True)
-            display(tmp.iloc[0:self._max_num_recommendations.value])
+            display(self._recommendation_table.iloc[0:self._max_num_recommendations.value])
         self._output_tab.selected_index=1
         self._output_tab.set_title(1, 'recommendations')
+        self._recommendation_selection.value = self._recommendation_table.index[0]
 
     @_add_title_and_border('Data Distribution of Largest Pointwise Errors.')
     def get_widget(self):
