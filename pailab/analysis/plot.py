@@ -340,11 +340,11 @@ def scatter_model_error(ml_repo, models, data_name, x_coordinate, y_coordinate=N
                                     name=k,
                                     mode='markers'))
 
-    # IPython notebook
-    # py.iplot(data, filename='pandas/basic-line-plot')
     fig = go.Figure(data=plot_data, layout=layout)
 
-    iplot(fig)  # , filename='pandas/basic-line-plot')
+    if use_within_widget:
+        return fig
+    iplot(fig)
 
 
 def histogram_data(ml_repo, data, x_coordinate, n_bins=None,  start_index=0, end_index=-1):
