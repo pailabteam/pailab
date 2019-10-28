@@ -14,3 +14,4 @@ dist/
 build/
 pailab.egg-info/
 examples/.ipynb_checkpoints
+examples/.ipynb_checkpoints/widgets-checkpoint.ipynb
