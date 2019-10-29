@@ -568,14 +568,14 @@ class RepoTest(unittest.TestCase):
             ml_repo_2 = MLRepo(user = 'unittestuser', workspace = workspace, name = 'test_repo')
             self.assertEqual(ml_repo_2._config['name'], 'test_repo')
 
-        with tempfile.TemporaryDirectory() as workspace: # check with workspace without config fle
+        with tempfile.TemporaryDirectory() as workspace: 
             ml_repo = MLRepo(user = 'unittestuser', workspace = workspace, name = 'test_repo')
-            ml_repo_2 = MLRepo(user = 'unittestuser', workspace = workspace) 
+            ml_repo_2 = MLRepo(workspace = workspace) 
             self.assertEqual(ml_repo_2._config['name'], 'test_repo')
 
         with tempfile.TemporaryDirectory() as workspace: # check with workspace without config fle
             ml_repo = MLRepo(user = 'unittestuser', workspace = workspace, name = 'test_repo')
-            with self.assertRaises(Exception): MLRepo(user = 'unittestuser', workspace = workspace)
+            with self.assertRaises(Exception): MLRepo(workspace = workspace, name = 'test_repo')
             
 
 
