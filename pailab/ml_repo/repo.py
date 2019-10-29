@@ -1007,7 +1007,7 @@ class MLRepo:
     def __create_default_config(user, workspace):
         if user is None:
             raise Exception('Please specify a user.')
-        return {'name': 'None',
+        return {'name': 'NONE',
                 'user': user, 'workspace': workspace, 
                 'repo_store': {
                     'type': 'memory_handler', 
@@ -1036,7 +1036,7 @@ class MLRepo:
                 with open(self._config['workspace']  + '/.config.json', 'w') as f:
                     json.dump(self._config, f, indent=4, separators=(',', ': '))
 
-    def __init__(self,  workspace = None, user=None, config = None, save_config = False, name = None):
+    def __init__(self,  workspace = None, user=None, config = None, save_config = False, name = 'NONE'):
         """ Constructor of MLRepo
         
         Args:
@@ -1052,9 +1052,13 @@ class MLRepo:
         self._config = config
         if config is None:
             if workspace is not None:
-                logger.info('Reading config from workspace ' + workspace)
-                with open(workspace + '/.config.json', 'r') as f:
-                    self._config = json.load(f)
+                try:
+                    logger.info('Reading config from workspace ' + workspace)
+                    with open(workspace + '/.config.json', 'r') as f:
+                        self._config = json.load(f)
+                except:
+                    logger.info('Reading config from workspace ' + workspace + ' has not been successfull, using defaults.')
+                    self._config = MLRepo.__create_default_config(user, workspace)
             else:
                 self._config = MLRepo.__create_default_config(user, workspace)
         else:
@@ -1062,15 +1066,15 @@ class MLRepo:
                 self._save_config() #we save the config 
 
         if 'name' not in self._config.keys():
-            if name is None:
-                self._config['name'] = 'NONE'
-            else:
-                self._config['name'] = name
-                save_config = True
+            self._config['name'] = name
+            save_config = True
         else:
-            if name is not None:
-                raise Exception('A name for the repository has already been specified. Given name is ignored.')
-            
+            if name != 'NONE':
+                if not self._config['name'] == 'NONE':
+                    raise Exception('A name for the repository has already been specified.')
+                self._config['name'] = name
+                self._save_config() #we save the config 
+                
         self._numpy_repo = NumpyStoreFactory.get(self._config['numpy_store']['type'], **self._config['numpy_store']['config'])
         self._ml_repo = RepoStoreFactory.get(self._config['repo_store']['type'], **self._config['repo_store']['config'])
         self._job_runner = JobRunnerFactory.get(self._config['job_runner']['type'], self, **self._config['job_runner']['config'])
