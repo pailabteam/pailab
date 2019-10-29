@@ -447,7 +447,7 @@ def get_measure_history(ml_repo, measure_names):
             NamingConventions.Measure(measure_name)
         )
         model_name = str(model_name)
-        train_data = ml_repo.get_names(MLObjectType.TRAINING_DATA)[0]
+        #train_data = ml_repo.get_names(MLObjectType.TRAINING_DATA)[0]
 
         # eval_name
 
@@ -455,7 +455,7 @@ def get_measure_history(ml_repo, measure_names):
         for x in measures:
             info = {'model_version': x.repo_info[RepoInfoKey.MODIFICATION_INFO][model_name],
                     'data_version': x.repo_info[RepoInfoKey.MODIFICATION_INFO][data],
-                    'train_data_version': x.repo_info[RepoInfoKey.MODIFICATION_INFO][train_data],
+                    #'train_data_version': x.repo_info[RepoInfoKey.MODIFICATION_INFO][train_data],
                     'value': x.value, 'datetime': _time_from_version(x.repo_info[RepoInfoKey.MODIFICATION_INFO][model_name])}
             label = label_checker.get_label(
                 model_name, x.repo_info[RepoInfoKey.MODIFICATION_INFO][model_name])

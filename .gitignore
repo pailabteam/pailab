@@ -9,8 +9,9 @@ __pycache__
 .vscode/.ropeproject/objectdb
 examples/boston_housing/.ipynb_checkpoints/boston_housing-checkpoint.ipynb
 coverage.xml
-examples/.ipynb_checkpoints/start_job_runner-checkpoint.ipynb
 tmp/
 dist/
 build/
 pailab.egg-info/
+examples/.ipynb_checkpoints
+examples/.ipynb_checkpoints/widgets-checkpoint.ipynb

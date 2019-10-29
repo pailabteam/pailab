@@ -24,3 +24,11 @@ tools.interpretation
    :undoc-members:
    :show-inheritance:
  
+analysis
+-----------------------------------------
+
+analysis.plot
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. automodule:: pailab.analysis.plot
+    :members:
+    :undoc-members:
