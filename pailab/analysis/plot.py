@@ -441,13 +441,15 @@ def _ice_plotly(ice_results, ice_points = None, height = None, width = None, ice
         if ice_results_2 is not None:
             data.append(go.Scatter(x=ice_results_2.x_values, y = ice_results_2.ice[i,:], name = 'model2, ' + ice_results.data_name + '[' + str(ice_results.start_index +i) + ',:]'))
     layout = go.Layout(
-        title='ICE, model: ' + ice_results.model + ', version: ' + ice_results.model_version,
+        title='ICE, model: ' + ice_results.model + ', <br> version: ' + ice_results.model_version,
         xaxis=dict(title=ice_results.x_coord_name),
         yaxis=dict(title=ice_results.y_coord_name),
         height = height,
         width = width
     )
     fig = go.Figure(data=data, layout=layout)
+    if use_within_widget:
+        return fig
     iplot(fig)  # , filename='pandas/basic-line-plot')
 
 
@@ -464,21 +466,16 @@ def _ice_clusters_plotly(ice_results, height = None, width = None, ice_results_2
             data.append(go.Scatter(x=ice_results.x_values, y = cluster_averages[i,:], name = 'average ' + str(i)))
 
     layout = go.Layout(
-        title='ICE clusters, model: ' + ice_results.model + ', version: ' + ice_results.model_version,
+        title='ICE clusters, model: ' + ice_results.model + ', <br> version: ' + ice_results.model_version,
         xaxis=dict(title=ice_results.x_coord_name),
         yaxis=dict(title=ice_results.y_coord_name),
         height = height,
         width = width
     )
-    # fig = tools.make_subplots(rows=2, cols=2, subplot_titles=('Plot 1', 'Plot 2',
-    #                                                      'Plot 3', 'Plot 4'))#, layout = layout)
-    # fig['layout'].update(title='ICE, model: ' + ice_results.model + ', version: ' + ice_results.model_version, xaxis=dict(title=ice_results.x_coord_name),
-    #    yaxis=dict(title=ice_results.y_coord_name),
-    #    height = height,
-    #    width = width)
     fig = go.Figure(data=data, layout=layout)
-    # fig.append_trace(data,1,1)
-    iplot(fig)  # , filename='pandas/basic-line-plot')
+    if use_within_widget:
+        return fig
+    iplot(fig)
 
 
 def ice(ice_results, height = None, width = None, ice_points = None, ice_results_2 = None, clusters = None):
@@ -497,7 +494,7 @@ def ice(ice_results, height = None, width = None, ice_points = None, ice_results
     if ice_results_2 is not None:
         ice_results._validate_for_comparison(ice_results_2)
     if has_plotly:
-        _ice_plotly(ice_results, height=height, width=width, ice_points = ice_points, ice_results_2 = ice_results_2, clusters = clusters)
+        return _ice_plotly(ice_results, height=height, width=width, ice_points = ice_points, ice_results_2 = ice_results_2, clusters = clusters)
     else:
         raise Exception("Plot methods for matplotlib have not yet been implemented.")
      
@@ -520,7 +517,7 @@ def ice_clusters(ice_results, height = None, width = None, ice_results_2 = None,
         raise Exception('No clusters have yet been computed. Call compute_ice with clusering_param to compute clusters.')
 
     if has_plotly:
-        _ice_clusters_plotly(ice_results, height=height, width=width, ice_results_2=ice_results_2, clusters = clusters)
+        return _ice_clusters_plotly(ice_results, height=height, width=width, ice_results_2=ice_results_2, clusters = clusters)
     else:
         raise Exception("Plot methods for matplotlib have not yet been implemented.")
     
