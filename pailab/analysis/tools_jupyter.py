@@ -8,6 +8,7 @@ from IPython.display import display, clear_output
 from pailab import MLObjectType, RepoInfoKey, FIRST_VERSION, LAST_VERSION
 import pailab.tools.checker as checker
 import pailab.tools.tools as tools
+import pailab.tools.interpretation as interpretation
 import pandas as pd
 
 import matplotlib.pyplot as plt
@@ -927,5 +928,172 @@ class ScatterModelError:
                 [
                     self._get_selection_widget(),
                     self._output
+                ])
+
+
+
+class IndividualConditionalExpectation:
+    """Plots the individual conditional expectation at a certain point.
+    """
+    def __init__(self):
+        names = widget_repo.data.get_data_names()
+        self._data = widgets.Select(options=names, value = names[0])
+        self._update_button = widgets.Button(description='update')
+        self._update_button.on_click(self._plot)
+        self._output = widgets.Output()
+        self._cluster_statistics_output = widgets.Output()
+        self._output_tab = widgets.Tab(children = [self._output,
+            self._cluster_statistics_output
+            ])
+        self._output_tab.set_title(0,'ICE plots')
+        self._output_tab.set_title(1,'clustering')
+        self._coord = widgets.Select(
+                options=widget_repo.data._y_coord_names,
+                value=widget_repo.data._y_coord_names[0],
+                disabled=False
+                ) 
+        self._x_coord = widgets.Select(
+                options=widget_repo.data._x_coord_names,
+                value=widget_repo.data._x_coord_names[0],
+                disabled=False
+                ) 
+        models = widget_repo.model.get_models()
+        self._models = widgets.Select(
+                options=models,
+                value=models[0],
+                disabled=False
+                ) 
+        self._labels = widgets.Select(
+                options=[x for x in widget_repo.labels.keys()],
+                disabled=False
+                ) 
+        self._x_value_start = widgets.FloatText(value = -1.0)
+        self._x_value_end = widgets.FloatText(value= 1.0)
+        self._n_x_points = widgets.IntText(value = 10)
+        self._accordion = widgets.Accordion(children = [
+                    self._get_selection_widget(),
+                    self._get_clustering_widget()
+                    ])
+
+        self._accordion.set_title(0, 'Selection')
+        self._accordion.set_title(1, 'Clustering')
+
+    def _get_selection_widget(self):
+        return widgets.VBox(children=[
+                    widgets.HBox(children=
+                    [
+                        widgets.VBox(children = [
+                                    widgets.Label(value = 'Data'),
+                                    self._data,
+                                    widgets.Label(value = 'y-coordinates'),
+                                    self._coord,
+                                    widgets.Label(value = 'x-coordinates'),
+                                    self._x_coord
+                        ]),
+                        widgets.VBox(children = [
+                                    widgets.VBox(children=[
+                                        widgets.Label(value = 'Models'),
+                                        self._models
+                                    ]),
+                                    widgets.VBox(children=[
+                                        widgets.Label(value = 'Labels'),
+                                        self._labels
+                                    ])
+                            ]),
+                       
+                        ]),
+                    widgets.VBox(children=[
+                                widgets.Label(value='x-start'),
+                                self._x_value_start]),
+                    widgets.VBox(children = [
+                                    widgets.Label(value='x-end'),
+                                self._x_value_end]),
+                    widgets.VBox(children = [
+                                    widgets.Label(value='num x-points'),
+                                self._n_x_points]),
+                    self._update_button])
+    
+    def _get_clustering_widget(self):
+        self._update_clustering = widgets.Button(description='update')
+        self._use_clustering = widgets.Checkbox(value=True, description='apply clustering') 
+        self._max_num_clusters = widgets.IntText(value=20,
+                                            description='maximum number of clusters')
+        self._random_state = widgets.IntText(value=42, description='Random State')
+        self._cache_in_repo = widgets.Checkbox(value=True, description='cache ICE in repo')
+        self._scale = widgets.Checkbox(value=True, description='scale x-values to zero mean and unit variance')
+        self._update_clustering.on_click(self._cluster)
+        
+        return widgets.VBox(children=[
+                self._use_clustering,
+                self._max_num_clusters,
+                self._random_state,
+                self._cache_in_repo ,
+                self._scale
+            ])
+        
+    
+    def _plot(self, d):
+        cluster_param = None
+        if self._use_clustering.value:        
+            cluster_param = {'n_clusters': self._max_num_clusters.value, 
+                'random_state': self._random_state.value}
+         # since the numpy cannot json serialized by default, 
+         # caching would not working, therefore we convert it into list
+        x_points = [x for x in np.linspace(self._x_value_start.value, self._x_value_end.value, 
+                            self._n_x_points.value)]
+        label = None
+        #if len(self._labels.value) > 0:
+        #    label = self._labels.value
+        self._ice = interpretation.compute_ice(widget_repo.ml_repo, 
+            x_points,
+            self._data.value,
+            self._models.value,
+            label, 
+            y_coordinate = self._coord.value,
+            x_coordinate = self._x_coord.value,
+            cache = self._cache_in_repo.value,
+            clustering_param = cluster_param)
+
+        with self._output:
+            clear_output(wait=True)
+            #models = [x for x in self._models.value]
+            #for x in self._labels.value:
+            #    l = widget_repo.labels[x]
+            #    models.append( (l['model'], l['version'],) )
+            display(go.FigureWidget(
+                    paiplot.ice(self._ice)
+                    ))
+            self._output_tab.selected_index=0
+            
+        if self._ice.cluster_centers is not None:
+            with self._cluster_statistics_output:
+                clear_output(wait=True)
+                display(go.FigureWidget(
+                    paiplot.ice_clusters(self._ice)
+                    ))
+            
+    def _cluster(self, d):
+        
+        
+        self._output_tab.set_title(1, 'computing...')
+        models = [x for x in self._models.value]
+        
+        for x in self._labels.value:
+            l = widget_repo.labels[x]
+            models.append( (l['model'], l['version'],) )
+        
+        with self._cluster_statistics_output:
+            clear_output(wait=True)
+            #display(self._recommendation_table.iloc[0:self._max_num_recommendations.value])
+        self._output_tab.selected_index=1
+        self._output_tab.set_title(1, 'cluster statistics')
+        #self._recommendation_selection.value = self._recommendation_table.index[0]
+
+    @_add_title_and_border('Individual Conditional Expectation Plots')
+    def get_widget(self):
+        return widgets.HBox(children=
+                [
+                    self._accordion,       
+                    self._output_tab
                 ])
 
