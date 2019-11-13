@@ -134,7 +134,6 @@ class _MLRepoModel:
         for l in label_names:
             label = self.ml_repo.get(l)
             self.labels[l] = {'model': label.name, 'version': label.version}
-        
 
     def _setup_measures(self):
         measure_names = self.ml_repo.get_names(
@@ -158,6 +157,8 @@ class _MLRepoModel:
             }
         return model_stats
         
+    def get_versions(self, name):
+        return self.ml_repo.get_history(name, obj_member_fields=[])
 
 
 widget_repo = _MLRepoModel()
@@ -281,6 +282,80 @@ class _DataSelector:
 
     def get_selection(self):
         return self._selection_widget.value
+
+class _DataSelectorWithVersion:
+    """Widget to select training and test data.
+    """
+
+    def __init__(self, **kwargs):
+        names = widget_repo.data.get_data_names()
+
+        self._selection = {}
+        self._selection_options = {}
+        self._key_to_version = {}
+        self._updating_version = {}
+        for n in names:
+            self._selection[n] = []
+            self._selection_options[n] =[]
+            self._key_to_version[n] = {}
+        self._selected_overview = widgets.Output()
+        self._selection_data = widgets.Dropdown(
+            options=names, value = None, **kwargs)
+
+        self._selection_data.observe(self._update_version, names='value')
+
+        self._selection_version = widgets.SelectMultiple(
+            options=[], value = [], **kwargs)
+        self._selection_version.observe(self._display_selected_overview, names='value')
+
+    def _update_version(self, change):
+        self._updating_version = True
+        data_selected = self._selection_data.value
+        tmp = widget_repo.ml_repo.get_history(data_selected)
+        key_to_version = {}
+        versions = []
+        for x in tmp:
+            key =  x['repo_info']['commit_date'][0:16] + ' | ' +  x['repo_info']['author'] + ' | ' + x['repo_info']['version']
+            key_to_version[key] = x['repo_info']['version']
+            versions.append(key)
+        self._key_to_version[data_selected] = key_to_version
+        self._selection_version.options = versions
+        self._selection_version.value = self._selection_options[data_selected]
+        self._updating_version = False
+        #self._selection[self._selection_data.value] = [x for x in self._selection_version.value]
+        
+    def _display_selected_overview(self, change):
+        if self._updating_version:
+            return
+        data_selected = self._selection_data.value
+        key_to_version = self._key_to_version[data_selected]
+        self._selection[data_selected] = [key_to_version[x] for x in self._selection_version.value]
+        self._selection_options[data_selected] = [x for x in self._selection_version.value]
+        tmp ={}
+        tmp['data'] =[]
+        tmp['version'] =[]
+        for n, x in self._selection.items():
+            for y in x:
+                tmp['data'].append(n)
+                tmp['version'].append(y)
+        with self._selected_overview:
+            clear_output(wait = True)
+            display(pd.DataFrame.from_dict(tmp))
+
+    #def _update_selected_version(self, version):
+    #    data_selected = self._selection_data.value
+    #    selection_for_data = self._selection[data_selected]
+        
+
+        
+
+    def get_widget(self):
+        return widgets.VBox(children=[widgets.Label(value='Data'), self._selection_data, 
+                    widgets.Label(value='Versions'), self._selection_version, 
+                    self._selected_overview, ])
+
+    def get_selection(self):
+        return self._selection
 
 
 class _MeasureSelector:
@@ -1064,7 +1139,7 @@ class IndividualConditionalExpectation:
                     paiplot.ice(self._ice)
                     ))
             self._output_tab.selected_index=0
-            
+
         if self._ice.cluster_centers is not None:
             with self._cluster_statistics_output:
                 clear_output(wait=True)
