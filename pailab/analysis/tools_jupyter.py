@@ -395,8 +395,7 @@ class _DataSelectorWithVersion:
         return self._selection
 
 class _ModelSelectorWithVersion:
-    def depp(self):
-        print('depp')
+    
     @staticmethod        
     def _filter_models(labels=None, commit_start = None, commit_end = None, authors=None, model_versions = None):
         """Filter the model table according to the given attributes.
@@ -446,6 +445,8 @@ class _ModelSelectorWithVersion:
         self._selected_overview = widgets.Output()
         self._selection_version.observe(self._selected_version_changed, names='value')
         
+        self._model_changed_callable = None
+
         # Filtering
         #
         labels = widget_repo.ml_repo.get_names(MLObjectType.LABEL)
@@ -472,8 +473,19 @@ class _ModelSelectorWithVersion:
                                         ]
                                     )
 
+
+    def observe_model_change(self, handler):
+        """Setup a handler when the model trait changed
+        
+        Args:
+            handler (callable): A callable that is called when the model trait changes.
+        """
+        self._model_changed_callable = handler
+
     def _selected_model_changes(self, change):
         self._update_version(change)
+        if self._model_changed_callable is not None:
+            self._model_changed_callable(change)
 
     def _selected_version_changed(self, change):
         self._display_selected_overview(change)
@@ -597,7 +609,6 @@ class _ModelAndDataSelectorWithVersion:
         self._selected_overview = widgets.Output()
         self._selection_data = widgets.Dropdown(
             options=names, value = None, **kwargs)
-
         self._selection_data.observe(self._update_version, names='value')
 
         self._selection_version = widgets.SelectMultiple(
