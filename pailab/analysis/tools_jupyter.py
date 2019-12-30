@@ -1,9 +1,10 @@
-import pailab.analysis.plot as paiplot
-import pailab.analysis.plot_helper as plt_helper
-import ipywidgets as widgets
 import numpy as np
 import copy
 from IPython.display import display, clear_output
+from collections import defaultdict
+import pailab.analysis.plot as paiplot
+import pailab.analysis.plot_helper as plt_helper
+import ipywidgets as widgets
 
 from pailab import MLObjectType, RepoInfoKey, FIRST_VERSION, LAST_VERSION
 import pailab.tools.checker as checker
@@ -64,8 +65,22 @@ class _MLRepoModel:
 
     class _ModelModel:
         def __init__(self, ml_repo):
+            self.labels = {} # dictionary label->model and version
+            self.model_to_label = defaultdict(lambda: None) # dictionary (model,version)->labelname or None
+            self._setup_labels(ml_repo)
             self._model_info_table = self._setup_model_info_table(ml_repo)
             self._model_names = ml_repo.get_names(MLObjectType.CALIBRATED_MODEL)
+
+        def _setup_labels(self, ml_repo):
+            label_names = ml_repo.get_names(MLObjectType.LABEL)
+            if label_names is None:
+                return
+            if isinstance(label_names, str):
+                label_names = [label_names]
+            for l in label_names:
+                label = ml_repo.get(l)
+                self.labels[l] = {'model': label.name, 'version': label.version}
+                self.model_to_label[(label.name, label.version,)] = l
 
         def _setup_model_info_table(self, ml_repo):
             model_rows = []
@@ -79,6 +94,8 @@ class _MLRepoModel:
                     del tmp['big_objects']
                     del tmp['modifiers']
                     del tmp['modification_info']
+                    tmp['label'] = self.model_to_label[(tmp['model'], tmp['version'],)]
+                    tmp['widget_key'] =  tmp['commit_date'][0:16] + ' | ' +  tmp['author'] + ' | ' + str(tmp['label']) + ' | ' + tmp['version']
                     model_rows.append(tmp)
             model_info_table = pd.DataFrame(model_rows)
             model_info_table.set_index(['model', 'version'], inplace=True)
@@ -123,8 +140,9 @@ class _MLRepoModel:
         self.consistency = _MLRepoModel._ConsistencyModel(self.ml_repo)
         self._setup_measures()
         self._setup_labels()
+        # now set label information into 
 
-    def _setup_labels(self):
+    def _setup_labels(self): # todo: das hier muss weg
         self.labels = {}
         label_names = self.ml_repo.get_names(MLObjectType.LABEL)
         if label_names is None:
@@ -307,7 +325,8 @@ class _DataSelectorWithVersion:
 
         self._selection_version = widgets.SelectMultiple(
             options=[], value = [], **kwargs)
-        self._selection_version.observe(self._display_selected_overview, names='value')
+        if self._display_selection:
+            self._selection_version.observe(self._display_selected_overview, names='value')
 
     def _get_state(self):
         return self._selection, self._selection_options,  self._key_to_version
@@ -318,6 +337,11 @@ class _DataSelectorWithVersion:
         self._key_to_version = state[2]
 
     def _set_update_callback(self, cb):
+        """Set a callback (called at every update of this widget)
+        
+        Args:
+            cb (function): Callback function called at every update.
+        """
         self._update_callbacks.append(cb)
 
     def _update_version(self, change):
@@ -370,8 +394,193 @@ class _DataSelectorWithVersion:
     def get_selection(self):
         return self._selection
 
+class _ModelSelectorWithVersion:
+    def depp(self):
+        print('depp')
+    @staticmethod        
+    def _filter_models(labels=None, commit_start = None, commit_end = None, authors=None, model_versions = None):
+        """Filter the model table according to the given attributes.
+        
+        Args:
+            labels ([str or iterable of str], optional): If set, returns only models with the selected labels. Defaults to None.
+            commit_start (str, optional): String of earliest commit date.. Defaults to None.
+            commit_end (str, optional): String of latest commit date. Defaults to None.
+            authors (str or iterable of str, optional): If set it return only the models with the corresponding author(s). Defaults to None.
+            model_versions (str or iterable of str, optional): If set only modes with respective version(s) are returned. Defaults to None.
+        
+        Returns:
+            pandas DataFrame: The correspondign models.
+        """
+        result = widget_repo.model.get_info_table()
+        if labels is not None:
+            if isinstance(labels, str): 
+                result = result[result['label']== labels]
+            else:
+                result = result[result['label'].isin(labels)]
+        if commit_start is not None:
+            result = result[result['commit_date']>=commit_start]
+        if commit_end is not None:
+            result = result[result['commit_date']<=commit_end]
+        if authors is not None:
+            if isinstance(authors, str):
+                result = result[result['author']==authors]
+            else:
+                result = result[result['author'].isin(authors)]
+        if model_versions is not None:
+            if isinstance(model_versions, str):
+                result = result[result['version']==model_versions]
+            else:
+                result = result[result['version'].isin(model_versions)]
+        return result
+
+    def __init__(self,  display_selection = True, **kwargs):
+        self._display_selection = display_selection        
+        self._selection = defaultdict(list)
+        self._selection_model_name = widgets.Dropdown(
+            options=widget_repo.model.get_models(), value = None, **kwargs)
+        self._selection_model_name.observe(self._selected_model_changes, names='value')
+
+        self._selection_version = widgets.SelectMultiple(
+            options=[], value = [], rows=8, layout=widgets.Layout(width="100%"), **kwargs)
+        
+        self._selected_overview = widgets.Output()
+        self._selection_version.observe(self._selected_version_changed, names='value')
+        
+        # Filtering
+        #
+        labels = widget_repo.ml_repo.get_names(MLObjectType.LABEL)
+        self._label_selector = widgets.SelectMultiple(options = labels)
+        self._commit_data_start = widgets.DatePicker()
+        self._commit_data_end = widgets.DatePicker()
+        self._author_selector = widgets.SelectMultiple(options = widget_repo.model.get_info_table()['author'].unique())
+        self._apply_button = widgets.Button(description='Apply')
+        self._apply_button.on_click(self._apply_filter)
+        self._clear_button = widgets.Button(description='Clear')
+        self._clear_button.on_click(self._clear_filter)
+        self._filter = widgets.VBox(children=[
+                                        widgets.Label(value = 'Labels'),
+                                        self._label_selector,
+                                        widgets.Label(value = 'Commit Start'),
+                                        self._commit_data_start,
+                                        widgets.Label(value = 'Commit End'),
+                                        self._commit_data_end,
+                                        widgets.Label(value = 'Authors'),
+                                        self._author_selector,
+                                        widgets.HBox(children = [
+                                            self._apply_button,
+                                            self._clear_button] )
+                                        ]
+                                    )
+
+    def _selected_model_changes(self, change):
+        self._update_version(change)
+
+    def _selected_version_changed(self, change):
+        self._display_selected_overview(change)
+
+    def _apply_filter(self, dummy):
+        self._updating_version = True
+        data_selected = self._selection_model_name.value
+        labels = self._label_selector.value
+        if len(labels) == 0:
+            labels = None
+        if self._commit_data_start.value is None:
+            commit_start = None
+        else:
+            commit_start = str(self._commit_data_start.value)
+        if self._commit_data_end.value is None:
+            commit_end = None
+        else:
+            commit_end = str(self._commit_data_end.value)
+        authors = None
+        if len(self._author_selector.value)>0:
+            authors = self._author_selector.value
+        models = _ModelSelectorWithVersion._filter_models(labels=labels, authors=authors, 
+                commit_start=commit_start, commit_end=commit_end)
+        self._selection_model_name.options = [x for x in models['name'].unique()]
+        models = models[models['name']==data_selected]
+        widget_keys = models['widget_key'].values
+        self._selection_version.options = [x for x in models['widget_key']]
+        self._selection_version.value = [x for x in self._selection[data_selected] if x in widget_keys]
+        self._updating_version = False
+
+    def _clear_filter(self, dummy):
+        self._commit_data_start.value = None
+        self._commit_data_end.value = None
+        self._author_selector.value = []
+        self._label_selector.value = []
+        self._apply_filter(dummy)
+
+    def _update_version(self, change):
+        if change['old'] is not None:
+            pass
+        self._updating_version = True
+        data_selected = self._selection_model_name.value
+        models = widget_repo.model.get_info_table()
+        models = models[models['name']==data_selected]
+        self._selection_version.options = [x for x in models['widget_key']]
+        self._selection_version.value = self._selection[data_selected]
+        self._updating_version = False
+
+    def _update_selected_versions(self, change):
+        data_selected = self._selection_model_name.value
+        # now handle changes of version selection: Remove versions that have been 
+        # deselected and add versions that have been selected
+        old = set(change['old'])
+        new = set(change['new'])
+        # remove versions that have been deselected
+        diff = old-new
+        self._selection[data_selected] = list(set(self._selection[data_selected])-diff)
+        # add new elements 
+        diff = new - old
+        self._selection[data_selected].extend(diff)
+
+    def _display_selected_overview(self, change):
+        if self._updating_version:
+            return
+        self._update_selected_versions(change)
+        versions = []
+        for n, x in self._selection.items():
+            versions.extend(x)
+        with self._selected_overview:
+            clear_output(wait = True)
+            models = widget_repo.model.get_info_table()
+            display(models[models['widget_key'].isin(versions)])               
+       
+    def get_widget(self):
+        filter_widget = widgets.Accordion(children = [self._filter], selected_index = None)
+        filter_widget.set_title(0,'Filter')
+        if self._display_selection:
+            return widgets.VBox( children=[
+                        widgets.VBox(children=[
+                            widgets.Label(value='Model'), 
+                            self._selection_model_name, 
+                            widgets.Label(value='Versions'), 
+                            self._selection_version, 
+                            self._selected_overview, 
+                            ]
+                        ),
+                    filter_widget])
+
+        else:
+            return widgets.VBox(children=[
+                        widgets.VBox(children=[
+                                widgets.Label(value='Model'), 
+                                self._selection_model_name, 
+                                widgets.Label(value='Versions'), 
+                                self._selection_version
+                                ]
+                            ),
+                        filter_widget])    
+
 class _ModelAndDataSelectorWithVersion:
-    def __init__(self,  **kwargs):
+    """Widget to select a model together with data used in conjunction with the selected model.
+    
+    Returns:
+        [type]: [description]
+    """
+    def __init__(self,  display_selection = True, **kwargs):
+        self._display_selection=display_selection
         names = widget_repo.model.get_models()
         self._data = _DataSelectorWithVersion(display_selection=False)
         self._data._set_update_callback(self._display_selected_overview)
@@ -446,10 +655,15 @@ class _ModelAndDataSelectorWithVersion:
 
 
     def get_widget(self):
-        return widgets.VBox(children=[widgets.Label(value='Model'), self._selection_data, 
-                    widgets.Label(value='Versions'), self._selection_version, 
-                    self._data.get_widget(),
-                    self._selected_overview, ])
+        if self._display_selection:
+            return widgets.VBox(children=[widgets.Label(value='Model'), self._selection_data, 
+                        widgets.Label(value='Versions'), self._selection_version, 
+                        self._data.get_widget(),
+                        self._selected_overview, ])
+        else:
+            return widgets.VBox(children=[widgets.Label(value='Model'), self._selection_data, 
+                        widgets.Label(value='Versions'), self._selection_version, 
+                        self._data.get_widget()])
 class _MeasureSelector:
     """Widget to select training and test data.
     """
@@ -1217,8 +1431,9 @@ class IndividualConditionalExpectation:
             y_coordinate = self._coord.value,
             x_coordinate = self._x_coord.value,
             cache = self._cache_in_repo.value,
-            clustering_param = cluster_param)
-
+            clustering_param = cluster_param, 
+            end_index = 200)
+        
         with self._output:
             clear_output(wait=True)
             #models = [x for x in self._models.value]
