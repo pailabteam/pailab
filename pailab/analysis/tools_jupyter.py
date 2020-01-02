@@ -325,8 +325,7 @@ class _DataSelectorWithVersion:
 
         self._selection_version = widgets.SelectMultiple(
             options=[], value = [], **kwargs)
-        if self._display_selection:
-            self._selection_version.observe(self._display_selected_overview, names='value')
+        self._selection_version.observe(self._display_selected_overview, names='value')
 
     def _get_state(self):
         return self._selection, self._selection_options,  self._key_to_version
@@ -473,6 +472,15 @@ class _ModelSelectorWithVersion:
                                         ]
                                     )
 
+    def get_models(self):
+        """Returns all selected models as list of tuples (first element is model name, second model version)
+        """
+        models = widget_repo.model.get_info_table()
+        result = {}
+        for k, v in self._selection.items():
+            if len(v)>0:
+                result[k] = [models[models['widget_key']==w].index[0][1] for w in v]
+        return result
 
     def observe_model_change(self, handler):
         """Setup a handler when the model trait changed
@@ -595,86 +603,65 @@ class _ModelAndDataSelectorWithVersion:
         self._display_selection=display_selection
         names = widget_repo.model.get_models()
         self._data = _DataSelectorWithVersion(display_selection=False)
+        self._model = _ModelSelectorWithVersion(display_selection=False)
         self._data._set_update_callback(self._display_selected_overview)
-        self._selection = {}
-        self._selection_options = {}
-        self._key_to_version = {}
-        self._updating_version = {}
-        self._model_to_data_states = {}
-        for n in names:
-            self._selection[n] = []
-            self._selection_options[n] =[]
-            self._key_to_version[n] = {}
-            self._model_to_data_states[n] = self._data._get_state()
         self._selected_overview = widgets.Output()
-        self._selection_data = widgets.Dropdown(
-            options=names, value = None, **kwargs)
-        self._selection_data.observe(self._update_version, names='value')
+        
+    def get_models(self):
+        """Returns all selected models as list of tuples (first element is model name, second model version)
+        """
+        return self._model.get_models()
 
-        self._selection_version = widgets.SelectMultiple(
-            options=[], value = [], **kwargs)
-        self._selection_version.observe(self._display_selected_overview, names='value')
-
-    def _update_version(self, change):
-        if change['old'] is not None:
-            self._model_to_data_states[change['old']] = self._data._get_state()
-        self._updating_version = True
-        data_selected = self._selection_data.value
-        self._data._set_state(self._model_to_data_states[data_selected])
-        tmp = widget_repo.ml_repo.get_history(data_selected)
-        key_to_version = {}
-        versions = []
-        for x in tmp:
-            key =  x['repo_info']['commit_date'][0:16] + ' | ' +  x['repo_info']['author'] + ' | ' + x['repo_info']['version']
-            key_to_version[key] = x['repo_info']['version']
-            versions.append(key)
-        self._key_to_version[data_selected] = key_to_version
-        self._selection_version.options = versions
-        self._selection_version.value = self._selection_options[data_selected]
-        self._updating_version = False
+    def get_data(self):
+        return self._data.get_selection()
 
     def _display_selected_overview(self, change):
-        if self._updating_version:
-            return
-        data_selected = self._selection_data.value
-        key_to_version = self._key_to_version[data_selected]
-        self._selection[data_selected] = [key_to_version[x] for x in self._selection_version.value]
-        self._selection_options[data_selected] = [x for x in self._selection_version.value]
-        tmp ={}
-        tmp['model'] = []
-        tmp['model version'] =[]
-        tmp['data'] = []
-        tmp['data version'] =[]
-        for n, x in self._selection.items():
-            for y in x:
-                for data_name, data_versions in self._model_to_data_states[n][0].items():
-                    for data_version in data_versions:
-                        tmp['model'].append(n)
-                        tmp['model version'].append(y)
-                        tmp['data'].append(data_name)
-                        tmp['data version'].append(data_version)
+        #if self._updating_version:
+        #    return
+        # data_selected = self._selection_data.value
+        # key_to_version = self._key_to_version[data_selected]
+        # self._selection[data_selected] = [key_to_version[x] for x in self._selection_version.value]
+        # self._selection_options[data_selected] = [x for x in self._selection_version.value]
+        # tmp ={}
+        # tmp['model'] = []
+        # tmp['model version'] =[]
+        # tmp['data'] = []
+        # tmp['data version'] =[]
+        # for n, x in self._selection.items():
+        #     for y in x:
+        #         for data_name, data_versions in self._model_to_data_states[n][0].items():
+        #             for data_version in data_versions:
+        #                 tmp['model'].append(n)
+        #                 tmp['model version'].append(y)
+        #                 tmp['data'].append(data_name)
+        #                 tmp['data version'].append(data_version)
        
-        with self._selected_overview:
-            clear_output(wait = True)
-            df = pd.DataFrame.from_dict(tmp)
-            df = df[['model', 'model version', 'data', 'data version']]
-            #arrays=[tmp['model'],tmp['model version'], tmp['data']]
-            #df = pd.DataFrame([tmp['data version']], index=arrays)
-            #multi_index = pd.MultiIndex.from_arrays(arrays, names=('model','model version', 'data', 'data version'))
-            #df.reindex(index = multi_index)
-            display(df)
-
+        # with self._selected_overview:
+        #     clear_output(wait = True)
+        #     df = pd.DataFrame.from_dict(tmp)
+        #     df = df[['model', 'model version', 'data', 'data version']]
+        #     #arrays=[tmp['model'],tmp['model version'], tmp['data']]
+        #     #df = pd.DataFrame([tmp['data version']], index=arrays)
+        #     #multi_index = pd.MultiIndex.from_arrays(arrays, names=('model','model version', 'data', 'data version'))
+        #     #df.reindex(index = multi_index)
+        #     display(df)
+        pass
 
     def get_widget(self):
+        model_selection = widgets.Accordion(children = [self._model.get_widget()])
+        model_selection.set_title(0,'Model')
+        data_selection = widgets.Accordion(children = [self._data.get_widget() ])
+        data_selection.set_title(0,'Data')
         if self._display_selection:
-            return widgets.VBox(children=[widgets.Label(value='Model'), self._selection_data, 
-                        widgets.Label(value='Versions'), self._selection_version, 
-                        self._data.get_widget(),
-                        self._selected_overview, ])
+            return widgets.VBox(children=[
+                                    model_selection,
+                                    data_selection,
+                                    self._selected_overview, ])
         else:
-            return widgets.VBox(children=[widgets.Label(value='Model'), self._selection_data, 
-                        widgets.Label(value='Versions'), self._selection_version, 
-                        self._data.get_widget()])
+            return widgets.VBox(children=[
+                                    model_selection,
+                                    data_selection])
+            
 class _MeasureSelector:
     """Widget to select training and test data.
     """
@@ -1014,7 +1001,8 @@ class ModelErrorHistogram:
       otherwise you may encounter problems using this class.
     """
     def __init__(self):
-        self._data = _DataSelector()
+        self._model_data_selector = _ModelAndDataSelectorWithVersion(display_selection=False)
+        
         self._update_button = widgets.Button(description='update')
         self._update_button.on_click(self._plot)
         self._output = widgets.Output()
@@ -1023,54 +1011,27 @@ class ModelErrorHistogram:
                 value=[widget_repo.data._y_coord_names[0]],
                 disabled=False
                 ) 
-        models = widget_repo.model.get_models()
-        self._models = widgets.SelectMultiple(
-                options=models,
-                value=[models[0]],
-                disabled=False
-                ) 
-        self._labels = widgets.SelectMultiple(
-                options=[x for x in widget_repo.labels.keys()],
-                disabled=False
-                ) 
-
+        
     def _plot(self, d):
         with self._output:
             clear_output(wait=True)
-            models = [x for x in self._models.value]
-            for x in self._labels.value:
-                l = widget_repo.labels[x]
-                models.append( (l['model'], l['version'],) )
-            display(go.FigureWidget(paiplot.histogram_model_error(widget_repo.ml_repo, models, 
-                        self._data.get_selection(), y_coordinate=self._coord.value)))
+            data = {}
+            for d_name,d_v in self._model_data_selector.get_data().items():
+                if len(d_v) > 0:
+                    data[d_name] = d_v
+            display(go.FigureWidget(paiplot.histogram_model_error(widget_repo.ml_repo, self._model_data_selector.get_models(), 
+                        data, y_coordinate=self._coord.value)))
             
     @_add_title_and_border('Pointwise Model Error Histogram')
     def get_widget(self):
         return widgets.HBox(children=
                 [
                     widgets.VBox(children=[
-                    widgets.HBox(children=
-                    [
-                        widgets.VBox(children = [
-                                    self._data.get_widget(),
-                                    widgets.VBox(children=[
-                                        widgets.Label(value = 'y-coordinates'),
-                                        self._coord
-                                        ]
-                                    ),
-                        ]),
-                        widgets.VBox(children = [
-                                    widgets.VBox(children=[
-                                        widgets.Label(value = 'Models'),
-                                        self._models
-                                    ]),
-                                    widgets.VBox(children=[
-                                        widgets.Label(value = 'Labels'),
-                                        self._labels
-                                    ])
-                            ]),
-                        ]),
-                    self._update_button]),       
+                        self._model_data_selector.get_widget(),
+                        widgets.Label(value = 'y-coordinates'),
+                        self._coord,
+                        self._update_button
+                    ]),      
                     self._output 
                 ])
 
