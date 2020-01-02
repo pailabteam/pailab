@@ -1024,12 +1024,13 @@ class ModelErrorHistogram:
             
     @_add_title_and_border('Pointwise Model Error Histogram')
     def get_widget(self):
+        y_coord = widgets.Accordion(children=[self._coord])
+        y_coord.set_title(0,'Y-coordinates')
         return widgets.HBox(children=
                 [
                     widgets.VBox(children=[
                         self._model_data_selector.get_widget(),
-                        widgets.Label(value = 'y-coordinates'),
-                        self._coord,
+                        y_coord,
                         self._update_button
                     ]),      
                     self._output 
