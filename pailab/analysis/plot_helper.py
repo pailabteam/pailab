@@ -228,7 +228,6 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
             _data[d] = [data_version]
     _models = _get_obj_dict(ml_repo, models, label_checker,
                             MLObjectType.CALIBRATED_MODEL)
-    print(str(_data))
     ref_data = ml_repo.get(next(iter(_data.keys())), version=next(iter(_data.values()))[0], full_object=False)
     coord = 0
     if coord_name is None:
