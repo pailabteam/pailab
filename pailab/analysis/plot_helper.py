@@ -218,14 +218,17 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
             If None, no x-values will be returned. Defaults to None.
     """
     label_checker = _LabelChecker(ml_repo)
-    _data = {}
+    _data = data
     if isinstance(data, str):
+        _data = {}
         _data[data] = [data_version]
     if isinstance(data, list):
+        _data = {}
         for d in data:
             _data[d] = [data_version]
     _models = _get_obj_dict(ml_repo, models, label_checker,
                             MLObjectType.CALIBRATED_MODEL)
+    print(str(_data))
     ref_data = ml_repo.get(next(iter(_data.keys())), version=next(iter(_data.values()))[0], full_object=False)
     coord = 0
     if coord_name is None:
