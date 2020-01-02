@@ -1,5 +1,6 @@
 import numpy as np
 import copy
+import logging
 from IPython.display import display, clear_output
 from collections import defaultdict
 import pailab.analysis.plot as paiplot
@@ -14,6 +15,8 @@ import pandas as pd
 
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+
+logger = logging.getLogger(__name__)
 
 # set option so that long lines have a linebreak
 pd.set_option('display.max_colwidth', -1)
@@ -393,6 +396,12 @@ class _DataSelectorWithVersion:
     def get_selection(self):
         return self._selection
 
+    def get_data(self):
+        data = {}
+        for d_name,d_v in self._selection.items():
+            if len(d_v) > 0:
+                data[d_name] = d_v
+        return data
 class _ModelSelectorWithVersion:
     
     @staticmethod        
@@ -613,7 +622,7 @@ class _ModelAndDataSelectorWithVersion:
         return self._model.get_models()
 
     def get_data(self):
-        return self._data.get_selection()
+        return self._data.get_data()
 
     def _display_selected_overview(self, change):
         #if self._updating_version:
@@ -1015,12 +1024,8 @@ class ModelErrorHistogram:
     def _plot(self, d):
         with self._output:
             clear_output(wait=True)
-            data = {}
-            for d_name,d_v in self._model_data_selector.get_data().items():
-                if len(d_v) > 0:
-                    data[d_name] = d_v
             display(go.FigureWidget(paiplot.histogram_model_error(widget_repo.ml_repo, self._model_data_selector.get_models(), 
-                        data, y_coordinate=self._coord.value)))
+                        self._model_data_selector.get_data(), y_coordinate=self._coord.value)))
             
     @_add_title_and_border('Pointwise Model Error Histogram')
     def get_widget(self):
@@ -1041,11 +1046,12 @@ class ModelErrorConditionalHistogram:
     """Plots the distribution of input data along a given axis for the largest absolute pointwise errors in comparison to the distribution of all data.
     """
     def __init__(self):
-        self._data = _DataSelector()
+        self._data_model_selection = _ModelAndDataSelectorWithVersion(display_selection=False)
         self._update_button = widgets.Button(description='update')
         self._update_button.on_click(self._plot)
         self._output = widgets.Output()
         self._recommendation_output = widgets.Output()
+        self._recommendation_table = None
         self._output_tab = widgets.Tab(children = [self._output,
             self._recommendation_output])
         self._output_tab.set_title(0,'histograms')
@@ -1068,16 +1074,6 @@ class ModelErrorConditionalHistogram:
                 value=widget_repo.data._x_coord_names[0],
                 disabled=False
                 ) 
-        models = widget_repo.model.get_models()
-        self._models = widgets.SelectMultiple(
-                options=models,
-                value=[models[0]],
-                disabled=False
-                ) 
-        self._labels = widgets.SelectMultiple(
-                options=[x for x in widget_repo.labels.keys()],
-                disabled=False
-                ) 
         self._accordion = widgets.Accordion(children = [
                     self._get_selection_widget(),
                     self._get_recommendation_widget()
@@ -1087,30 +1083,17 @@ class ModelErrorConditionalHistogram:
 
 
     def _get_selection_widget(self):
-        return widgets.VBox(children=[
-                    widgets.HBox(children=
-                    [
-                        widgets.VBox(children = [
-                                    self._data.get_widget(),
-                                    widgets.VBox(children=[
+        coordinate_selection = widgets.Accordion(children = [
+                                        widgets.VBox(children=[
                                         widgets.Label(value = 'y-coordinates'),
                                         self._coord,
                                         widgets.Label(value = 'x-coordinates'),
-                                        self._x_coord
-                                        ]
-                                    ),
-                        ]),
-                        widgets.VBox(children = [
-                                    widgets.VBox(children=[
-                                        widgets.Label(value = 'Models'),
-                                        self._models
-                                    ]),
-                                    widgets.VBox(children=[
-                                        widgets.Label(value = 'Labels'),
-                                        self._labels
-                                    ])
-                            ]),
-                        ]),
+                                        self._x_coord])
+                                        ])
+        coordinate_selection.set_title(0,'Coordinates')
+        return widgets.VBox(children=[
+                    self._data_model_selection.get_widget(),
+                    coordinate_selection,
                     self._quantile,
                     self._update_button])
     
@@ -1151,6 +1134,13 @@ class ModelErrorConditionalHistogram:
             self._gamma.disabled = True
 
     def _apply_recommend(self, d):
+        if self._recommendation_table is None:
+            logger.error('Recommendation table is empty, please first update the recommendation.')
+            with self._output:
+                clear_output(wait=True)
+                print('Recommendation table is empty, please first update the recommendation.')
+            return
+
         if self._recommendation_selection.value is not None:
             self._coord.value=self._recommendation_table['y-coord'][self._recommendation_selection.value]
             self._x_coord.value=self._recommendation_table['x-coord'][self._recommendation_selection.value]
@@ -1161,13 +1151,9 @@ class ModelErrorConditionalHistogram:
     def _plot(self, d):
         with self._output:
             clear_output(wait=True)
-            models = [x for x in self._models.value]
-            for x in self._labels.value:
-                l = widget_repo.labels[x]
-                models.append( (l['model'], l['version'],) )
             display(go.FigureWidget(
                     paiplot.histogram_data_conditional_error(widget_repo.ml_repo, 
-                            models, self._data.get_selection(), 
+                            self._data_model_selection.get_models(), self._data_model_selection.get_data(), 
                             x_coordinate = self._x_coord.value,
                             y_coordinate = self._coord.value, 
                             percentile=self._quantile.value/100.0)
@@ -1176,21 +1162,17 @@ class ModelErrorConditionalHistogram:
             
     def _recommend(self, d):
         self._output_tab.set_title(1, 'computing...')
-        models = [x for x in self._models.value]
-        for x in self._labels.value:
-            l = widget_repo.labels[x]
-            models.append( (l['model'], l['version'],) )
         self._recommendation_table =  pd.DataFrame.from_dict( 
-                plt_helper.get_ptws_error_dist_mmd(widget_repo.ml_repo, models, 
-                    data = [x for x in self._data.get_selection()],
+                plt_helper.get_ptws_error_dist_mmd(widget_repo.ml_repo, self._data_model_selection.get_models(), 
+                    data = self._data_model_selection.get_data(),
                     start_index=0, end_index=-1, percentile=self._quantile.value/100.0, 
                     scale = self._scale.value,
                     cache = self._cache_in_repo,
                     metric=self._kernel_selection.value, 
-                    gamma = self._gamma.value)#,  **kwds)
+                    gamma = self._gamma.value)
             )
-        del self._recommendation_table['model version']
-        del self._recommendation_table['data version']
+        self._recommendation_table['model version']
+        self._recommendation_table['data version']
         self._recommendation_table.sort_values(['mmd'], ascending = False, inplace = True)
         with self._recommendation_output:
             clear_output(wait=True)
