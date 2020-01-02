@@ -300,7 +300,7 @@ def get_ptws_error_dist_mmd(ml_repo, model, data, x_coords=None, y_coords=None, 
         ml_repo (MLRepo): [description]
         model (str or dict): A dictionary of model names (or labels) to versions (a single version number, a range of versions or a list of versions) or 
                 just a model name (in this case the latest version is used)
-        data (str or dict): A dictionary of data namesto versions (a single version number, a range of versions or a list of versions) or 
+        data (str or dict): A dictionary of data names to versions (a single version number, a range of versions or a list of versions) or 
                 just a data name (in this case the latest version is used)
         x_coords (int, str or list, optional): x-coordinate or list of x-coordinates used to comput the squared MMD. 
             If None, all x-coordinates are used. Defaults to None.
