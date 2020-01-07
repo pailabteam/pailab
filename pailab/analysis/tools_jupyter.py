@@ -617,7 +617,7 @@ class _ModelAndDataSelectorWithVersion:
         self._selected_overview = widgets.Output()
         
     def get_models(self):
-        """Returns all selected models as list of tuples (first element is model name, second model version)
+        """Returns all selected models as dictionary from model to list of selected model's versions
         """
         return self._model.get_models()
 
@@ -659,8 +659,10 @@ class _ModelAndDataSelectorWithVersion:
     def get_widget(self):
         model_selection = widgets.Accordion(children = [self._model.get_widget()])
         model_selection.set_title(0,'Model')
+        model_selection.selected_index = None
         data_selection = widgets.Accordion(children = [self._data.get_widget() ])
         data_selection.set_title(0,'Data')
+        data_selection.selected_index = None
         if self._display_selection:
             return widgets.VBox(children=[
                                     model_selection,
@@ -1192,7 +1194,7 @@ class ModelErrorConditionalHistogram:
 
 class ScatterModelError:
     def __init__(self):
-        self._data = _DataSelector()
+        self._model_data_selector = _ModelAndDataSelectorWithVersion(display_selection=False)
         self._update_button = widgets.Button(description='update')
         self._update_button.on_click(self._plot)
         self._output = widgets.Output()
@@ -1206,54 +1208,32 @@ class ScatterModelError:
                 value=widget_repo.data._x_coord_names[0],
                 disabled=False
                 ) 
-        models = widget_repo.model.get_models()
-        self._models = widgets.SelectMultiple(
-                options=models,
-                value=[models[0]],
-                disabled=False
-                ) 
-        self._labels = widgets.SelectMultiple(
-                options=[x for x in widget_repo.labels.keys()],
-                disabled=False
-                ) 
-    
+        
     def _get_selection_widget(self):
+        coordinates = widgets.Accordion(children = [
+                widgets.VBox(children = [
+                                widgets.Label(value = 'y-coordinates'),
+                                self._coord,
+                                widgets.Label(value = 'x-coordinates'),
+                                self._x_coord,
+                    ]
+                )
+                ]
+            )
+        coordinates.set_title(0, 'Coordinates')
         return widgets.VBox(children=[
-                    widgets.HBox(children=
-                    [
-                        widgets.VBox(children = [
-                                    self._data.get_widget(),
-                                    widgets.VBox(children=[
-                                        widgets.Label(value = 'y-coordinates'),
-                                        self._coord,
-                                        widgets.Label(value = 'x-coordinates'),
-                                        self._x_coord
-                                        ]
-                                    ),
-                        ]),
-                        widgets.VBox(children = [
-                                    widgets.VBox(children=[
-                                        widgets.Label(value = 'Models'),
-                                        self._models
-                                    ]),
-                                    widgets.VBox(children=[
-                                        widgets.Label(value = 'Labels'),
-                                        self._labels
-                                    ])
-                            ]),
-                        ]),
-                    self._update_button])
+                                self._model_data_selector.get_widget(),
+                                coordinates,
+                                self._update_button]
+                            )
     
     def _plot(self, d):
         with self._output:
             clear_output(wait=True)
-            models = [x for x in self._models.value]
-            for x in self._labels.value:
-                l = widget_repo.labels[x]
-                models.append( (l['model'], l['version'],) )
             display(go.FigureWidget(
                     paiplot.scatter_model_error(widget_repo.ml_repo, 
-                            models, self._data.get_selection(), 
+                            self._model_data_selector.get_models(), 
+                            self._model_data_selector.get_data(), 
                             x_coordinate = self._x_coord.value,
                             y_coordinate = self._coord.value)
                     ))
@@ -1271,7 +1251,7 @@ class IndividualConditionalExpectation:
     """
     def __init__(self):
         names = widget_repo.data.get_data_names()
-        self._data = widgets.Select(options=names, value = names[0])
+        self._model_data_selection = _ModelAndDataSelectorWithVersion()
         self._update_button = widgets.Button(description='update')
         self._update_button.on_click(self._plot)
         self._output = widgets.Output()
@@ -1291,16 +1271,6 @@ class IndividualConditionalExpectation:
                 value=widget_repo.data._x_coord_names[0],
                 disabled=False
                 ) 
-        models = widget_repo.model.get_models()
-        self._models = widgets.Select(
-                options=models,
-                value=models[0],
-                disabled=False
-                ) 
-        self._labels = widgets.Select(
-                options=[x for x in widget_repo.labels.keys()],
-                disabled=False
-                ) 
         self._x_value_start = widgets.FloatText(value = -1.0)
         self._x_value_end = widgets.FloatText(value= 1.0)
         self._n_x_points = widgets.IntText(value = 10)
@@ -1314,38 +1284,18 @@ class IndividualConditionalExpectation:
 
     def _get_selection_widget(self):
         return widgets.VBox(children=[
-                    widgets.HBox(children=
-                    [
-                        widgets.VBox(children = [
-                                    widgets.Label(value = 'Data'),
-                                    self._data,
-                                    widgets.Label(value = 'y-coordinates'),
-                                    self._coord,
-                                    widgets.Label(value = 'x-coordinates'),
-                                    self._x_coord
-                        ]),
-                        widgets.VBox(children = [
-                                    widgets.VBox(children=[
-                                        widgets.Label(value = 'Models'),
-                                        self._models
-                                    ]),
-                                    widgets.VBox(children=[
-                                        widgets.Label(value = 'Labels'),
-                                        self._labels
-                                    ])
-                            ]),
-                       
-                        ]),
-                    widgets.VBox(children=[
-                                widgets.Label(value='x-start'),
-                                self._x_value_start]),
-                    widgets.VBox(children = [
-                                    widgets.Label(value='x-end'),
-                                self._x_value_end]),
-                    widgets.VBox(children = [
-                                    widgets.Label(value='num x-points'),
-                                self._n_x_points]),
-                    self._update_button])
+                        self._model_data_selection.get_widget(),
+                        widgets.Label(value = 'y-coordinates'),
+                        self._coord,
+                        widgets.Label(value = 'x-coordinates'),
+                        self._x_coord,
+                        widgets.Label(value='x-start'),
+                        self._x_value_start,
+                        widgets.Label(value='x-end'),
+                        self._x_value_end,
+                        widgets.Label(value='num x-points'),
+                        self._n_x_points,
+                        self._update_button])
     
     def _get_clustering_widget(self):
         self._update_clustering = widgets.Button(description='update')
@@ -1375,37 +1325,39 @@ class IndividualConditionalExpectation:
          # caching would not working, therefore we convert it into list
         x_points = [x for x in np.linspace(self._x_value_start.value, self._x_value_end.value, 
                             self._n_x_points.value)]
-        label = None
-        #if len(self._labels.value) > 0:
-        #    label = self._labels.value
-        self._ice = interpretation.compute_ice(widget_repo.ml_repo, 
-            x_points,
-            self._data.value,
-            self._models.value,
-            label, 
-            y_coordinate = self._coord.value,
-            x_coordinate = self._x_coord.value,
-            cache = self._cache_in_repo.value,
-            clustering_param = cluster_param, 
-            end_index = 200)
-        
+        self._ice = []
+        for model, model_versions in self._model_data_selection.get_models().items():
+            for data, data_versions in self._model_data_selection.get_data().items():
+                for model_version in model_versions:
+                    for data_version in data_versions:
+                        self._ice.append( (model, model_version, data, data_version,
+                                            interpretation.compute_ice(widget_repo.ml_repo, 
+                                                x_points,
+                                                data,
+                                                model = model,
+                                                model_version=model_version,
+                                                data_version=data_version, 
+                                                y_coordinate = self._coord.value,
+                                                x_coordinate = self._x_coord.value,
+                                                cache = self._cache_in_repo.value,
+                                                clustering_param = cluster_param, 
+                                                end_index = 200), 
+                                         )
+                        )
+                                        
         with self._output:
             clear_output(wait=True)
-            #models = [x for x in self._models.value]
-            #for x in self._labels.value:
-            #    l = widget_repo.labels[x]
-            #    models.append( (l['model'], l['version'],) )
             display(go.FigureWidget(
                     paiplot.ice(self._ice)
                     ))
             self._output_tab.selected_index=0
-
-        if self._ice.cluster_centers is not None:
-            with self._cluster_statistics_output:
-                clear_output(wait=True)
-                display(go.FigureWidget(
-                    paiplot.ice_clusters(self._ice)
-                    ))
+        if len(self._ice) > 0:
+            if self._ice[0][-1].cluster_centers is not None:
+                with self._cluster_statistics_output:
+                    clear_output(wait=True)
+                    display(go.FigureWidget(
+                        paiplot.ice_clusters(self._ice)
+                        ))
             
     def _cluster(self, d):
         
