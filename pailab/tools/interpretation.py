@@ -95,7 +95,7 @@ def _get_model_eval(model, model_version, ml_repo, model_label=None):
             model_ = model + '/model'
         else:
             model_ = model
-        result_model = ml_repo.get(model_, model_version_)
+        result_model = ml_repo.get(model_, model_version_, full_object = True)
     else:
         result_model = model
 

@@ -210,7 +210,8 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
         models (str or dict): A dictionary of model names to versions (a single version number, a range of versions or a list of versions) or 
                 just a model name (in this case the latest version is used)
 
-        data (str or list of str): Name of input data to be used for the error plot.
+        data (str, list of str, dict): (List of) names of input data to be used (in this case the data_version is used). In addition, a dictionary of 
+                data_name->list of versions can be used to define the data for the error plot
         coord_name (int or str, optional): Index or name of y-coordinate used for error measurement. If None, the first coordinate is used. Defaults to None.
         data_version (str, optional): Version of the input data used. Defaults to LAST_VERSION.
         x_coord_name (str): If specified it defines the respective x-coordinate that will additionally to the errors be returned. 
@@ -218,13 +219,16 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
     """
     label_checker = _LabelChecker(ml_repo)
     _data = data
-    if isinstance(_data, str):
-        _data = [data]
-
-    #_models = get_model_dict(ml_repo, models)
+    if isinstance(data, str):
+        _data = {}
+        _data[data] = [data_version]
+    if isinstance(data, list):
+        _data = {}
+        for d in data:
+            _data[d] = [data_version]
     _models = _get_obj_dict(ml_repo, models, label_checker,
                             MLObjectType.CALIBRATED_MODEL)
-    ref_data = ml_repo.get(_data[0], version=data_version, full_object=False)
+    ref_data = ml_repo.get(next(iter(_data.keys())), version=next(iter(_data.values()))[0], full_object=False)
     coord = 0
     if coord_name is None:
         coord_name = ref_data.y_coord_names[0]
@@ -240,19 +244,25 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
         result['x0_name'] = x_coord_name
         result['x1_name'] = 'model-target  [' + coord_name + ']'
 
-    for d in _data:
-        ref_data = ml_repo.get(d, version=data_version, full_object=True)
+    for d_name, d_version in _data.items():
+        ref_data = ml_repo.get(d_name, version=d_version, full_object=True)
 
         for m_name, m_versions in _models.items():
             if len(m_versions) == 1:
                 m_versions = m_versions[0]
             tmp = m_name.split('/')[0]
             eval_data_name = str(
-                NamingConventions.EvalData(data=d, model=tmp))
+                NamingConventions.EvalData(data=d_name, model=tmp))
             logging.info('Retrieving eval data for model ' + tmp + ', versions ' +
-                         str(m_versions) + ' and data ' + d + ', versions ' + str(data_version))
-            eval_data = ml_repo.get(
-                eval_data_name, version=None, modifier_versions={m_name: m_versions, d: data_version}, full_object=True)
+                         str(m_versions) + ' and data ' + d_name + ', versions ' + str(d_version))
+            try:
+                eval_data = ml_repo.get(
+                    eval_data_name, version=None, modifier_versions={m_name: m_versions, d_name: d_version}, full_object=True)
+            except:
+                message = 'Retrieving eval data for model ' + tmp + ', versions ' + str(m_versions) + ' and data ' + d_name + ', versions ' + str(d_version)
+                logging.error(message)
+                warnings.warn(message)
+                continue
             if not isinstance(eval_data, list):
                 eval_data = [eval_data]
             for eval_d in eval_data:
@@ -268,7 +278,7 @@ def get_pointwise_model_errors(ml_repo, models, data, coord_name=None, data_vers
                     tmp['x0_name'] = x_coord_name
                     tmp['x0'] = ref_data.x_data[start_index:end,
                                                 ref_data.x_coord_names.index(x_coord_name)]
-                tmp['info'] = {d: str(data_version),
+                tmp['info'] = {d_name: str(data_version),
                                m_name: str(eval_d.repo_info[RepoInfoKey.MODIFICATION_INFO][m_name])}
 
                 model_label = label_checker.get_label(
@@ -290,7 +300,7 @@ def get_ptws_error_dist_mmd(ml_repo, model, data, x_coords=None, y_coords=None, 
         ml_repo (MLRepo): [description]
         model (str or dict): A dictionary of model names (or labels) to versions (a single version number, a range of versions or a list of versions) or 
                 just a model name (in this case the latest version is used)
-        data (str or dict): A dictionary of data namesto versions (a single version number, a range of versions or a list of versions) or 
+        data (str or dict): A dictionary of data names to versions (a single version number, a range of versions or a list of versions) or 
                 just a data name (in this case the latest version is used)
         x_coords (int, str or list, optional): x-coordinate or list of x-coordinates used to comput the squared MMD. 
             If None, all x-coordinates are used. Defaults to None.
