@@ -486,7 +486,7 @@ class RawData(RepoObject):
             if y_data.shape[1] != len(y_coord_names):  # pylint: disable=E1101
                 logger.error('Nmber of y-coordinates does not equal number of names for y-coordinates.')
                 raise Exception(
-                    'Nmber of y-coordinates does not equal number of names for y-coordinates.')
+                    'Number of y-coordinates does not equal number of names for y-coordinates.')
             if y_data.shape[0] != x_data.shape[0]:  # pylint: disable=E1101
                 raise Exception(
                     'Number of x-datapoints does not equal number of y-datapoints.')
