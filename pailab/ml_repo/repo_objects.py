@@ -561,7 +561,7 @@ class Preprocessor(RepoObject):
             transforming_function (str): the identifier of the transforming function
             fitting_function (str or None): the identifier of the fitting function. Defaults to None.
             preprocessing_param (str or None): the identifier of the preprocessing parameter. Defaults to None.
-            repo_info (RepoInfo): dictionary of the repo info}). Defaults to RepoInfo().
+            repo_info (RepoInfo): dictionary of the repo info. Defaults to RepoInfo().
         """
 
         super(Preprocessor, self).__init__(repo_info)
