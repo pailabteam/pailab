@@ -5,6 +5,7 @@
 
 __version__ = '0.0.1'
 
+import numpy as np
 from pailab.ml_repo.repo_objects import repo_object_init
 from pailab.ml_repo.repo_objects import RepoInfoKey
 from pailab.ml_repo.repo_objects import Preprocessor
@@ -118,10 +119,18 @@ class SKLearnPreprocessingParam:
     """
 
     @repo_object_init()
-    def __init__(self, preprocessor, sklearn_param):
+    def __init__(self, preprocessor, sklearn_param, columns = None):
+        """Constructor
+        
+        Args:
+            preprocessor (obj): Object of sklearn preprocessor
+            sklearn_param (dict ): Dictionary of preprocessor parameter
+            columns (list of str optional): If set, preprocessor is applied only to columns defined by the respective list of names. Defaults to None.
+        """
         self.sklearn_module_name = preprocessor.__class__.__module__
         self.sklearn_class_name = preprocessor.__class__.__name__
         self.sklearn_params = sklearn_param
+        self.columns =  columns
 
     def get_params(self):
         return self.sklearn_params
@@ -151,7 +160,33 @@ def transform_sklearn(preprocessor_param, data_x, x_coord_names, fitted_preproce
         prepro = m(**preprocessor_param.sklearn_params)
     else:
         prepro = fitted_preprocessor
-    return prepro.preprocessor.transform(X=data_x), x_coord_names
+    if preprocessor_param.columns is None:
+        return prepro.preprocessor.transform(X=data_x), x_coord_names
+    
+    # get submatrix with columns used for this preprocessor
+    columns = [x_coord_names.index(x) for x in preprocessor_param.columns] # columns which will be replaced by transformation
+    x_trans = prepro.preprocessor.transform(X=data_x[:, columns])
+    if x_trans.shape[1] == len(columns): #in this case we replace the column by their trasformed vesions
+        result = data_x.copy()
+        for i in columns:
+            result[:,i] = x_trans[:,i]
+        x_coord_names_new = x_coord_names.copy()
+        if hasattr(prepro.preprocessor,'get_feature_names'):
+            new_names = prepro.preprocessor.get_feature_names(preprocessor_param.columns)
+            for i in range(len(columns)):
+                x_coord_names_new[columns[i]] = new_names[i]
+        return result, x_coord_names_new
+    elif x_trans.shape[1] > len(columns): # append new columns from preprocessing to the end
+        x_coord_names_new = [x for x in x_coord_names if x not in preprocessor_param.columns]
+        if hasattr(prepro.preprocessor,'get_feature_names'):
+            x_coord_names_new.extend(prepro.preprocessor.get_feature_names(preprocessor_param.columns))
+        else:
+            x_coord_names_new.extend(['trans_'+str(i) for i in x_trans.shape[1]])
+        remaining_columns = [ i for i in data_x.shape[1] if x_coord_names[i] not in preprocessor_param.columns]
+        return np.concatenate((data_x[:,remaining_columns], x_trans,), axis=1), x_coord_names_new
+    else:
+        raise Exception('Only implemented for preprocessors that do not shrink number of columns.')
+
 
 
 def fit_sklearn(preprocessor_param, data_x, x_coord_names):
@@ -169,18 +204,24 @@ def fit_sklearn(preprocessor_param, data_x, x_coord_names):
         prepro = m(**preprocessor_param.sklearn_params)
     else:
         prepro = m()
-    prepro.fit(X=data_x)
+    if preprocessor_param.columns is not None:
+        columns = [x_coord_names.index(x) for x in preprocessor_param.columns]
+        prepro.fit(X=data_x[:, columns])
+    else:
+        prepro.fit(X=data_x)
     return SKLearnPreprocessor(prepro, repo_info={})
 
 
-def add_preprocessor(repo, skl_preprocessor, preprocessor_name=None, preprocessor_param=None):
+def add_preprocessor(repo, skl_preprocessor, preprocessor_name=None, preprocessor_param=None, columns = None):
     """Adds a new sklearn preprocessor to a pailab MLRepo
 
     Args:
-        repo ([type]): [description]
-        preprocessor (Class): The sklearn preprocessor class
-        preprocessor_name ([type], optional): Defaults to None. [description]
-        preprocessor_param ([type], optional): Defaults to None. [description]
+        repo (MLRepo): MLRepo to which preprocessor will be added
+        preprocessor (obj): An object to the sklearn preprocessor class.
+        preprocessor_name (str, optional): Name of the preprocessor in repo. If None, a default name will be generated. Defaults to None.
+        preprocessor_param (dict, optional): Dictionary of parameters for the SKLearn preprocessor. Ths elements will be used to overwrite 
+                                            the parameters in the given preprocessor object. Defaults to None. 
+        columns (list(str)): List of string defining the columns the preprocessor will be applied to. If None, all columns are used. Defaults to None.
     """
 
     # preprocessor name
@@ -197,7 +238,7 @@ def add_preprocessor(repo, skl_preprocessor, preprocessor_name=None, preprocesso
     if preprocessor_param is not None:
         for k, v in preprocessor_param.items():
             param[k] = v
-    skl_param = SKLearnPreprocessingParam(skl_preprocessor, param,
+    skl_param = SKLearnPreprocessingParam(skl_preprocessor, param, columns, 
                                           repo_info={RepoInfoKey.NAME.value: p_name + '/preprocessor_param',
                                                      RepoInfoKey.CATEGORY: MLObjectType.PREPROCESSOR_PARAM.value})
 
