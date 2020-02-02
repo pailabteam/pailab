@@ -43,7 +43,6 @@ class NumpyPreprocessor:
 
 
 def select_columns(preprocessor_param, data_x, column_names):
-
     selected_columns = preprocessor_param.get_params()['columns']
     # first find the indices of the columns to select
 
@@ -61,6 +60,10 @@ def select_columns(preprocessor_param, data_x, column_names):
 
     return x_data, x_coordinates
 
+
+def remove_rows_nan(data_x, column_names):
+    return data_x[~np.isnan(data_x).any(axis=1)], column_names
+    
 
 def add_preprocessor_select_columns(repo, preprocessor_name='Numpy_Select_Columns', preprocessor_param={}):
     """Adds a new numpy preprocessor to a pailab MLRepo
@@ -89,4 +92,23 @@ def add_preprocessor_select_columns(repo, preprocessor_name='Numpy_Select_Column
     repo.add_preprocessor(preprocessor_name, transforming_function=preprocessor_name+'/select_columns', fitting_function=None,
                           preprocessor_param=preprocessor_name + '/preprocessor_param')
 
+
+def add_preprocessor_remove_rows_nan(repo, preprocessor_name='Numpy_Select_Columns'):
+    """Adds a new numpy preprocessor to a pailab MLRepo
+    This is a specific preprocessor to remove rows containing nan
+    Args:
+        repo (MLRepo): repository
+        preprocessor_name (str, optional): Defaults to 'Numpy_Select_Columns'. Defins preprocessor name.
+       
+    """
+    # add preprocessing
+    repo.add_preprocessing_transforming_function(
+        remove_rows_nan, repo_name=preprocessor_name + '/select_columns')
+    numpy_param = NumpyPreprocessingParam({},
+                                          repo_info={RepoInfoKey.NAME.value: preprocessor_name + '/preprocessor_param',
+                                                     RepoInfoKey.CATEGORY: MLObjectType.PREPROCESSOR_PARAM.value})
+    repo.add(numpy_param, 'adding preprocessor parameter')
+
+    repo.add_preprocessor(preprocessor_name, transforming_function=preprocessor_name+'/select_columns', fitting_function=None,
+                          preprocessor_param=preprocessor_name + '/preprocessor_param')
 # endregion
