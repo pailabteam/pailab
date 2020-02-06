@@ -7,11 +7,15 @@
 __version__ = '0.0.1'
 
 import numpy as np
+import pandas as pd
+import logging
 
 from pailab.ml_repo.repo_objects import repo_object_init
 from pailab.ml_repo.repo_objects import RepoInfoKey
 from pailab.ml_repo.repo_objects import Preprocessor
 from pailab.ml_repo.repo import MLObjectType
+
+logger = logging.getLogger(__name__)
 
 
 def get_classname(x):
@@ -45,7 +49,8 @@ class NumpyPreprocessor:
 def select_columns(preprocessor_param, data_x, column_names):
     selected_columns = preprocessor_param.get_params()['columns']
     # first find the indices of the columns to select
-
+    logger.debug('Select ' + str(len(selected_columns)) +
+                 ' out of ' + str(len(column_names)) + ' columns.')
     idx = []
     for column in selected_columns:
         try:
@@ -61,9 +66,11 @@ def select_columns(preprocessor_param, data_x, column_names):
     return x_data, x_coordinates
 
 
-def remove_rows_nan(data_x, column_names):
-    return data_x[~np.isnan(data_x).any(axis=1)], column_names
-    
+def remove_rows_nan(preprocessor_param, data_x, column_names):
+    logger.debug('Delete rows with NaN.')
+    tmp = pd.DataFrame(data=data_x, columns=column_names)
+    return tmp.dropna().values, column_names
+
 
 def add_preprocessor_select_columns(repo, preprocessor_name='Numpy_Select_Columns', preprocessor_param={}):
     """Adds a new numpy preprocessor to a pailab MLRepo
@@ -99,7 +106,7 @@ def add_preprocessor_remove_rows_nan(repo, preprocessor_name='Numpy_Select_Colum
     Args:
         repo (MLRepo): repository
         preprocessor_name (str, optional): Defaults to 'Numpy_Select_Columns'. Defins preprocessor name.
-       
+
     """
     # add preprocessing
     repo.add_preprocessing_transforming_function(
