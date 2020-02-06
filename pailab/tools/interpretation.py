@@ -477,7 +477,6 @@ def _compute_prototypes(X, n_prototypes, n_criticisms, metric='rbf', witness_pen
                     new_prototype = candidate
                     max_impact = impact
         if new_prototype is None:
-            print(str(prototypes))
             raise Exception('Cannot find a new prototype.')
         prototypes.append(new_prototype)
 
