@@ -632,7 +632,7 @@ class TrainingJob(Job):
                 raise Exception('Number of preprocessors and their parameter versions does not match.')
 
             for k in range(num_preprocessors):
-                logger.debug('Apply preprocessor ' + model.preprocessors[k])
+                logger.info('Apply preprocessor ' + model.preprocessors[k])
                 preprocessor = repo.get(model.preprocessors[k], preprocessor_versions[k])
                 preprocessors_modification_info[preprocessor.repo_info.name] = preprocessor.repo_info.version
                 transforming_func = repo.get(preprocessor.transforming_function, preprocessor_transforming_function_versions[k])
