@@ -223,7 +223,7 @@ class _RawDataCollection(_RepoObjectItem):
 
         Arguments:
             data_name {name of data} -- the name of the data added
-            data {pandas datatable} -- the data as pandas datatable
+            data {pandas DataFrame} -- the data as pandas datatable
             input_variables {str or iterable of str} -- column name or iterable of column names defining the input variables of the given data
             target_variables {str or iterable of str} -- column name or iterable of column names defining the target variables of the given data
         
