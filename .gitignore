@@ -15,3 +15,5 @@ build/
 pailab.egg-info/
 examples/.ipynb_checkpoints
 examples/.ipynb_checkpoints/widgets-checkpoint.ipynb
+examples/adult-census-income/.ipynb_checkpoints/adult-census-income-checkpoint.ipynb
+examples/kaggle_home_loans_credit_default/.ipynb_checkpoints/home_loans_credit_default-checkpoint.ipynb

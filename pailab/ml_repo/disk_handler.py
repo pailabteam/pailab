@@ -508,4 +508,4 @@ class RepoObjectDiskStorage(RepoStore):
         """
         
         files = self.check_integrity()
-        print(files)
+        

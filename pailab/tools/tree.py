@@ -62,6 +62,16 @@ class _RepoObjectItem:
 
     def load(self, version=repo_store.LAST_VERSION, full_object=False,
             modifier_versions=None, containing_str=None):
+            """Loads the object into the tree and stores it in obj member.
+            
+            Args:
+                version (str, optional): The version of the object to be loaded. Defaults to repo_store.LAST_VERSION.
+                full_object (bool, optional): If True, also the bigobject-members of the object will be loaded and stored. Defaults to False.
+                modifier_versions (dict of str to str, optional): The version of the object that has been created with the objects 
+                                and their respective versions defined in the dict will be loaded. Defaults to None.
+                containing_str (str, optional): The object will only be loaded if the given string is contained in the objects 
+                                            name (intended for internal use). Defaults to None.
+            """
             if containing_str is None or containing_str in self._name:
                 if self._repo is not None:
                     self.obj = self._repo.get(self._name, version, full_object, modifier_versions, throw_error_not_exist = False)
@@ -213,7 +223,9 @@ class _RawDataCollection(_RepoObjectItem):
 
         Arguments:
             data_name {name of data} -- the name of the data added
-            data {pandas datatable} -- the data as pandas datatable
+            data {pandas DataFrame} -- the data as pandas datatable
+            input_variables {str or iterable of str} -- column name or iterable of column names defining the input variables of the given data
+            target_variables {str or iterable of str} -- column name or iterable of column names defining the target variables of the given data
         
         Keyword Arguments:
             input_variables {list of strings} -- list of column names defining the input variables for the machine learning (default: {None}). If None, all variables are used as input
@@ -226,13 +238,17 @@ class _RawDataCollection(_RepoObjectItem):
             if not target_variables is None:
                 [input_variables.remove(x) for x in target_variables]
         else:
+            if isinstance(input_variables, str):
+                input_variables = [input_variables]
             # check whether the input_variables are included in the data
-            if not [item for item in input_variables if item in list(data)] == input_variables:
+            if not [item for item in input_variables if item in list(data)] == list(input_variables):
                 raise Exception('RawData does not include at least one column included in input_variables')
       
         if target_variables is not None:
+            if isinstance(target_variables, str):
+                target_variables = [target_variables]
             # check if target variables are in list
-            if not [item for item in target_variables if item in list(data)] == target_variables:
+            if not [item for item in target_variables if item in list(data)] == list(target_variables):
                 raise Exception('RawData does not include at least one column included in target_variables')
             raw_data = repo_objects.RawData(data.loc[:, input_variables].values, input_variables, data.loc[:, target_variables].values, 
                 target_variables, repo_info = {RepoInfoKey.NAME: path})

@@ -5,6 +5,7 @@
 import numpy as np
 from pailab.ml_repo.repo_objects import RepoObject, RawData, RepoInfoKey
 from pailab.tools.tools import ml_cache
+import pailab.tools.functional_clustering as functional_clustering
 from pailab.ml_repo.repo_store import RepoStore  # pylint: disable=E0401
 from pailab.ml_repo.repo import MLObjectType
 
@@ -95,7 +96,7 @@ def _get_model_eval(model, model_version, ml_repo, model_label=None):
             model_ = model + '/model'
         else:
             model_ = model
-        result_model = ml_repo.get(model_, model_version_, full_object = True)
+        result_model = ml_repo.get(model_, model_version_, full_object=True)
     else:
         result_model = model
 
@@ -170,36 +171,6 @@ class ICE_Results:
         return result
 
 
-def functional_clustering(x, scale='',
-                          n_clusters=20, random_state=42):
-    """Given a set of different 1D functions (represented in matrix form where each row contains the function values on a given grid), this
-        method clusters those functions and tries to find typical function structures.
-
-    Args:
-        x (numpy matrix): Matrix containing in each row the function values at a datapoint.
-        n_clusters (int, optional): Number of clusters for the functional clustering of the ICE curves. Defaults to 0.
-        random_state (int, optional): [description]. Defaults to 42.
-        scale (str or int, optional): String defining the scaling for the functions before functional clustering is applied. Scaling is perfomred by
-                                dividing the vector of the y-values of the ICE by the respective vector norm defined by scaling.
-                                The scaling must be one of numpy's valid strings for linalg.norm's ord parameter. If string is empty, no scaling will be applied.
-                                Defaults to ''. 
-    Returns:
-        numpy vector: Vector where each value defines the corresponding cluster of the respective function (x[i] is the cluster the i-th function belongs to).
-        numpy matrix: Contains in each row th distance to each cluster for the respective function.
-        numpy matrix: Contains in each row a cluster centroid.
-    """
-    if not has_sklearn:
-        raise Exception(
-            'Cannot apply functional clustering: No sklearn installed. Please either install sklearn or set n_clusters to zero.')
-    k_means = KMeans(init='k-means++', n_clusters=n_clusters,
-                     n_init=10, random_state=random_state)
-    labels = k_means.fit_predict(x)
-    # now store for each data point the distance to the respectiv cluster center
-    distance_to_clusters = k_means.transform(x)
-    cluster_centers = k_means.cluster_centers_
-    return labels, distance_to_clusters, cluster_centers
-
-
 @ml_cache
 def _compute_and_cluster_ice(data, model_eval_function, model,
                              y_coordinate, x_coordinate,
@@ -235,7 +206,7 @@ def _compute_and_cluster_ice(data, model_eval_function, model,
     cluster_centers = None
     distance_to_clusters = None
     if clustering_param is not None:
-        labels, distance_to_clusters, cluster_centers = functional_clustering(
+        labels, distance_to_clusters, cluster_centers = functional_clustering.fit_predict(
             ice, **clustering_param)
     return x_values, ice, labels, cluster_centers, distance_to_clusters
 
@@ -477,7 +448,6 @@ def _compute_prototypes(X, n_prototypes, n_criticisms, metric='rbf', witness_pen
                     new_prototype = candidate
                     max_impact = impact
         if new_prototype is None:
-            print(str(prototypes))
             raise Exception('Cannot find a new prototype.')
         prototypes.append(new_prototype)
 
