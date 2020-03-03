@@ -1,9 +1,21 @@
 # -*- coding: utf-8 -*-
 """This module contains functions for functional clustering. 
 """
-from sklearn.cluster import AgglomerativeClustering
-from collections import defaultdict
+import logging
 import numpy as np
+from collections import defaultdict
+has_sklearn = True
+try:
+    from sklearn.cluster import KMeans, AgglomerativeClustering
+
+except ImportError:
+    import warnings
+    warnings.warn(
+        'No sklearn installed, some functions of this submodule may not be usable.')
+    has_sklearn = False
+
+
+logger = logging.getLogger(__name__)
 
 
 def _transform_standard_grid(x_coords, f, gridwidth):
@@ -86,28 +98,39 @@ def _compute_similarity_matrix(f):
     return result
 
 
-def functional_clustering(x_coords, f,
-                          n_clusters=10,
-                          min_cluster_size=10,
-                          random_state=42,
-                          gridwidth=0.01,
-                          rel_tol=0.001,
-                          **sklearnArg):
+def _compute_similarity(dx_f1, dx_f2, d1, d2):
+    if d1 < 0.00001 or d2 < 0.00001:
+        if d1 > 0.0001 or d2 > 0.0001:
+            # no similarity: Constant and non-constant
+            return 0.0
+        else:
+            # very similar since both seem to be constants
+            return 0.98
+    return np.minimum(np.dot(dx_f1, dx_f2)/(d1*d2), 1.0)
+
+
+def agglomerative(f,
+                  n_clusters=10,
+                  min_cluster_size=10,
+                  random_state=42,
+                  gridwidth=0.01,
+                  rel_tol=0.001,
+                  **sklearnArg):
     result = np.empty((f.shape[0],))
-    # apply transformation to uniform [0,1] grid to make functions comparable
-    f_transformed = _transform_standard_grid(x_coords, f, gridwidth)
 
     local_minimum = defaultdict(list)
-    tmp = _get_landmarks(f_transformed, 'MIN', rel_tol)
+    tmp = _get_landmarks(f, 'MIN', rel_tol)
     for i in range(f.shape[0]):
         local_minimum[tmp[i].shape[0]].append(i)
     cluster_offset = 0
-
+    logger.debug('Found ' + str(len(local_minimum)) +
+                 ' local minima configuration(s).')
+    c_centers = []
     for k, v in local_minimum.items():
-        f_transformed_sub = f_transformed[v, :]
-        similarity_matrix = _compute_similarity_matrix(f_transformed_sub)
-        # return similarity_matrix
-        # since clustering algorithm needs distance matrix, we first transform similarity to distance
+        logger.debug('Start clustering for ' + str(len(v)) + ' functions with ' +
+                     str(k) + ' local minima.')
+        f_sub = f[v, :]
+        similarity_matrix = _compute_similarity_matrix(f_sub)
         distance_matrix = np.sqrt(1.0-similarity_matrix)
 
         if len(v) > n_clusters:
@@ -120,5 +143,93 @@ def functional_clustering(x_coords, f,
         for i in range(len(v)):
             result[v[i]] = clusters[i] + cluster_offset
         cluster_offset += np.max(clusters)+1
+        logger.debug('Finished clustering for functions with ' +
+                     str(k) + ' local minima.')
 
-    return result
+        # determine cluster centroids and distances to centroid
+        cluster_centers = np.empty((int(np.max(clusters))+1,), dtype=int)
+        for i in range(cluster_centers.shape[0]):
+            ind = np.nonzero(clusters == i)[0]
+            dist_sub = distance_matrix[np.ix_(ind, ind)]
+            # take the first index with smallest sum of distances
+            cluster_centers[i] = v[ind[np.argmin(np.sum(dist_sub, axis=1))]]
+        c_centers.append(cluster_centers)
+    cluster_centers = np.concatenate(c_centers)
+
+    cluster_distance = np.empty((f.shape[0], cluster_centers.shape[0],))
+    dx_f = f[:, 1:]-f[:, :-1]
+    d = np.sqrt(np.sum(dx_f*dx_f, axis=1))
+    for i in range(f.shape[0]):
+        for j in range(cluster_centers.shape[0]):
+            cluster_distance[i, j] = _compute_similarity(
+                dx_f[i, :], dx_f[j, :], d[i], d[j])
+    return result, cluster_distance, f[cluster_centers, :]
+
+
+def kmeans(x, n_clusters=20, random_state=42, **sklearnArg):
+    """Given a set of different 1D functions (represented in matrix form where each row contains the function values on a given grid), this
+        method clusters those functions and tries to find typical function structures.
+
+    Args:
+        x (numpy matrix): Matrix containing in each row the function values at a datapoint.
+        n_clusters (int, optional): Number of clusters for the functional clustering of the ICE curves. Defaults to 0.
+        random_state (int, optional): [description]. Defaults to 42.
+
+    Returns:
+        numpy vector: Vector where each value defines the corresponding cluster of the respective function (x[i] is the cluster the i-th function belongs to).
+        numpy matrix: Contains in each row the distance to each cluster for the respective function.
+        numpy matrix: Contains in each row a cluster centroid.
+    """
+    if not has_sklearn:
+        raise Exception(
+            'Cannot apply functional clustering: No sklearn installed. Please either install sklearn or set n_clusters to zero.')
+    k_means = KMeans(init='k-means++', n_clusters=n_clusters,
+                     n_init=10, random_state=random_state, **sklearnArg)
+    labels = k_means.fit_predict(x)
+    # now store for each data point the distance to the respectiv cluster center
+    distance_to_clusters = k_means.transform(x)
+    cluster_centers = k_means.cluster_centers_
+    return labels, distance_to_clusters, cluster_centers
+
+
+def fit_predict(f,
+                method='euclidean',
+                x_coords=None,
+                n_clusters=10,
+                min_cluster_size=10,
+                random_state=42,
+                gridwidth=0.01,
+                rel_tol=0.001,
+                **sklearnArg):
+    """Given a set of different 1D functions (represented in matrix form where each row contains the function values on a given grid), this
+        method clusters those functions and tries to find typical function structures.
+
+    Args:
+        x (numpy matrix): Matrix containing in each row the function values at a datapoint.
+        method (str): Method to use for clustering: 
+            - kmeans: k-means clustering where vector of function values is used to compare functions (see :meth:`pailab.tools.functional_clustering.kmeans`)
+            - agglomerative: Agglomerative clusering is used (see :meth:`pailab.tools.functional_clustering.agglomerative`)
+        n_clusters (int, optional): Number of clusters for the functional clustering of the ICE curves. Defaults to 0.
+        random_state (int, optional): [description]. Defaults to 42.
+
+    Returns:
+        numpy vector: Vector where each value defines the corresponding cluster of the respective function (x[i] is the cluster the i-th function belongs to).
+        numpy matrix: Contains in each row th distance to each cluster for the respective function.
+        numpy matrix: Contains in each row a cluster centroid.
+    """
+    logger.info('Start functional clustering with n_clusters=' +
+                str(n_clusters) + ' and method ' + method)
+    # apply transformation to uniform [0,1] grid to make functions comparable
+    if x_coords is not None:
+        logger.debug(
+            'Transform functions to uniform [0,1] grid width gridwidth ' + str(gridwidth))
+        f_transformed = _transform_standard_grid(x_coords, f, gridwidth)
+    else:
+        f_transformed = f
+    if method == 'euclidean':
+        return kmeans(f_transformed, n_clusters=n_clusters, random_state=random_state, **sklearnArg)
+    elif method == 'agglomerative':
+        return agglomerative(f_transformed, n_clusters=n_clusters, random_state=random_state, rel_tol=rel_tol, **sklearnArg)
+    else:
+        raise ValueError('Unknown method ' + method)
+    logger.info('Finished functional clustering')
