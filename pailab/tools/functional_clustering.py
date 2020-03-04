@@ -113,7 +113,6 @@ def agglomerative(f,
                   n_clusters=10,
                   min_cluster_size=10,
                   random_state=42,
-                  gridwidth=0.01,
                   rel_tol=0.001,
                   **sklearnArg):
     result = np.empty((f.shape[0],))
@@ -161,8 +160,8 @@ def agglomerative(f,
     d = np.sqrt(np.sum(dx_f*dx_f, axis=1))
     for i in range(f.shape[0]):
         for j in range(cluster_centers.shape[0]):
-            cluster_distance[i, j] = _compute_similarity(
-                dx_f[i, :], dx_f[j, :], d[i], d[j])
+            cluster_distance[i, j] = np.sqrt(1.0-_compute_similarity(
+                dx_f[i, :], dx_f[j, :], d[i], d[j]))
     return result, cluster_distance, f[cluster_centers, :]
 
 
