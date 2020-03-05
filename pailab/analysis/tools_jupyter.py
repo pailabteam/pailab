@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 # set option so that long lines have a linebreak
 pd.set_option('display.max_colwidth', -1)
-#set widget use to True so that plotlys FigureWidget is used
+# set widget use to True so that plotlys FigureWidget is used
 paiplot.use_within_widget = True
 
 if paiplot.has_plotly:
@@ -68,11 +68,13 @@ class _MLRepoModel:
 
     class _ModelModel:
         def __init__(self, ml_repo):
-            self.labels = {} # dictionary label->model and version
-            self.model_to_label = defaultdict(lambda: None) # dictionary (model,version)->labelname or None
+            self.labels = {}  # dictionary label->model and version
+            # dictionary (model,version)->labelname or None
+            self.model_to_label = defaultdict(lambda: None)
             self._setup_labels(ml_repo)
             self._model_info_table = self._setup_model_info_table(ml_repo)
-            self._model_names = ml_repo.get_names(MLObjectType.CALIBRATED_MODEL)
+            self._model_names = ml_repo.get_names(
+                MLObjectType.CALIBRATED_MODEL)
 
         def _setup_labels(self, ml_repo):
             label_names = ml_repo.get_names(MLObjectType.LABEL)
@@ -82,7 +84,8 @@ class _MLRepoModel:
                 label_names = [label_names]
             for l in label_names:
                 label = ml_repo.get(l)
-                self.labels[l] = {'model': label.name, 'version': label.version}
+                self.labels[l] = {'model': label.name,
+                                  'version': label.version}
                 self.model_to_label[(label.name, label.version,)] = l
 
         def _setup_model_info_table(self, ml_repo):
@@ -91,14 +94,19 @@ class _MLRepoModel:
             for model_name in model_names:
                 models = ml_repo.get(model_name, version=(
                     FIRST_VERSION, LAST_VERSION), full_object=False)
+                if not isinstance(models, list):
+                    models = [models]
                 for model in models:
                     tmp = copy.deepcopy(model.repo_info.get_dictionary())
                     tmp['model'] = tmp['name']
                     del tmp['big_objects']
                     del tmp['modifiers']
                     del tmp['modification_info']
-                    tmp['label'] = self.model_to_label[(tmp['model'], tmp['version'],)]
-                    tmp['widget_key'] =  tmp['commit_date'][0:16] + ' | ' +  tmp['author'] + ' | ' + str(tmp['label']) + ' | ' + tmp['version']
+                    tmp['label'] = self.model_to_label[(
+                        tmp['model'], tmp['version'],)]
+                    tmp['widget_key'] = tmp['commit_date'][0:16] + ' | ' + \
+                        tmp['author'] + ' | ' + \
+                        str(tmp['label']) + ' | ' + tmp['version']
                     model_rows.append(tmp)
             model_info_table = pd.DataFrame(model_rows)
             model_info_table.set_index(['model', 'version'], inplace=True)
@@ -143,9 +151,9 @@ class _MLRepoModel:
         self.consistency = _MLRepoModel._ConsistencyModel(self.ml_repo)
         self._setup_measures()
         self._setup_labels()
-        # now set label information into 
+        # now set label information into
 
-    def _setup_labels(self): # todo: das hier muss weg
+    def _setup_labels(self):  # todo: das hier muss weg
         self.labels = {}
         label_names = self.ml_repo.get_names(MLObjectType.LABEL)
         if label_names is None:
@@ -177,7 +185,7 @@ class _MLRepoModel:
                 '#total commits': self.model.get_info_table().shape[0]
             }
         return model_stats
-        
+
     def get_versions(self, name):
         return self.ml_repo.get_history(name, obj_member_fields=[])
 
@@ -191,11 +199,15 @@ def _add_title_and_border(name):
     def _get_widget(get_widget):
         def wrapper(self):
             return widgets.VBox(children=[
-                widgets.HTML(value='<h3 style="Color: white; background-color:#d1d1e0; text-align: center"> ' + name + '</h3>'),#, layout = widgets.Layout(width = '100%')),
+                # , layout = widgets.Layout(width = '100%')),
+                widgets.HTML(
+                    value='<h3 style="Color: white; background-color:#d1d1e0; text-align: center"> ' + name + '</h3>'),
                 get_widget(self),
-                widgets.HTML(value='<h3 style="Color: white; background-color:#d1d1e0; text-align: center"> </h3>')#, layout = widgets.Layout(width = '100%'))
-            ], layout=widgets.Layout(padding='0px 0px 0px 0px', overflow_x='auto')#, overflow_y='auto', ) 
-            ) #layout=widgets.Layout(border='solid 1px'))
+                # , layout = widgets.Layout(width = '100%'))
+                widgets.HTML(
+                    value='<h3 style="Color: white; background-color:#d1d1e0; text-align: center"> </h3>')
+            ], layout=widgets.Layout(padding='0px 0px 0px 0px', overflow_x='auto')  # , overflow_y='auto', )
+            )  # layout=widgets.Layout(border='solid 1px'))
         return wrapper
     return _get_widget
 
@@ -273,9 +285,9 @@ class _ObjectCategorySelector:
         if 'layout' not in kwargs.keys():
             kwargs['layout'] = widgets.Layout(width='300px', height='250px')
         kwargs['value'] = []
-        self._selector = widgets.SelectMultiple(options=selection, 
-                        #value = [selection[0]], 
-                        **kwargs)
+        self._selector = widgets.SelectMultiple(options=selection,
+                                                #value = [selection[0]],
+                                                **kwargs)
 
     def get_selection(self):
         return [k.split(' ')[0] for k in self._selector.value]
@@ -294,9 +306,9 @@ class _DataSelector:
 
     def __init__(self, **kwargs):
         names = widget_repo.data.get_data_names()
-        #if len(names) > 0:
+        # if len(names) > 0:
         self._selection_widget = widgets.SelectMultiple(
-            options=names, value = [names[0]], **kwargs)
+            options=names, value=[names[0]], **kwargs)
 
     def get_widget(self):
         return widgets.VBox(children=[widgets.Label(value='Data'), self._selection_widget])
@@ -304,11 +316,12 @@ class _DataSelector:
     def get_selection(self):
         return self._selection_widget.value
 
+
 class _DataSelectorWithVersion:
     """Widget to select training and test data.
     """
 
-    def __init__(self, display_selection = True, **kwargs):
+    def __init__(self, display_selection=True, **kwargs):
         names = widget_repo.data.get_data_names()
         self._update_callbacks = []
         self._display_selection = display_selection
@@ -318,21 +331,22 @@ class _DataSelectorWithVersion:
         self._updating_version = {}
         for n in names:
             self._selection[n] = []
-            self._selection_options[n] =[]
+            self._selection_options[n] = []
             self._key_to_version[n] = {}
         self._selected_overview = widgets.Output()
         self._selection_data = widgets.Dropdown(
-            options=names, value = None, **kwargs)
+            options=names, value=None, **kwargs)
 
         self._selection_data.observe(self._update_version, names='value')
 
         self._selection_version = widgets.SelectMultiple(
-            options=[], value = [], **kwargs)
-        self._selection_version.observe(self._display_selected_overview, names='value')
+            options=[], value=[], **kwargs)
+        self._selection_version.observe(
+            self._display_selected_overview, names='value')
 
     def _get_state(self):
         return self._selection, self._selection_options,  self._key_to_version
-        
+
     def _set_state(self, state):
         self._selection = state[0]
         self._selection_options = state[1]
@@ -340,7 +354,7 @@ class _DataSelectorWithVersion:
 
     def _set_update_callback(self, cb):
         """Set a callback (called at every update of this widget)
-        
+
         Args:
             cb (function): Callback function called at every update.
         """
@@ -353,7 +367,8 @@ class _DataSelectorWithVersion:
         key_to_version = {}
         versions = []
         for x in tmp:
-            key =  x['repo_info']['commit_date'][0:16] + ' | ' +  x['repo_info']['author'] + ' | ' + x['repo_info']['version']
+            key = x['repo_info']['commit_date'][0:16] + ' | ' + \
+                x['repo_info']['author'] + ' | ' + x['repo_info']['version']
             key_to_version[key] = x['repo_info']['version']
             versions.append(key)
         self._key_to_version[data_selected] = key_to_version
@@ -363,17 +378,19 @@ class _DataSelectorWithVersion:
             cb(change)
         self._updating_version = False
         #self._selection[self._selection_data.value] = [x for x in self._selection_version.value]
-        
+
     def _display_selected_overview(self, change):
         if self._updating_version:
             return
         data_selected = self._selection_data.value
         key_to_version = self._key_to_version[data_selected]
-        self._selection[data_selected] = [key_to_version[x] for x in self._selection_version.value]
-        self._selection_options[data_selected] = [x for x in self._selection_version.value]
-        tmp ={}
-        tmp['data'] =[]
-        tmp['version'] =[]
+        self._selection[data_selected] = [key_to_version[x]
+                                          for x in self._selection_version.value]
+        self._selection_options[data_selected] = [
+            x for x in self._selection_version.value]
+        tmp = {}
+        tmp['data'] = []
+        tmp['version'] = []
         for n, x in self._selection.items():
             for y in x:
                 tmp['data'].append(n)
@@ -381,105 +398,111 @@ class _DataSelectorWithVersion:
         for cb in self._update_callbacks:
             cb(change)
         with self._selected_overview:
-            clear_output(wait = True)
+            clear_output(wait=True)
             display(pd.DataFrame.from_dict(tmp))
 
     def get_widget(self):
         if self._display_selection:
-            return widgets.VBox(children=[widgets.Label(value='Data'), self._selection_data, 
-                    widgets.Label(value='Versions'), self._selection_version, 
-                    self._selected_overview, ])
+            return widgets.VBox(children=[widgets.Label(value='Data'), self._selection_data,
+                                          widgets.Label(
+                                              value='Versions'), self._selection_version,
+                                          self._selected_overview, ])
         else:
-            return widgets.VBox(children=[widgets.Label(value='Data'), self._selection_data, 
-                    widgets.Label(value='Versions'), self._selection_version])
+            return widgets.VBox(children=[widgets.Label(value='Data'), self._selection_data,
+                                          widgets.Label(value='Versions'), self._selection_version])
 
     def get_selection(self):
         return self._selection
 
     def get_data(self):
         data = {}
-        for d_name,d_v in self._selection.items():
+        for d_name, d_v in self._selection.items():
             if len(d_v) > 0:
                 data[d_name] = d_v
         return data
+
+
 class _ModelSelectorWithVersion:
-    
-    @staticmethod        
-    def _filter_models(labels=None, commit_start = None, commit_end = None, authors=None, model_versions = None):
+
+    @staticmethod
+    def _filter_models(labels=None, commit_start=None, commit_end=None, authors=None, model_versions=None):
         """Filter the model table according to the given attributes.
-        
+
         Args:
             labels ([str or iterable of str], optional): If set, returns only models with the selected labels. Defaults to None.
             commit_start (str, optional): String of earliest commit date.. Defaults to None.
             commit_end (str, optional): String of latest commit date. Defaults to None.
             authors (str or iterable of str, optional): If set it return only the models with the corresponding author(s). Defaults to None.
             model_versions (str or iterable of str, optional): If set only modes with respective version(s) are returned. Defaults to None.
-        
+
         Returns:
             pandas DataFrame: The correspondign models.
         """
         result = widget_repo.model.get_info_table()
         if labels is not None:
-            if isinstance(labels, str): 
-                result = result[result['label']== labels]
+            if isinstance(labels, str):
+                result = result[result['label'] == labels]
             else:
                 result = result[result['label'].isin(labels)]
         if commit_start is not None:
-            result = result[result['commit_date']>=commit_start]
+            result = result[result['commit_date'] >= commit_start]
         if commit_end is not None:
-            result = result[result['commit_date']<=commit_end]
+            result = result[result['commit_date'] <= commit_end]
         if authors is not None:
             if isinstance(authors, str):
-                result = result[result['author']==authors]
+                result = result[result['author'] == authors]
             else:
                 result = result[result['author'].isin(authors)]
         if model_versions is not None:
             if isinstance(model_versions, str):
-                result = result[result['version']==model_versions]
+                result = result[result['version'] == model_versions]
             else:
                 result = result[result['version'].isin(model_versions)]
         return result
 
-    def __init__(self,  display_selection = True, **kwargs):
-        self._display_selection = display_selection        
+    def __init__(self,  display_selection=True, **kwargs):
+        self._display_selection = display_selection
         self._selection = defaultdict(list)
         self._selection_model_name = widgets.Dropdown(
-            options=widget_repo.model.get_models(), value = None, **kwargs)
-        self._selection_model_name.observe(self._selected_model_changes, names='value')
+            options=widget_repo.model.get_models(), value=None, **kwargs)
+        self._selection_model_name.observe(
+            self._selected_model_changes, names='value')
 
         self._selection_version = widgets.SelectMultiple(
-            options=[], value = [], rows=8, layout=widgets.Layout(width="100%"), **kwargs)
-        
+            options=[], value=[], rows=8, layout=widgets.Layout(width="100%"), **kwargs)
+
         self._selected_overview = widgets.Output()
-        self._selection_version.observe(self._selected_version_changed, names='value')
-        
+        self._selection_version.observe(
+            self._selected_version_changed, names='value')
+
         self._model_changed_callable = None
 
         # Filtering
         #
         labels = widget_repo.ml_repo.get_names(MLObjectType.LABEL)
-        self._label_selector = widgets.SelectMultiple(options = labels)
+        self._label_selector = widgets.SelectMultiple(options=labels)
         self._commit_data_start = widgets.DatePicker()
         self._commit_data_end = widgets.DatePicker()
-        self._author_selector = widgets.SelectMultiple(options = widget_repo.model.get_info_table()['author'].unique())
+        self._author_selector = widgets.SelectMultiple(
+            options=widget_repo.model.get_info_table()['author'].unique())
         self._apply_button = widgets.Button(description='Apply')
         self._apply_button.on_click(self._apply_filter)
         self._clear_button = widgets.Button(description='Clear')
         self._clear_button.on_click(self._clear_filter)
         self._filter = widgets.VBox(children=[
-                                        widgets.Label(value = 'Labels'),
-                                        self._label_selector,
-                                        widgets.Label(value = 'Commit Start'),
-                                        self._commit_data_start,
-                                        widgets.Label(value = 'Commit End'),
-                                        self._commit_data_end,
-                                        widgets.Label(value = 'Authors'),
-                                        self._author_selector,
-                                        widgets.HBox(children = [
-                                            self._apply_button,
-                                            self._clear_button] )
-                                        ]
-                                    )
+            widgets.Label(value='Labels'),
+            self._label_selector,
+            widgets.Label(value='Commit Start'),
+            self._commit_data_start,
+            widgets.Label(value='Commit End'),
+            self._commit_data_end,
+            widgets.Label(value='Authors'),
+            self._author_selector,
+            widgets.HBox(children=[
+                self._apply_button,
+                self._clear_button])
+        ]
+        )
 
     def get_models(self):
         """Returns all selected models as list of tuples (first element is model name, second model version)
@@ -487,13 +510,14 @@ class _ModelSelectorWithVersion:
         models = widget_repo.model.get_info_table()
         result = {}
         for k, v in self._selection.items():
-            if len(v)>0:
-                result[k] = [models[models['widget_key']==w].index[0][1] for w in v]
+            if len(v) > 0:
+                result[k] = [models[models['widget_key'] == w].index[0][1]
+                             for w in v]
         return result
 
     def observe_model_change(self, handler):
         """Setup a handler when the model trait changed
-        
+
         Args:
             handler (callable): A callable that is called when the model trait changes.
         """
@@ -522,15 +546,17 @@ class _ModelSelectorWithVersion:
         else:
             commit_end = str(self._commit_data_end.value)
         authors = None
-        if len(self._author_selector.value)>0:
+        if len(self._author_selector.value) > 0:
             authors = self._author_selector.value
-        models = _ModelSelectorWithVersion._filter_models(labels=labels, authors=authors, 
-                commit_start=commit_start, commit_end=commit_end)
-        self._selection_model_name.options = [x for x in models['name'].unique()]
-        models = models[models['name']==data_selected]
+        models = _ModelSelectorWithVersion._filter_models(labels=labels, authors=authors,
+                                                          commit_start=commit_start, commit_end=commit_end)
+        self._selection_model_name.options = [
+            x for x in models['name'].unique()]
+        models = models[models['name'] == data_selected]
         widget_keys = models['widget_key'].values
         self._selection_version.options = [x for x in models['widget_key']]
-        self._selection_version.value = [x for x in self._selection[data_selected] if x in widget_keys]
+        self._selection_version.value = [
+            x for x in self._selection[data_selected] if x in widget_keys]
         self._updating_version = False
 
     def _clear_filter(self, dummy):
@@ -546,21 +572,22 @@ class _ModelSelectorWithVersion:
         self._updating_version = True
         data_selected = self._selection_model_name.value
         models = widget_repo.model.get_info_table()
-        models = models[models['name']==data_selected]
+        models = models[models['name'] == data_selected]
         self._selection_version.options = [x for x in models['widget_key']]
         self._selection_version.value = self._selection[data_selected]
         self._updating_version = False
 
     def _update_selected_versions(self, change):
         data_selected = self._selection_model_name.value
-        # now handle changes of version selection: Remove versions that have been 
+        # now handle changes of version selection: Remove versions that have been
         # deselected and add versions that have been selected
         old = set(change['old'])
         new = set(change['new'])
         # remove versions that have been deselected
         diff = old-new
-        self._selection[data_selected] = list(set(self._selection[data_selected])-diff)
-        # add new elements 
+        self._selection[data_selected] = list(
+            set(self._selection[data_selected])-diff)
+        # add new elements
         diff = new - old
         self._selection[data_selected].extend(diff)
 
@@ -572,50 +599,53 @@ class _ModelSelectorWithVersion:
         for n, x in self._selection.items():
             versions.extend(x)
         with self._selected_overview:
-            clear_output(wait = True)
+            clear_output(wait=True)
             models = widget_repo.model.get_info_table()
-            display(models[models['widget_key'].isin(versions)])               
-       
+            display(models[models['widget_key'].isin(versions)])
+
     def get_widget(self):
-        filter_widget = widgets.Accordion(children = [self._filter], selected_index = None)
-        filter_widget.set_title(0,'Filter')
+        filter_widget = widgets.Accordion(
+            children=[self._filter], selected_index=None)
+        filter_widget.set_title(0, 'Filter')
         if self._display_selection:
-            return widgets.VBox( children=[
-                        widgets.VBox(children=[
-                            widgets.Label(value='Model'), 
-                            self._selection_model_name, 
-                            widgets.Label(value='Versions'), 
-                            self._selection_version, 
-                            self._selected_overview, 
-                            ]
-                        ),
-                    filter_widget])
+            return widgets.VBox(children=[
+                widgets.VBox(children=[
+                    widgets.Label(value='Model'),
+                    self._selection_model_name,
+                    widgets.Label(value='Versions'),
+                    self._selection_version,
+                    self._selected_overview,
+                ]
+                ),
+                filter_widget])
 
         else:
             return widgets.VBox(children=[
-                        widgets.VBox(children=[
-                                widgets.Label(value='Model'), 
-                                self._selection_model_name, 
-                                widgets.Label(value='Versions'), 
+                widgets.VBox(children=[
+                                widgets.Label(value='Model'),
+                                self._selection_model_name,
+                                widgets.Label(value='Versions'),
                                 self._selection_version
                                 ]
-                            ),
-                        filter_widget])    
+                             ),
+                filter_widget])
+
 
 class _ModelAndDataSelectorWithVersion:
     """Widget to select a model together with data used in conjunction with the selected model.
-    
+
     Returns:
         [type]: [description]
     """
-    def __init__(self,  display_selection = True, **kwargs):
-        self._display_selection=display_selection
+
+    def __init__(self,  display_selection=True, **kwargs):
+        self._display_selection = display_selection
         names = widget_repo.model.get_models()
         self._data = _DataSelectorWithVersion(display_selection=False)
         self._model = _ModelSelectorWithVersion(display_selection=False)
         self._data._set_update_callback(self._display_selected_overview)
         self._selected_overview = widgets.Output()
-        
+
     def get_models(self):
         """Returns all selected models as dictionary from model to list of selected model's versions
         """
@@ -625,7 +655,7 @@ class _ModelAndDataSelectorWithVersion:
         return self._data.get_data()
 
     def _display_selected_overview(self, change):
-        #if self._updating_version:
+        # if self._updating_version:
         #    return
         # data_selected = self._selection_data.value
         # key_to_version = self._key_to_version[data_selected]
@@ -644,7 +674,7 @@ class _ModelAndDataSelectorWithVersion:
         #                 tmp['model version'].append(y)
         #                 tmp['data'].append(data_name)
         #                 tmp['data version'].append(data_version)
-       
+
         # with self._selected_overview:
         #     clear_output(wait = True)
         #     df = pd.DataFrame.from_dict(tmp)
@@ -657,22 +687,24 @@ class _ModelAndDataSelectorWithVersion:
         pass
 
     def get_widget(self):
-        model_selection = widgets.Accordion(children = [self._model.get_widget()])
-        model_selection.set_title(0,'Model')
+        model_selection = widgets.Accordion(
+            children=[self._model.get_widget()])
+        model_selection.set_title(0, 'Model')
         model_selection.selected_index = None
-        data_selection = widgets.Accordion(children = [self._data.get_widget() ])
-        data_selection.set_title(0,'Data')
+        data_selection = widgets.Accordion(children=[self._data.get_widget()])
+        data_selection.set_title(0, 'Data')
         data_selection.selected_index = None
         if self._display_selection:
             return widgets.VBox(children=[
-                                    model_selection,
-                                    data_selection,
-                                    self._selected_overview, ])
+                model_selection,
+                data_selection,
+                self._selected_overview, ])
         else:
             return widgets.VBox(children=[
-                                    model_selection,
-                                    data_selection])
-            
+                model_selection,
+                data_selection])
+
+
 class _MeasureSelector:
     """Widget to select training and test data.
     """
@@ -695,15 +727,16 @@ class ObjectOverviewList:
         self._categories = _ObjectCategorySelector(
             layout=widgets.Layout(width='250px', height='250px'))
         self._repo_info = widgets.SelectMultiple(
-            options=[k.value for k in RepoInfoKey], value=['category', 'name', 'commit_date', 'version'], 
-            layout=widgets.Layout(width='200px', height='250px', margin = '10px')
+            options=[k.value for k in RepoInfoKey], value=['category', 'name', 'commit_date', 'version'],
+            layout=widgets.Layout(width='200px', height='250px', margin='10px')
         )
         #self._settings = widgets.HBox(children=[self.categories, self._repo_info])
 
         self._button_update = widgets.Button(description='update')
         self._button_update.on_click(self.get_overview)
 
-        self._output = widgets.Output(layout = widgets.Layout(height = '300px',width = '1000px', overflow_y='auto',  overflow_x='auto') )
+        self._output = widgets.Output(layout=widgets.Layout(
+            height='300px', width='1000px', overflow_y='auto',  overflow_x='auto'))
         self._input_box = widgets.HBox(
             children=[
                 self._categories.get_widget(),
@@ -715,8 +748,8 @@ class ObjectOverviewList:
                 widgets.VBox(children=[
                     self._button_update,
                     self._output
-                    ],
-                    layout = widgets.Layout(margin = '10px 10px 10px 10px')
+                ],
+                    layout=widgets.Layout(margin='10px 10px 10px 10px')
                 )
             ]
         )
@@ -788,8 +821,8 @@ class ObjectView:
 class RepoOverview:
     def __init__(self):
         self._repo_name = widgets.HTML(
-            value='<div style="background-color:#c2c2d6"><h4 stype="text-align: center"> Repository: ' 
-                + widget_repo.ml_repo._config['name'] + '</h4>')#, margin = '0px 0px 0px 0px'))
+            value='<div style="background-color:#c2c2d6"><h4 stype="text-align: center"> Repository: '
+            + widget_repo.ml_repo._config['name'] + '</h4>')  # , margin = '0px 0px 0px 0px'))
         self._data_statistics = widgets.Output(
             layout=widgets.Layout(width='450px', height='450px'))
         self._plot_data_statistics()
@@ -800,46 +833,52 @@ class RepoOverview:
         self._model_stats = self._setup_model_stats()
 
     # check consistency
-       
+
     def _setup_consistency(self):
         def create_consistency_html(**kwargs):
             result = '<div style="background-color:#c2c2d6">'
             result += '<h4 stype="text-align: center">Consistency</h4>'
-            for k,v in kwargs.items():
+            for k, v in kwargs.items():
                 if len(v) > 0:
-                    result += '<p style="background-color:red"> ' + str(v) + ' ' + k +' issues found!</p>'
+                    result += '<p style="background-color:red"> ' + \
+                        str(v) + ' ' + k + ' issues found!</p>'
                 else:
                     result += '<p style="background-color:lightgreen">No ' + k + ' issues found.</p>'
             result += '</div>'
             return result
-        
-        return widgets.HTML(create_consistency_html(model = widget_repo.consistency.model, 
-                                test = widget_repo.consistency.tests, 
-                                data = widget_repo.consistency.data), 
-                            layout = widgets.Layout(margin = '0% 0% 0% 0%', width='400px'))
+
+        return widgets.HTML(create_consistency_html(model=widget_repo.consistency.model,
+                                                    test=widget_repo.consistency.tests,
+                                                    data=widget_repo.consistency.data),
+                            layout=widgets.Layout(margin='0% 0% 0% 0%', width='400px'))
 
     def _setup_labels(self):
-        header = widgets.HTML('<div style="background-color:#c2c2d6"><h4 stype="text-align: center">Labels</h4>')
+        header = widgets.HTML(
+            '<div style="background-color:#c2c2d6"><h4 stype="text-align: center">Labels</h4>')
         label_output = None
-            
-        if len(widget_repo.labels)>0:
+
+        if len(widget_repo.labels) > 0:
             label_output = widgets.Output(
                 layout=widgets.Layout(width='400px', height='100px', overflow_y='auto', overflow_x='auto'))
             with label_output:
                 clear_output(wait=True)
-                display(pd.DataFrame.from_dict(widget_repo.labels, orient='index'))
+                display(pd.DataFrame.from_dict(
+                    widget_repo.labels, orient='index'))
         else:
-            label_output = widgets.HTML('<div style="background-color:#ff4d4d"><h4 stype="text-align: center">No labels defined.</h4>')
+            label_output = widgets.HTML(
+                '<div style="background-color:#ff4d4d"><h4 stype="text-align: center">No labels defined.</h4>')
 
         return widgets.VBox(children=[header, label_output])
 
     def _setup_model_stats(self):
-        header = widgets.HTML('<div style="background-color:#c2c2d6"><h4 stype="text-align: center">Models</h4>')
+        header = widgets.HTML(
+            '<div style="background-color:#c2c2d6"><h4 stype="text-align: center">Models</h4>')
         model_stats_output = widgets.Output(
-                layout=widgets.Layout(width='400px', height='100px', overflow_y='auto', overflow_x='auto'))
+            layout=widgets.Layout(width='400px', height='100px', overflow_y='auto', overflow_x='auto'))
         with model_stats_output:
             clear_output(wait=True)
-            display(pd.DataFrame.from_dict(widget_repo.get_model_statistics(), orient='index'))
+            display(pd.DataFrame.from_dict(
+                widget_repo.get_model_statistics(), orient='index'))
         return widgets.VBox(children=[header, model_stats_output])
 
     def _plot_data_statistics(self):
@@ -871,14 +910,14 @@ class RepoOverview:
                         widget_repo.ml_repo, [data], [measure])
                     error = error.sort_values(by='commit_date')
                     plt.plot(error['commit_date'],
-                            error[measure + ', ' + data], '-x', label=measure + ', ' + data)
+                             error[measure + ', ' + data], '-x', label=measure + ', ' + data)
             plt.xlabel('commit date')
             ax.grid(True)
             ax.format_xdata = mdates.DateFormatter('%Y-%m-%d')
             for label in ax.get_xticklabels():
                 label.set_rotation(40)
                 label.set_horizontalalignment('right')
-            #fig.autofmt_xdate()
+            # fig.autofmt_xdate()
             plt.legend()
             ax.set_title('Measures')
             #plt.setp(ax.get_xticklabels(), ha="right", rotation=45)
@@ -889,13 +928,13 @@ class RepoOverview:
     def get_widget(self):
         self._plot_measures()
         return widgets.HBox(children=[
-                    widgets.VBox(children=[self._repo_name, self._model_stats, self._labels, self._consistency], 
-                        layout=widgets.Layout(width='400px')),
-                    widgets.VBox(children=[self._measures]),
-                    widgets.VBox(children=[self._data_statistics])
-                    ],
-                    layout=widgets.Layout(width='100%', height='100%')
-                )
+            widgets.VBox(children=[self._repo_name, self._model_stats, self._labels, self._consistency],
+                         layout=widgets.Layout(width='400px')),
+            widgets.VBox(children=[self._measures]),
+            widgets.VBox(children=[self._data_statistics])
+        ],
+            layout=widgets.Layout(width='100%', height='100%')
+        )
 
 
 class MeasureView:
@@ -1011,122 +1050,129 @@ class ModelErrorHistogram:
         jupyter nbextension install --py --sys-prefix plotlywidget
       otherwise you may encounter problems using this class.
     """
+
     def __init__(self):
-        self._model_data_selector = _ModelAndDataSelectorWithVersion(display_selection=False)
-        
+        self._model_data_selector = _ModelAndDataSelectorWithVersion(
+            display_selection=False)
+
         self._update_button = widgets.Button(description='update')
         self._update_button.on_click(self._plot)
         self._output = widgets.Output()
         self._coord = widgets.SelectMultiple(
-                options=widget_repo.data._y_coord_names,
-                value=[widget_repo.data._y_coord_names[0]],
-                disabled=False
-                ) 
-        
+            options=widget_repo.data._y_coord_names,
+            value=[widget_repo.data._y_coord_names[0]],
+            disabled=False
+        )
+
     def _plot(self, d):
         with self._output:
             clear_output(wait=True)
-            display(go.FigureWidget(paiplot.histogram_model_error(widget_repo.ml_repo, self._model_data_selector.get_models(), 
-                        self._model_data_selector.get_data(), y_coordinate=self._coord.value)))
-            
+            display(go.FigureWidget(paiplot.histogram_model_error(widget_repo.ml_repo, self._model_data_selector.get_models(),
+                                                                  self._model_data_selector.get_data(), y_coordinate=self._coord.value)))
+
     @_add_title_and_border('Pointwise Model Error Histogram')
     def get_widget(self):
         y_coord = widgets.Accordion(children=[self._coord])
-        y_coord.set_title(0,'Y-coordinates')
-        return widgets.HBox(children=
-                [
-                    widgets.VBox(children=[
-                        self._model_data_selector.get_widget(),
-                        y_coord,
-                        self._update_button
-                    ]),      
-                    self._output 
-                ])
+        y_coord.set_title(0, 'Y-coordinates')
+        return widgets.HBox(children=[
+            widgets.VBox(children=[
+                self._model_data_selector.get_widget(),
+                y_coord,
+                self._update_button
+            ]),
+            self._output
+        ])
 
 
 class ModelErrorConditionalHistogram:
     """Plots the distribution of input data along a given axis for the largest absolute pointwise errors in comparison to the distribution of all data.
     """
+
     def __init__(self):
-        self._data_model_selection = _ModelAndDataSelectorWithVersion(display_selection=False)
+        self._data_model_selection = _ModelAndDataSelectorWithVersion(
+            display_selection=False)
         self._update_button = widgets.Button(description='update')
         self._update_button.on_click(self._plot)
         self._output = widgets.Output()
         self._recommendation_output = widgets.Output()
         self._recommendation_table = None
-        self._output_tab = widgets.Tab(children = [self._output,
-            self._recommendation_output])
-        self._output_tab.set_title(0,'histograms')
-        self._output_tab.set_title(1,'recommendations')
+        self._output_tab = widgets.Tab(children=[self._output,
+                                                 self._recommendation_output])
+        self._output_tab.set_title(0, 'histograms')
+        self._output_tab.set_title(1, 'recommendations')
         self._quantile = widgets.FloatSlider(
-                value=10,
-                min=1,
-                max=50,
-                step=1,
-                readout=True,
-                readout_format='.2f',
-                )
+            value=10,
+            min=1,
+            max=50,
+            step=1,
+            readout=True,
+            readout_format='.2f',
+        )
         self._coord = widgets.Select(
-                options=widget_repo.data._y_coord_names,
-                value=widget_repo.data._y_coord_names[0],
-                disabled=False
-                ) 
+            options=widget_repo.data._y_coord_names,
+            value=widget_repo.data._y_coord_names[0],
+            disabled=False
+        )
         self._x_coord = widgets.Select(
-                options=widget_repo.data._x_coord_names,
-                value=widget_repo.data._x_coord_names[0],
-                disabled=False
-                ) 
-        self._accordion = widgets.Accordion(children = [
-                    self._get_selection_widget(),
-                    self._get_recommendation_widget()
-                    ])
+            options=widget_repo.data._x_coord_names,
+            value=widget_repo.data._x_coord_names[0],
+            disabled=False
+        )
+        self._accordion = widgets.Accordion(children=[
+            self._get_selection_widget(),
+            self._get_recommendation_widget()
+        ])
         self._accordion.set_title(0, 'Selection')
         self._accordion.set_title(1, 'Recommendation')
 
-
     def _get_selection_widget(self):
-        coordinate_selection = widgets.Accordion(children = [
-                                        widgets.VBox(children=[
-                                        widgets.Label(value = 'y-coordinates'),
-                                        self._coord,
-                                        widgets.Label(value = 'x-coordinates'),
-                                        self._x_coord])
-                                        ])
-        coordinate_selection.set_title(0,'Coordinates')
+        coordinate_selection = widgets.Accordion(children=[
+            widgets.VBox(children=[
+                widgets.Label(value='y-coordinates'),
+                self._coord,
+                widgets.Label(value='x-coordinates'),
+                self._x_coord])
+        ])
+        coordinate_selection.set_title(0, 'Coordinates')
         return widgets.VBox(children=[
-                    self._data_model_selection.get_widget(),
-                    coordinate_selection,
-                    self._quantile,
-                    self._update_button])
-    
+            self._data_model_selection.get_widget(),
+            coordinate_selection,
+            self._quantile,
+            self._update_button])
+
     def _get_recommendation_widget(self):
         self._update_recommendation = widgets.Button(description='update')
         self._max_num_recommendations = widgets.IntText(value=20,
-                                            description='maximum number of recommendations')
-        self._cache_in_repo = widgets.Checkbox(value=True, description='cache MMD in repo')
-        self._scale = widgets.Checkbox(value=True, description='scale x-values to zero mean and unit variance')
+                                                        description='maximum number of recommendations')
+        self._cache_in_repo = widgets.Checkbox(
+            value=True, description='cache MMD in repo')
+        self._scale = widgets.Checkbox(
+            value=True, description='scale x-values to zero mean and unit variance')
         self._update_recommendation.on_click(self._recommend)
-        self._kernel_selection = widgets.Dropdown(options = [
-                'rbf','linear', 'polynomial', 'sigmoid', 'laplacian', 'chi2'
-            ],
-            value = 'rbf',
-            description = 'kernel')
-        self._gamma = widgets.FloatText(value = 1.0, description='gamma')
-        self._gamma_for_kernel = ['rbf', 'polynomial', 'sigmoid', 'laplacian', 'chi2']
+        self._kernel_selection = widgets.Dropdown(options=[
+            'rbf', 'linear', 'polynomial', 'sigmoid', 'laplacian', 'chi2'
+        ],
+            value='rbf',
+            description='kernel')
+        self._gamma = widgets.FloatText(value=1.0, description='gamma')
+        self._gamma_for_kernel = [
+            'rbf', 'polynomial', 'sigmoid', 'laplacian', 'chi2']
         self._kernel_selection.observe(self._on_kernel_change, names='value')
-        self._recommendation_selection = widgets.IntText(description='recommendation id')
-        self._recomendation_selection_apply = widgets.Button(description='apply recommendation')
+        self._recommendation_selection = widgets.IntText(
+            description='recommendation id')
+        self._recomendation_selection_apply = widgets.Button(
+            description='apply recommendation')
         self._recomendation_selection_apply.on_click(self._apply_recommend)
         return widgets.VBox(children=[
-                self._max_num_recommendations,
-                self._cache_in_repo ,
-                self._scale,
-                self._kernel_selection,
-                self._gamma,
-                self._update_recommendation,
-                self._recommendation_selection,
-                self._recomendation_selection_apply
-            ])
+            self._max_num_recommendations,
+            self._cache_in_repo,
+            self._scale,
+            self._kernel_selection,
+            self._gamma,
+            self._update_recommendation,
+            self._recommendation_selection,
+            self._recomendation_selection_apply
+        ])
         self._recommendation_table = None
 
     def _on_kernel_change(self, d):
@@ -1137,118 +1183,126 @@ class ModelErrorConditionalHistogram:
 
     def _apply_recommend(self, d):
         if self._recommendation_table is None:
-            logger.error('Recommendation table is empty, please first update the recommendation.')
+            logger.error(
+                'Recommendation table is empty, please first update the recommendation.')
             with self._output:
                 clear_output(wait=True)
-                print('Recommendation table is empty, please first update the recommendation.')
+                print(
+                    'Recommendation table is empty, please first update the recommendation.')
             return
 
         if self._recommendation_selection.value is not None:
-            self._coord.value=self._recommendation_table['y-coord'][self._recommendation_selection.value]
-            self._x_coord.value=self._recommendation_table['x-coord'][self._recommendation_selection.value]
-            self._models.value = [self._recommendation_table['model'][self._recommendation_selection.value]]
-            self._data.value = [self._recommendation_table['data'][self._recommendation_selection.value]]
+            self._coord.value = self._recommendation_table['y-coord'][self._recommendation_selection.value]
+            self._x_coord.value = self._recommendation_table[
+                'x-coord'][self._recommendation_selection.value]
+            self._models.value = [
+                self._recommendation_table['model'][self._recommendation_selection.value]]
+            self._data.value = [
+                self._recommendation_table['data'][self._recommendation_selection.value]]
             self._plot(None)
 
     def _plot(self, d):
         with self._output:
             clear_output(wait=True)
             display(go.FigureWidget(
-                    paiplot.histogram_data_conditional_error(widget_repo.ml_repo, 
-                            self._data_model_selection.get_models(), self._data_model_selection.get_data(), 
-                            x_coordinate = self._x_coord.value,
-                            y_coordinate = self._coord.value, 
-                            percentile=self._quantile.value/100.0)
+                    paiplot.histogram_data_conditional_error(widget_repo.ml_repo,
+                                                             self._data_model_selection.get_models(), self._data_model_selection.get_data(),
+                                                             x_coordinate=self._x_coord.value,
+                                                             y_coordinate=self._coord.value,
+                                                             percentile=self._quantile.value/100.0)
                     ))
-            self._output_tab.selected_index=0
-            
+            self._output_tab.selected_index = 0
+
     def _recommend(self, d):
         self._output_tab.set_title(1, 'computing...')
-        self._recommendation_table =  pd.DataFrame.from_dict( 
-                plt_helper.get_ptws_error_dist_mmd(widget_repo.ml_repo, self._data_model_selection.get_models(), 
-                    data = self._data_model_selection.get_data(),
-                    start_index=0, end_index=-1, percentile=self._quantile.value/100.0, 
-                    scale = self._scale.value,
-                    cache = self._cache_in_repo,
-                    metric=self._kernel_selection.value, 
-                    gamma = self._gamma.value)
-            )
+        self._recommendation_table = pd.DataFrame.from_dict(
+            plt_helper.get_ptws_error_dist_mmd(widget_repo.ml_repo, self._data_model_selection.get_models(),
+                                               data=self._data_model_selection.get_data(),
+                                               start_index=0, end_index=-1, percentile=self._quantile.value/100.0,
+                                               scale=self._scale.value,
+                                               cache=self._cache_in_repo,
+                                               metric=self._kernel_selection.value,
+                                               gamma=self._gamma.value)
+        )
         self._recommendation_table['model version']
         self._recommendation_table['data version']
-        self._recommendation_table.sort_values(['mmd'], ascending = False, inplace = True)
+        self._recommendation_table.sort_values(
+            ['mmd'], ascending=False, inplace=True)
         with self._recommendation_output:
             clear_output(wait=True)
-            display(self._recommendation_table.iloc[0:self._max_num_recommendations.value])
-        self._output_tab.selected_index=1
+            display(
+                self._recommendation_table.iloc[0:self._max_num_recommendations.value])
+        self._output_tab.selected_index = 1
         self._output_tab.set_title(1, 'recommendations')
         self._recommendation_selection.value = self._recommendation_table.index[0]
 
     @_add_title_and_border('Data Distribution of Largest Pointwise Errors.')
     def get_widget(self):
-        return widgets.HBox(children=
-                [
-                    self._accordion,       
-                    self._output_tab
-                ])
+        return widgets.HBox(children=[
+            self._accordion,
+            self._output_tab
+        ])
 
 
 class ScatterModelError:
     def __init__(self):
-        self._model_data_selector = _ModelAndDataSelectorWithVersion(display_selection=False)
+        self._model_data_selector = _ModelAndDataSelectorWithVersion(
+            display_selection=False)
         self._update_button = widgets.Button(description='update')
         self._update_button.on_click(self._plot)
         self._output = widgets.Output()
         self._coord = widgets.Select(
-                options=widget_repo.data._y_coord_names,
-                value=widget_repo.data._y_coord_names[0],
-                disabled=False
-                ) 
+            options=widget_repo.data._y_coord_names,
+            value=widget_repo.data._y_coord_names[0],
+            disabled=False
+        )
         self._x_coord = widgets.Select(
-                options=widget_repo.data._x_coord_names,
-                value=widget_repo.data._x_coord_names[0],
-                disabled=False
-                ) 
-        
+            options=widget_repo.data._x_coord_names,
+            value=widget_repo.data._x_coord_names[0],
+            disabled=False
+        )
+
     def _get_selection_widget(self):
-        coordinates = widgets.Accordion(children = [
-                widgets.VBox(children = [
-                                widgets.Label(value = 'y-coordinates'),
-                                self._coord,
-                                widgets.Label(value = 'x-coordinates'),
-                                self._x_coord,
-                    ]
-                )
-                ]
+        coordinates = widgets.Accordion(children=[
+            widgets.VBox(children=[
+                widgets.Label(value='y-coordinates'),
+                self._coord,
+                widgets.Label(value='x-coordinates'),
+                self._x_coord,
+            ]
             )
+        ]
+        )
         coordinates.set_title(0, 'Coordinates')
         return widgets.VBox(children=[
-                                self._model_data_selector.get_widget(),
-                                coordinates,
-                                self._update_button]
-                            )
-    
+            self._model_data_selector.get_widget(),
+            coordinates,
+            self._update_button]
+        )
+
     def _plot(self, d):
         with self._output:
             clear_output(wait=True)
             display(go.FigureWidget(
-                    paiplot.scatter_model_error(widget_repo.ml_repo, 
-                            self._model_data_selector.get_models(), 
-                            self._model_data_selector.get_data(), 
-                            x_coordinate = self._x_coord.value,
-                            y_coordinate = self._coord.value)
+                    paiplot.scatter_model_error(widget_repo.ml_repo,
+                                                self._model_data_selector.get_models(),
+                                                self._model_data_selector.get_data(),
+                                                x_coordinate=self._x_coord.value,
+                                                y_coordinate=self._coord.value)
                     ))
-            
+
     @_add_title_and_border('Scatter Plot Pointwise Errors.')
     def get_widget(self):
-        return widgets.HBox(children=
-                [
-                    self._get_selection_widget(),
-                    self._output
-                ])
+        return widgets.HBox(children=[
+            self._get_selection_widget(),
+            self._output
+        ])
+
 
 class IndividualConditionalExpectation:
     """Plots the individual conditional expectation at a certain point.
     """
+
     def __init__(self):
         names = widget_repo.data.get_data_names()
         self._model_data_selection = _ModelAndDataSelectorWithVersion()
@@ -1256,131 +1310,147 @@ class IndividualConditionalExpectation:
         self._update_button.on_click(self._plot)
         self._output = widgets.Output()
         self._cluster_statistics_output = widgets.Output()
-        self._output_tab = widgets.Tab(children = [self._output,
-            self._cluster_statistics_output
-            ])
-        self._output_tab.set_title(0,'ICE plots')
-        self._output_tab.set_title(1,'clustering')
+        self._output_tab = widgets.Tab(children=[self._output,
+                                                 self._cluster_statistics_output
+                                                 ])
+        self._output_tab.set_title(0, 'ICE plots')
+        self._output_tab.set_title(1, 'clustering')
         self._coord = widgets.Select(
-                options=widget_repo.data._y_coord_names,
-                value=widget_repo.data._y_coord_names[0],
-                disabled=False
-                ) 
+            options=widget_repo.data._y_coord_names,
+            value=widget_repo.data._y_coord_names[0],
+            disabled=False
+        )
         self._x_coord = widgets.Select(
-                options=widget_repo.data._x_coord_names,
-                value=widget_repo.data._x_coord_names[0],
-                disabled=False
-                ) 
-        self._x_value_start = widgets.FloatText(value = -1.0)
-        self._x_value_end = widgets.FloatText(value= 1.0)
-        self._n_x_points = widgets.IntText(value = 10)
-        self._accordion = widgets.Accordion(children = [
-                    self._get_selection_widget(),
-                    self._get_clustering_widget()
-                    ])
+            options=widget_repo.data._x_coord_names,
+            value=widget_repo.data._x_coord_names[0],
+            disabled=False
+        )
+        self._x_value_start = widgets.FloatText(value=-1.0)
+        self._x_value_end = widgets.FloatText(value=1.0)
+        self._n_x_points = widgets.IntText(value=10)
+        self._accordion = widgets.Accordion(children=[
+            self._get_selection_widget(),
+            self._get_clustering_widget()
+        ])
 
         self._accordion.set_title(0, 'Selection')
         self._accordion.set_title(1, 'Clustering')
 
     def _get_selection_widget(self):
         return widgets.VBox(children=[
-                        self._model_data_selection.get_widget(),
-                        widgets.Label(value = 'y-coordinates'),
-                        self._coord,
-                        widgets.Label(value = 'x-coordinates'),
-                        self._x_coord,
-                        widgets.Label(value='x-start'),
-                        self._x_value_start,
-                        widgets.Label(value='x-end'),
-                        self._x_value_end,
-                        widgets.Label(value='num x-points'),
-                        self._n_x_points,
-                        self._update_button])
-    
+            self._model_data_selection.get_widget(),
+            widgets.Label(value='y-coordinates'),
+            self._coord,
+            widgets.Label(value='x-coordinates'),
+            self._x_coord,
+            widgets.Label(value='x-start'),
+            self._x_value_start,
+            widgets.Label(value='x-end'),
+            self._x_value_end,
+            widgets.Label(value='num x-points'),
+            self._n_x_points,
+            self._update_button])
+
     def _get_clustering_widget(self):
         self._update_clustering = widgets.Button(description='update')
-        self._use_clustering = widgets.Checkbox(value=True, description='apply clustering') 
+        self._use_clustering = widgets.Checkbox(
+            value=True, description='apply clustering')
         self._max_num_clusters = widgets.IntText(value=20,
-                                            description='maximum number of clusters')
-        self._random_state = widgets.IntText(value=42, description='Random State')
-        self._cache_in_repo = widgets.Checkbox(value=True, description='cache ICE in repo')
-        self._scale = widgets.Checkbox(value=True, description='scale x-values to zero mean and unit variance')
+                                                 description='maximum number of clusters')
+        self._random_state = widgets.IntText(
+            value=42, description='Random State')
+        self._cache_in_repo = widgets.Checkbox(
+            value=True, description='cache ICE in repo')
+        self._scale = widgets.Checkbox(
+            value=True, description='scale x-values to zero mean and unit variance')
         self._update_clustering.on_click(self._cluster)
-        
+
         return widgets.VBox(children=[
-                self._use_clustering,
-                self._max_num_clusters,
-                self._random_state,
-                self._cache_in_repo ,
-                self._scale
-            ])
-        
-    
+            self._use_clustering,
+            self._max_num_clusters,
+            self._random_state,
+            self._cache_in_repo,
+            self._scale
+        ])
+
     def _plot(self, d):
         cluster_param = None
-        if self._use_clustering.value:        
-            cluster_param = {'n_clusters': self._max_num_clusters.value, 
-                'random_state': self._random_state.value}
-         # since the numpy cannot json serialized by default, 
+        if self._use_clustering.value:
+            cluster_param = {'n_clusters': self._max_num_clusters.value,
+                             'random_state': self._random_state.value}
+         # since the numpy cannot json serialized by default,
          # caching would not working, therefore we convert it into list
-        x_points = [x for x in np.linspace(self._x_value_start.value, self._x_value_end.value, 
-                            self._n_x_points.value)]
+        x_points = [x for x in np.linspace(self._x_value_start.value, self._x_value_end.value,
+                                           self._n_x_points.value)]
         self._ice = []
         for model, model_versions in self._model_data_selection.get_models().items():
             for data, data_versions in self._model_data_selection.get_data().items():
                 for model_version in model_versions:
                     for data_version in data_versions:
-                        self._ice.append( (model, model_version, data, data_version,
-                                            interpretation.compute_ice(widget_repo.ml_repo, 
-                                                x_points,
-                                                data,
-                                                model = model,
-                                                model_version=model_version,
-                                                data_version=data_version, 
-                                                y_coordinate = self._coord.value,
-                                                x_coordinate = self._x_coord.value,
-                                                cache = self._cache_in_repo.value,
-                                                clustering_param = cluster_param, 
-                                                end_index = 200), 
+                        self._ice.append((model, model_version, data, data_version,
+                                          interpretation.compute_ice(widget_repo.ml_repo,
+                                                                     x_points,
+                                                                     data,
+                                                                     model=model,
+                                                                     model_version=model_version,
+                                                                     data_version=data_version,
+                                                                     y_coordinate=self._coord.value,
+                                                                     x_coordinate=self._x_coord.value,
+                                                                     cache=self._cache_in_repo.value,
+                                                                     clustering_param=cluster_param,
+                                                                     end_index=200),
+                                          )
                                          )
-                        )
-                                        
+
         with self._output:
             clear_output(wait=True)
             display(go.FigureWidget(
                     paiplot.ice(self._ice)
                     ))
-            self._output_tab.selected_index=0
+            self._output_tab.selected_index = 0
         if len(self._ice) > 0:
             if self._ice[0][-1].cluster_centers is not None:
                 with self._cluster_statistics_output:
                     clear_output(wait=True)
                     display(go.FigureWidget(
                         paiplot.ice_clusters(self._ice)
-                        ))
-            
+                    ))
+
     def _cluster(self, d):
-        
-        
+
         self._output_tab.set_title(1, 'computing...')
         models = [x for x in self._models.value]
-        
+
         for x in self._labels.value:
             l = widget_repo.labels[x]
-            models.append( (l['model'], l['version'],) )
-        
+            models.append((l['model'], l['version'],))
+
         with self._cluster_statistics_output:
             clear_output(wait=True)
-            #display(self._recommendation_table.iloc[0:self._max_num_recommendations.value])
-        self._output_tab.selected_index=1
+            # display(self._recommendation_table.iloc[0:self._max_num_recommendations.value])
+        self._output_tab.selected_index = 1
         self._output_tab.set_title(1, 'cluster statistics')
         #self._recommendation_selection.value = self._recommendation_table.index[0]
 
     @_add_title_and_border('Individual Conditional Expectation Plots')
     def get_widget(self):
-        return widgets.HBox(children=
-                [
-                    self._accordion,       
-                    self._output_tab
-                ])
+        return widgets.HBox(children=[
+            self._accordion,
+            self._output_tab
+        ])
 
+
+class PlotMeasureVsParameter:
+    def __init__(self):
+        self._model_data_selector = _ModelAndDataSelectorWithVersion(
+            display_selection=False)
+
+    @_add_title_and_border('Measure vs Parameter')
+    def get_widget(self):
+        return widgets.HBox(children=[
+            widgets.VBox(children=[
+                self._model_data_selector.get_widget(),
+
+            ]),
+            # self._output
+        ])
