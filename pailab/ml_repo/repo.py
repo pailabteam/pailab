@@ -856,6 +856,8 @@ class MeasureJob(Job):
            return self._compute_r2(target_data, eval_data)
         if self.measure_type == repo_objects.MeasureConfiguration.MSE:
            return self._compute_mse(target_data, eval_data)
+        if self.measure_type == repo_objects.MeasureConfiguration.ROC_AUC:
+            return self._compute_roc_auc_score(target_data, eval_data)
         else:
             raise NotImplementedError
         
@@ -900,6 +902,19 @@ class MeasureJob(Job):
 
         from sklearn.metrics import mean_squared_error
         return mean_squared_error(target_data, eval_data) 
+
+    def _compute_roc_auc_score(self, target_data, eval_data):
+        """ Computes the area under the Receiver Operating Characteristic Curve (ROC AUC).
+        
+        Args:
+            target_data ([type]): the target data
+            eval_data ([type]): the evaluated data
+        
+        Returns:
+            double -- the error
+        """
+        from sklearn.metrics import roc_auc_score
+        return roc_auc_score(target_data, eval_data)
 
 # endregion
 class Name:
