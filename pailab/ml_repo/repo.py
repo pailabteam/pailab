@@ -104,7 +104,8 @@ class MLObjectType(Enum):
                     category_name = k.value
                     break
         if category_name is None:
-            raise Exception('No category ' + str(category) + ' exists.')
+            raise Exception('No category ' + str(category) +
+                            ' exists.')  # pragma: no cover
         return category_name
 
 
@@ -280,8 +281,8 @@ class Job(RepoObject, abc.ABC):
             if isinstance(obj, list):
                 if len(obj) == 0:
                     if throw_error_not_exist:
-                        raise Exception(
-                            'More than one object with name ' + name + ' found meeting the conditions.')
+                        raise Exception('More than one object with name ' + name +
+                                        ' found meeting the conditions.')  # pragma: no cover
                     else:
                         return []
                 else:
