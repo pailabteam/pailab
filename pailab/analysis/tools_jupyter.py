@@ -30,7 +30,7 @@ if paiplot.has_plotly:
 beakerX = False
 if beakerX:
     from beakerx import TableDisplay
-    #from beakerx.object import beakerx
+    # from beakerx.object import beakerx
 else:
     def TableDisplay(dt):
         display(dt)
@@ -221,7 +221,7 @@ def _highlight_max(data, color='red'):
     '''
     attr = 'color: {}'.format(color)
     # remove % and cast to float
-    #data = data.replace('%','', regex=True).astype(float)
+    # data = data.replace('%','', regex=True).astype(float)
     if data.ndim == 1:  # Series from .apply(axis=0) or axis=1
         is_max = data == data.max()
         return [attr if v else '' for v in is_max]
@@ -237,7 +237,7 @@ def _highlight_min(data, color='green'):
     '''
     attr = 'color: {}'.format(color)
     # remove % and cast to float
-    #data = data.replace('%','', regex=True).astype(float)
+    # data = data.replace('%','', regex=True).astype(float)
     if data.ndim == 1:  # Series from .apply(axis=0) or axis=1
         is_max = data == data.min()
         return [attr if v else '' for v in is_max]
@@ -289,7 +289,7 @@ class _ObjectCategorySelector:
             kwargs['layout'] = widgets.Layout(width='300px', height='250px')
         kwargs['value'] = []
         self._selector = widgets.SelectMultiple(options=selection,
-                                                #value = [selection[0]],
+                                                # value = [selection[0]],
                                                 **kwargs)
 
     def get_selection(self):
@@ -380,7 +380,7 @@ class _DataSelectorWithVersion:
         for cb in self._update_callbacks:
             cb(change)
         self._updating_version = False
-        #self._selection[self._selection_data.value] = [x for x in self._selection_version.value]
+        # self._selection[self._selection_data.value] = [x for x in self._selection_version.value]
 
     def _display_selected_overview(self, change):
         if self._updating_version:
@@ -733,7 +733,7 @@ class ObjectOverviewList:
             options=[k.value for k in RepoInfoKey], value=['category', 'name', 'commit_date', 'version'],
             layout=widgets.Layout(width='200px', height='250px', margin='10px')
         )
-        #self._settings = widgets.HBox(children=[self.categories, self._repo_info])
+        # self._settings = widgets.HBox(children=[self.categories, self._repo_info])
 
         self._button_update = widgets.Button(description='update')
         self._button_update.on_click(self.get_overview)
@@ -923,7 +923,7 @@ class RepoOverview:
             # fig.autofmt_xdate()
             plt.legend()
             ax.set_title('Measures')
-            #plt.setp(ax.get_xticklabels(), ha="right", rotation=45)
+            # plt.setp(ax.get_xticklabels(), ha="right", rotation=45)
             plt.show()
             # plt.set_title('Measures')
 
@@ -1048,7 +1048,7 @@ class ConsistencyChecker:
 
 
 class ModelErrorHistogram:
-    """Class to plot histograms of model errors. 
+    """Class to plot histograms of model errors.
       Please make sure that if you use plotly, also the jupyter plotlywidgets are installed via:
         jupyter nbextension install --py --sys-prefix plotlywidget
       otherwise you may encounter problems using this class.
@@ -1433,7 +1433,7 @@ class IndividualConditionalExpectation:
             # display(self._recommendation_table.iloc[0:self._max_num_recommendations.value])
         self._output_tab.selected_index = 1
         self._output_tab.set_title(1, 'cluster statistics')
-        #self._recommendation_selection.value = self._recommendation_table.index[0]
+        # self._recommendation_selection.value = self._recommendation_table.index[0]
 
     @_add_title_and_border('Individual Conditional Expectation Plots')
     def get_widget(self):
@@ -1457,6 +1457,11 @@ class PlotMeasureVsParameter:
         self._output = widgets.Output()
         self._update_button = widgets.Button(description='update')
         self._update_button.on_click(self._plot)
+
+    def _print(self, message):
+        with self._output:
+            clear_output(wait=True)
+            print(message)
 
     def _update_param_selector(self, change):
         # print(change)
@@ -1484,11 +1489,17 @@ class PlotMeasureVsParameter:
     def _plot(self, change):
         measures = []
         model = self._model_selector.value
+        if model is None:
+            self._print('Please select a model.')
+            return
         data = self._data_selector.get_data()
         for d, w in data.items():
             if len(w) > 0:
                 measures.append(str(NamingConventions.Measure(
                     model=NamingConventions.get_model_from_name(model), data=d, measure_type=self._measure_selector.value)))
+        if len(measures) == 0:
+            self._print('Please select data together with data versions.')
+            return
         with self._output:
             clear_output(wait=True)
             # create measure names from selected models, data and measures
@@ -1501,7 +1512,10 @@ class PlotMeasureVsParameter:
     def get_widget(self):
         return widgets.HBox(children=[
             widgets.VBox(children=[
-                self._model_selector,
+                widgets.VBox(children=[
+                    widgets.Label(value='Model'),
+                    self._model_selector]
+                ),
                 self._data_selector.get_widget(),
                 self._measure_selector,
                 self._param_selector,
