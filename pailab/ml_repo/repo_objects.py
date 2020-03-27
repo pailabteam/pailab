@@ -715,6 +715,9 @@ class MeasureConfiguration(RepoObject):
     MAX = 'max'
     R2 = 'r2'
     ROC_AUC = 'roc_auc'
+    F1 = 'f1'
+    PRECISION = 'precision'
+    RECALL = 'recall'
 
     _ALL_COORDINATES = '_all'
 
