@@ -1459,7 +1459,7 @@ class PlotMeasureVsParameter:
         self._update_button.on_click(self._plot)
 
     def _update_param_selector(self, change):
-        print(change)
+        # print(change)
         if self._model_selector.value is None:
             return
         model = self._model_selector.value
