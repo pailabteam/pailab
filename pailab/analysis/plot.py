@@ -118,8 +118,7 @@ def measure_by_parameter(ml_repo, measure_name, param_name, data_versions=None, 
     fig = go.Figure(data=data, layout=layout)
     if use_within_widget:
         return fig
-    # return fig
-    iplot(fig)  # , filename='pandas/basic-line-plot')
+    return iplot(fig)  # , filename='pandas/basic-line-plot')
 
 
 def projection(ml_repo, left, right, n_steps=100, model=None, labels=None,  output_index=None, direction=None):
