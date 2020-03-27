@@ -118,7 +118,7 @@ def measure_by_parameter(ml_repo, measure_name, param_name, data_versions=None, 
     fig = go.Figure(data=data, layout=layout)
     if use_within_widget:
         return fig
-    return iplot(fig)  # , filename='pandas/basic-line-plot')
+    iplot(fig)  # , filename='pandas/basic-line-plot')
 
 
 def projection(ml_repo, left, right, n_steps=100, model=None, labels=None,  output_index=None, direction=None):
@@ -223,7 +223,7 @@ def measure_history(ml_repo, measure_name, logscale_y=False):
     fig = go.Figure(data=data, layout=layout)
     if use_within_widget:
         return fig
-    return iplot(fig)  # , filename='pandas/basic-line-plot')
+    iplot(fig)  # , filename='pandas/basic-line-plot')
 
 
 def _histogram(plot_dict, n_bins=None, histnorm='percent'):
