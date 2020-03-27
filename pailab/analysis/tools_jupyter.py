@@ -8,6 +8,7 @@ import pailab.analysis.plot_helper as plt_helper
 import ipywidgets as widgets
 
 from pailab import MLObjectType, RepoInfoKey, FIRST_VERSION, LAST_VERSION
+from pailab.ml_repo.repo import NamingConventions
 import pailab.tools.checker as checker
 import pailab.tools.tools as tools
 import pailab.tools.interpretation as interpretation
@@ -188,6 +189,8 @@ class _MLRepoModel:
 
     def get_versions(self, name):
         return self.ml_repo.get_history(name, obj_member_fields=[])
+
+    # def get_model_parameter(self, model_name)
 
 
 widget_repo = _MLRepoModel()
@@ -706,7 +709,7 @@ class _ModelAndDataSelectorWithVersion:
 
 
 class _MeasureSelector:
-    """Widget to select training and test data.
+    """Widget to select measures.
     """
 
     def __init__(self, **kwargs):
@@ -1442,15 +1445,67 @@ class IndividualConditionalExpectation:
 
 class PlotMeasureVsParameter:
     def __init__(self):
-        self._model_data_selector = _ModelAndDataSelectorWithVersion(
-            display_selection=False)
+        self._model_selector = widgets.Dropdown(
+            options=widget_repo.model.get_models(), value=None)
+        self._data_selector = _DataSelectorWithVersion(display_selection=False)
+        # self._model_data_selector = _ModelAndDataSelectorWithVersion(
+        #    display_selection=False)
+        self._measure_selector = widgets.Dropdown(options=widget_repo.measures)
+        self._model_selector.observe(
+            self._update_param_selector)
+        self._param_selector = widgets.Dropdown(options=[])
+        self._output = widgets.Output()
+        self._update_button = widgets.Button(description='update')
+        self._update_button.on_click(self._plot)
+
+    def _update_param_selector(self, change):
+        print(change)
+        if self._model_selector.value is None:
+            return
+        model = self._model_selector.value
+        model_param_name = NamingConventions.get_model_param_name(
+            model)
+        params = []
+        try:
+            model_params = widget_repo.ml_repo.get(model_param_name)
+            for p in model_params.get_params().keys():
+                params.append(p)
+        except:
+            pass
+        train_param_name = str(NamingConventions.TrainingParam(model))
+        try:
+            train_params = widget_repo.ml_repo.get(train_param_name)
+            for p in train_params.get_params().keys():
+                params.append(p)
+        except:
+            pass
+        self._param_selector.options = params
+
+    def _plot(self, change):
+        measures = []
+        model = self._model_selector.value
+        data = self._data_selector.get_data()
+        for d, w in data.items():
+            if len(w) > 0:
+                measures.append(str(NamingConventions.Measure(
+                    model=NamingConventions.get_model_from_name(model), data=d, measure_type=self._measure_selector.value)))
+        with self._output:
+            clear_output(wait=True)
+            # create measure names from selected models, data and measures
+            display(go.FigureWidget(
+                    paiplot.measure_by_parameter(widget_repo.ml_repo,
+                                                 measures, self._param_selector.value)
+                    ))
 
     @_add_title_and_border('Measure vs Parameter')
     def get_widget(self):
         return widgets.HBox(children=[
             widgets.VBox(children=[
-                self._model_data_selector.get_widget(),
-
+                self._model_selector,
+                self._data_selector.get_widget(),
+                self._measure_selector,
+                self._param_selector,
+                self._update_button
             ]),
-            # self._output
+            self._output
         ])

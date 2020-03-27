@@ -116,6 +116,8 @@ def measure_by_parameter(ml_repo, measure_name, param_name, data_versions=None, 
     # py.iplot(data, filename='pandas/basic-line-plot')
 
     fig = go.Figure(data=data, layout=layout)
+    if use_within_widget:
+        return fig
     # return fig
     iplot(fig)  # , filename='pandas/basic-line-plot')
 
@@ -220,7 +222,8 @@ def measure_history(ml_repo, measure_name, logscale_y=False):
     # IPython notebook
     # py.iplot(data, filename='pandas/basic-line-plot')
     fig = go.Figure(data=data, layout=layout)
-
+    if use_within_widget:
+        return fig
     return iplot(fig)  # , filename='pandas/basic-line-plot')
 
 
