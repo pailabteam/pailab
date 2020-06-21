@@ -19,7 +19,7 @@ try:
 except ImportError:
     has_plotly = False
 
-# the following variable  is used to support th plotting methods within the jupyter_tools widget framework and will be set to true from within 
+# the following variable  is used to support th plotting methods within the jupyter_tools widget framework and will be set to true from within
 # the framework
 use_within_widget = False
 
@@ -50,12 +50,12 @@ def measure_by_parameter(ml_repo, measure_name, param_name, data_versions=None, 
     if logscale_x:
         x_scaler = math.log10
     else:
-        x_scaler = lambda x: x
+        def x_scaler(x): return x
 
     if logscale_y:
         y_scaler = math.log10
     else:
-        y_scaler = lambda x: x
+        def y_scaler(x): return x
 
     x = plot_helper.get_measure_by_parameter(
         ml_repo, measure_name, param_name, data_versions, training_param)
@@ -103,7 +103,7 @@ def measure_by_parameter(ml_repo, measure_name, param_name, data_versions=None, 
     if logscale_x:
         xaxis['type'] = 'log'
     yaxis = dict(title=NamingConventions.Measure(
-            measure_name).values['measure_type'])
+        measure_name).values['measure_type'])
     if logscale_y:
         yaxis['type'] = 'log'
     layout = go.Layout(
@@ -116,7 +116,8 @@ def measure_by_parameter(ml_repo, measure_name, param_name, data_versions=None, 
     # py.iplot(data, filename='pandas/basic-line-plot')
 
     fig = go.Figure(data=data, layout=layout)
-    # return fig
+    if use_within_widget:
+        return fig
     iplot(fig)  # , filename='pandas/basic-line-plot')
 
 
@@ -131,11 +132,11 @@ def projection(ml_repo, left, right, n_steps=100, model=None, labels=None,  outp
     x_data = [0.0 + float(i)/float(n_steps-1) for i in range(n_steps)]
     for k, v in x.items():
         data.append(
-                    go.Scatter(
-                        x=x_data,
-                        y=v,
-                        name=k
-                    )
+            go.Scatter(
+                x=x_data,
+                y=v,
+                name=k
+            )
         )
     layout = go.Layout(
         title='projection',
@@ -147,7 +148,7 @@ def projection(ml_repo, left, right, n_steps=100, model=None, labels=None,  outp
 
 
 def measure_history(ml_repo, measure_name, logscale_y=False):
-    """Plots the history of the model w.r.t. a defined measure. The x-axis is defined by the indert datetime of each model.
+    """Plots the history of the model w.r.t. a defined measure. The x-axis is defined by the insert datetime of each model.
 
 
     Args:
@@ -163,7 +164,7 @@ def measure_history(ml_repo, measure_name, logscale_y=False):
     if logscale_y:
         y_scaler = math.log10
     else:
-        y_scaler = lambda x: x
+        def y_scaler(x): return x
 
     x = plot_helper.get_measure_history(
         ml_repo, measure_name)
@@ -187,11 +188,11 @@ def measure_history(ml_repo, measure_name, logscale_y=False):
         for d_version in data_versions:
             # if True:
             df = measures.loc[measures['data_version'] == d_version]
-            #text = ["model version: " + str(x['model_version']) + '<br>' +
+            # text = ["model version: " + str(x['model_version']) + '<br>' +
             #        data_name + ': ' + str(x['data_version']) + '<br>'
             #        + 'train_data: ' + str(x['train_data_version'])
-            #        ]      
-                    #for index, x in df.iterrows()]
+            #        ]
+            # for index, x in df.iterrows()]
 
             if True:  # len(x) > 1:
                 plot_name = k + ': ' + str(d_version)
@@ -201,14 +202,14 @@ def measure_history(ml_repo, measure_name, logscale_y=False):
                 go.Scatter(
                     x=df['datetime'],
                     y=df['value'],
-                    #text=text,
+                    # text=text,
                     name=plot_name,
                     mode='markers'
                 )
             )
 
     yaxis = dict(title=NamingConventions.Measure(
-            measure_name).values['measure_type'])
+        measure_name).values['measure_type'])
     if logscale_y:
         yaxis['type'] = 'log'
     layout = go.Layout(
@@ -220,8 +221,9 @@ def measure_history(ml_repo, measure_name, logscale_y=False):
     # IPython notebook
     # py.iplot(data, filename='pandas/basic-line-plot')
     fig = go.Figure(data=data, layout=layout)
-
-    return iplot(fig)  # , filename='pandas/basic-line-plot')
+    if use_within_widget:
+        return fig
+    iplot(fig)  # , filename='pandas/basic-line-plot')
 
 
 def _histogram(plot_dict, n_bins=None, histnorm='percent'):
@@ -242,23 +244,22 @@ def _histogram(plot_dict, n_bins=None, histnorm='percent'):
             k = x['label'] + ', ' + k
         if n_bins is None:
             plot_data.append(go.Histogram(x=x['x0'],
-                                        text=text,
-                                        name=k,
-                                        opacity=opacity,
-                                        histnorm=histnorm))
+                                          text=text,
+                                          name=k,
+                                          opacity=opacity,
+                                          histnorm=histnorm))
         else:
             plot_data.append(go.Histogram(x=x['x0'],
-                                        text=text,
-                                        name=k,
-                                        opacity=opacity,
-                                        nbinsx=n_bins,
-                                        histnorm=histnorm))
+                                          text=text,
+                                          name=k,
+                                          opacity=opacity,
+                                          nbinsx=n_bins,
+                                          histnorm=histnorm))
 
     fig = go.Figure(data=plot_data, layout=layout)
     if use_within_widget:
         return fig
     iplot(fig)  # , filename='pandas/basic-line-plot')
-    
 
 
 def histogram_model_error(ml_repo, models, data_name, y_coordinate=None, data_version=LAST_VERSION, n_bins=None,  start_index=0, end_index=-1):
@@ -293,14 +294,14 @@ def histogram_model_error(ml_repo, models, data_name, y_coordinate=None, data_ve
 
     """
     if isinstance(y_coordinate, list) or isinstance(y_coordinate, tuple):
-        plot_dict = {'data':{}, 'x0_name': 'pointwise error'}
+        plot_dict = {'data': {}, 'x0_name': 'pointwise error'}
         for coord in y_coordinate:
             tmp = plot_helper.get_pointwise_model_errors(
                 ml_repo, models, data_name, coord, start_index=start_index, end_index=end_index)
-            for k,v in tmp['data'].items():
+            for k, v in tmp['data'].items():
                 plot_dict['data'][str(coord) + ':' + k] = v
         plot_dict['title'] = 'pointwise errors'
-    else:    
+    else:
         plot_dict = plot_helper.get_pointwise_model_errors(
             ml_repo, models, data_name, y_coordinate, start_index=start_index, end_index=end_index)
     return _histogram(plot_dict, n_bins)
@@ -361,10 +362,10 @@ def histogram_data(ml_repo, data, x_coordinate, n_bins=None,  start_index=0, end
 
 
 def histogram_data_conditional_error(ml_repo, models, data, x_coordinate, y_coordinate=0,
-                                    start_index=0, end_index=-1, percentile=0.1, n_bins=None, n_hist=1,
-                                    metric = 'rbf',  **kwds):
+                                     start_index=0, end_index=-1, percentile=0.1, n_bins=None, n_hist=1,
+                                     metric='rbf',  **kwds):
     """Plots the distribution of input data along a given axis for the largest absolute pointwise errors in comparison to the distribution of all data.
-    
+
     Args:
         ml_repo (MLRepo): repository
         models (str or dict): A dictionary of model names (or labels) to versions (a single version number, a range of versions or a list of versions) or 
@@ -386,47 +387,52 @@ def histogram_data_conditional_error(ml_repo, models, data, x_coordinate, y_coor
             Currently, sklearn provides the following strings: ‘additive_chi2’, ‘chi2’, ‘linear’, ‘poly’, ‘polynomial’, ‘rbf’,
                                                 ‘laplacian’, ‘sigmoid’, ‘cosine’ 
         **kwds: optional keyword parameters that are passed directly to the kernel function.
-    
+
     """
     if x_coordinate is None or y_coordinate is None:
         logger.info('Start computing recommendations for coordinates.')
-        tmp =  pd.DataFrame.from_dict( plot_helper.get_ptws_error_dist_mmd(ml_repo, models, data, x_coordinate,
-                     y_coordinate, start_index=start_index, end_index=end_index, percentile = percentile,  metric='rbf',  **kwds)
-            )
-        tmp = tmp.sort_values(['mmd'], ascending = False)
+        tmp = pd.DataFrame.from_dict(plot_helper.get_ptws_error_dist_mmd(ml_repo, models, data, x_coordinate,
+                                                                         y_coordinate, start_index=start_index, end_index=end_index, percentile=percentile,  metric='rbf',  **kwds)
+                                     )
+        tmp = tmp.sort_values(['mmd'], ascending=False)
         recommended_coordinates = set()
         for i in range(min(tmp.shape[0], n_hist)):
-            recommended_coordinates.add((tmp.iloc[i]['x-coord'], tmp.iloc[i]['y-coord'], ))
+            recommended_coordinates.add(
+                (tmp.iloc[i]['x-coord'], tmp.iloc[i]['y-coord'], ))
         logger.info('Finished computing recommendations for coordinates.')
         for coord in recommended_coordinates:
             histogram_data_conditional_error(ml_repo, models, data, coord[0], coord[1],
-                start_index, end_index, percentile, n_bins, n_hist)
+                                             start_index, end_index, percentile, n_bins, n_hist)
     else:
         tmp = plot_helper.get_pointwise_model_errors(
-            ml_repo, models, data, y_coordinate, x_coord_name=x_coordinate, start_index = start_index, end_index = end_index)
-        
+            ml_repo, models, data, y_coordinate, x_coord_name=x_coordinate, start_index=start_index, end_index=end_index)
+
         plot_data = {}
-            
+
         for k, x in tmp['data'].items():
             abs_err = np.abs(x['x1'])
             sorted_indices = np.argsort(abs_err)
-            i_start = int( (1.0-percentile)*len(sorted_indices))
+            i_start = int((1.0-percentile)*len(sorted_indices))
             indices = sorted_indices[i_start:]
             data = {'x0': x['x0'][indices], 'info': x['info']}
             if 'label' in x.keys():
                 plot_data[x['label']+':'+str(percentile)] = data
-                plot_data[x['label']] = {'x0': x['x0'][start_index:end_index], 'info': x['info']}
+                plot_data[x['label']] = {
+                    'x0': x['x0'][start_index:end_index], 'info': x['info']}
             else:
                 plot_data[k+':'+str(percentile)] = data
-                plot_data[k] = {'x0': x['x0'][start_index:end_index], 'info': x['info']}
-        plot_dict = {'data': plot_data, 'title': tmp['title'] + ', including distribution w.r.t ' + str(100*percentile) + ' % quantile', 'x0_name' : tmp['x0_name'], 'x1_name': tmp['x1_name']}
+                plot_data[k] = {'x0': x['x0']
+                                [start_index:end_index], 'info': x['info']}
+        plot_dict = {'data': plot_data, 'title': tmp['title'] + ', including distribution w.r.t ' + str(
+            100*percentile) + ' % quantile', 'x0_name': tmp['x0_name'], 'x1_name': tmp['x1_name']}
         return _histogram(plot_dict, n_bins=n_bins)
 
 
-def _ice_plotly(ice_results, ice_points = None, height = None, width = None, ice_results_2 = None, clusters = None):
+def _ice_plotly(ice_results, ice_points=None, height=None, width=None, ice_results_2=None, clusters=None):
     data = []
-    if not isinstance(ice_results,list):
-        title = 'ICE, model: ' + ice_results.model + ', <br> version: ' + ice_results.model_version
+    if not isinstance(ice_results, list):
+        title = 'ICE, model: ' + ice_results.model + \
+            ', <br> version: ' + ice_results.model_version
         x_coord_name = ice_results.x_coord_name
         y_coord_name = ice_results.y_coord_name
         if ice_points is None:
@@ -436,21 +442,26 @@ def _ice_plotly(ice_results, ice_points = None, height = None, width = None, ice
             for i in ice_points:
                 if ice_results.labels[i] in clusters:
                     ice_points_tmp.append(i)
-            _ice_plotly(ice_results, ice_points=ice_points_tmp, ice_results_2 = ice_results_2, height=height, width=width)
+            _ice_plotly(ice_results, ice_points=ice_points_tmp,
+                        ice_results_2=ice_results_2, height=height, width=width)
             return
         # plot ice curves
         for i in ice_points:
-            data.append(go.Scatter(x=ice_results.x_values, y = ice_results.ice[i,:], name = ice_results.data_name + '[' + str(ice_results.start_index +i) + ',:]'))
+            data.append(go.Scatter(x=ice_results.x_values,
+                                   y=ice_results.ice[i, :], name=ice_results.data_name + '[' + str(ice_results.start_index + i) + ',:]'))
             if ice_results_2 is not None:
-                data.append(go.Scatter(x=ice_results_2.x_values, y = ice_results_2.ice[i,:], name = 'model2, ' + ice_results.data_name + '[' + str(ice_results.start_index +i) + ',:]'))
+                data.append(go.Scatter(x=ice_results_2.x_values,
+                                       y=ice_results_2.ice[i, :], name='model2, ' + ice_results.data_name + '[' + str(ice_results.start_index + i) + ',:]'))
     else:
         for (model, model_version, d, data_version, ice_result) in ice_results:
             if ice_results_2 is not None:
-                raise Exception('Second results via ice_results_2 are only allowed if base results are not a list of different results.')
+                raise Exception(
+                    'Second results via ice_results_2 are only allowed if base results are not a list of different results.')
             x_coord_name = ice_result.x_coord_name
             y_coord_name = ice_result.y_coord_name
             if len(ice_results) == 1:
-                title = 'ICE, model: ' + ice_result.model + ', <br> version: ' + ice_result.model_version
+                title = 'ICE, model: ' + ice_result.model + \
+                    ', <br> version: ' + ice_result.model_version
                 prefix = ''
             else:
                 title = 'ICE'
@@ -462,16 +473,18 @@ def _ice_plotly(ice_results, ice_points = None, height = None, width = None, ice
                 for i in ice_points:
                     if ice_result.labels[i] in clusters:
                         ice_points_tmp.append(i)
-                _ice_plotly(ice_result, ice_points=ice_points_tmp, ice_results_2 = ice_results_2, height=height, width=width)
+                _ice_plotly(ice_result, ice_points=ice_points_tmp,
+                            ice_results_2=ice_results_2, height=height, width=width)
             # plot ice curves
             for i in ice_points:
-                data.append(go.Scatter(x=ice_result.x_values, y = ice_result.ice[i,:], name = ice_result.data_name + '[' + str(ice_result.start_index +i) + ',:]'))
+                data.append(go.Scatter(
+                    x=ice_result.x_values, y=ice_result.ice[i, :], name=ice_result.data_name + '[' + str(ice_result.start_index + i) + ',:]'))
     layout = go.Layout(
         title=title,
         xaxis=dict(title=x_coord_name),
         yaxis=dict(title=y_coord_name),
-        height = height,
-        width = width
+        height=height,
+        width=width
     )
     fig = go.Figure(data=data, layout=layout)
     if use_within_widget:
@@ -479,25 +492,30 @@ def _ice_plotly(ice_results, ice_points = None, height = None, width = None, ice
     iplot(fig)  # , filename='pandas/basic-line-plot')
 
 
-def _ice_clusters_plotly(ice_results, height = None, width = None, ice_results_2= None, clusters = None):
+def _ice_clusters_plotly(ice_results, height=None, width=None, ice_results_2=None, clusters=None):
     data = []
-    if not isinstance(ice_results,list):
-        title = 'ICE clusters, model: ' + ice_results.model + ', <br> version: ' + ice_results.model_version
+    if not isinstance(ice_results, list):
+        title = 'ICE clusters, model: ' + ice_results.model + \
+            ', <br> version: ' + ice_results.model_version
         x_coord_name = ice_results.x_coord_name
         y_coord_name = ice_results.y_coord_name
         if clusters is None:
             clusters = range(ice_results.cluster_centers.shape[0])
         # plot ice cluster curves
         for i in clusters:
-            data.append(go.Scatter(x=ice_results.x_values, y = ice_results.cluster_centers[i,:], name = 'cluster ' + str(i)))
+            data.append(go.Scatter(x=ice_results.x_values,
+                                   y=ice_results.cluster_centers[i, :], name='cluster ' + str(i)))
         if ice_results_2 is not None:
-            cluster_averages = ice_results.compute_cluster_average(ice_results_2)
+            cluster_averages = ice_results.compute_cluster_average(
+                ice_results_2)
             for i in clusters:
-                data.append(go.Scatter(x=ice_results.x_values, y = cluster_averages[i,:], name = 'average ' + str(i)))
+                data.append(go.Scatter(x=ice_results.x_values,
+                                       y=cluster_averages[i, :], name='average ' + str(i)))
     else:
         title = 'ICE clusters'
         if ice_results_2 is not None:
-            raise Exception('Second results via ice_results_2 are only allowed if base results are not a list of different results.')
+            raise Exception(
+                'Second results via ice_results_2 are only allowed if base results are not a list of different results.')
         for (model, model_version, d, data_version, ice_result) in ice_results:
             x_coord_name = ice_result.x_coord_name
             y_coord_name = ice_result.y_coord_name
@@ -507,15 +525,18 @@ def _ice_clusters_plotly(ice_results, height = None, width = None, ice_results_2
             for i in clusters:
                 name = 'cluster ' + str(i)
                 if len(ice_results) > 1:
-                    name = model + ' (' + model_version[:5] + '...), ' +  d +  ' (' + data_version[:5] + '...), ' + name
-                data.append(go.Scatter(x=ice_result.x_values, y = ice_result.cluster_centers[i,:], name = name))
-   
+                    name = model + \
+                        ' (' + model_version[:5] + '...), ' + d + \
+                        ' (' + data_version[:5] + '...), ' + name
+                data.append(go.Scatter(x=ice_result.x_values,
+                                       y=ice_result.cluster_centers[i, :], name=name))
+
     layout = go.Layout(
         title=title,
         xaxis=dict(title=x_coord_name),
         yaxis=dict(title=y_coord_name),
-        height = height,
-        width = width
+        height=height,
+        width=width
     )
     fig = go.Figure(data=data, layout=layout)
     if use_within_widget:
@@ -523,9 +544,9 @@ def _ice_clusters_plotly(ice_results, height = None, width = None, ice_results_2
     iplot(fig)
 
 
-def ice(ice_results, height = None, width = None, ice_points = None, ice_results_2 = None, clusters = None):
+def ice(ice_results, height=None, width=None, ice_points=None, ice_results_2=None, clusters=None):
     """Plots ICE graphs computed with tools.interpretation.compute_ice.
-    
+
     Args:
         ice_results (tools.interpretation.ICE_Results): Resulting object after calling tools.interpretation.compute_ice.
         height ([type], optional): [description]. Defaults to None.
@@ -539,13 +560,15 @@ def ice(ice_results, height = None, width = None, ice_points = None, ice_results
     if ice_results_2 is not None:
         ice_results._validate_for_comparison(ice_results_2)
     if has_plotly:
-        return _ice_plotly(ice_results, height=height, width=width, ice_points = ice_points, ice_results_2 = ice_results_2, clusters = clusters)
+        return _ice_plotly(ice_results, height=height, width=width, ice_points=ice_points, ice_results_2=ice_results_2, clusters=clusters)
     else:
-        raise Exception("Plot methods for matplotlib have not yet been implemented.")
-     
-def ice_clusters(ice_results, height = None, width = None, ice_results_2 = None, clusters = None):
+        raise Exception(
+            "Plot methods for matplotlib have not yet been implemented.")
+
+
+def ice_clusters(ice_results, height=None, width=None, ice_results_2=None, clusters=None):
     """Plot the cluster centers from functional clustering of ICE curves.
-    
+
     Args:
         ice_results (ICE_Result): Result from calling the method interpretation.compute_ice with functional clustering.
         height (int, optional): Height of resulting figure. Defaults to None.
@@ -560,37 +583,43 @@ def ice_clusters(ice_results, height = None, width = None, ice_results_2 = None,
     """
     if not isinstance(ice_results, list):
         if ice_results.cluster_centers is None:
-            raise Exception('No clusters have yet been computed. Call compute_ice with clusering_param to compute clusters.')
+            raise Exception(
+                'No clusters have yet been computed. Call compute_ice with clusering_param to compute clusters.')
     else:
         if len(ice_results) > 0:
             if ice_results[0][-1].cluster_centers is None:
-                raise Exception('No clusters have yet been computed. Call compute_ice with clusering_param to compute clusters.')
+                raise Exception(
+                    'No clusters have yet been computed. Call compute_ice with clusering_param to compute clusters.')
     if has_plotly:
-        return _ice_clusters_plotly(ice_results, height=height, width=width, ice_results_2=ice_results_2, clusters = clusters)
+        return _ice_clusters_plotly(ice_results, height=height, width=width, ice_results_2=ice_results_2, clusters=clusters)
     else:
-        raise Exception("Plot methods for matplotlib have not yet been implemented.")
-    
-def ice_diff(ice_results, ice_results_2, n_curves=10, ord = 2, height = None, width = None):
+        raise Exception(
+            "Plot methods for matplotlib have not yet been implemented.")
+
+
+def ice_diff(ice_results, ice_results_2, n_curves=10, ord=2, height=None, width=None):
     """It computes the indices of the n-th largest ICE differences between two models (w.r.t. a specified vector norm) and plots these ICE graphs.
-    
+
     Args:
         ice_results (tools.interpretation.ICE_Results): [description]
         ice_results_2 (tools.interpretation.ICE_Results): [description]
         n_curves (int, optional): [description]. Defaults to 10.
         ord (int, optional): Defines the norm to be used to measure distance between two ICE curves, see numpy's valid strings for ord in linalg.norm [description]. Defaults to 2.
-        
+
     """
     ice_results._validate_for_comparison(ice_results_2)
     if n_curves > ice_results.ice.shape[0]:
-        raise Exception('Number of desired curves exceeds number of all curves.')
+        raise Exception(
+            'Number of desired curves exceeds number of all curves.')
     tmp = ice_results.ice - ice_results_2.ice
-    distance = np.linalg.norm(ice_results.ice - ice_results_2.ice, ord = ord, axis = 1)
+    distance = np.linalg.norm(
+        ice_results.ice - ice_results_2.ice, ord=ord, axis=1)
     indices = [i for i in range(ice_results.ice.shape[0])]
     tmp = sorted(zip(distance, indices))
     ice_points = [tmp[i][1] for i in range(n_curves)]
     if has_plotly:
-        _ice_plotly(ice_results, height=height, width=width, ice_points = ice_points, ice_results_2 = ice_results_2)
+        _ice_plotly(ice_results, height=height, width=width,
+                    ice_points=ice_points, ice_results_2=ice_results_2)
     else:
-        raise Exception("Plot methods for matplotlib have not yet been implemented.")
-    
-
+        raise Exception(
+            "Plot methods for matplotlib have not yet been implemented.")

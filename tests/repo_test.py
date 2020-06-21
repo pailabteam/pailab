@@ -6,7 +6,7 @@ import numpy as np
 import tempfile
 
 from pailab import RepoInfoKey, MLObjectType, repo_object_init, RepoInfoKey, DataSet, RawData, MLRepo  # pylint: disable=E0401
-from pailab.ml_repo.repo import NamingConventions
+from pailab.ml_repo.repo import NamingConventions, MeasureJob
 from pailab.ml_repo.repo_objects import RepoInfo
 import pailab.tools.tests as ml_tests
 import pailab.ml_repo.repo_objects as repo_objects
@@ -1079,6 +1079,44 @@ class RegressionTestTest(unittest.TestCase):
         model_version = repo.add(model_1)
         measure_1 = repo_objects.Measure(1.0, repo_info={
                                          'name': 'model/measure/test_data/max', 'modification_info': {'model'}})
+
+
+class MeasureTest(unittest.TestCase):
+    def test_roc(self):
+        measure_job = MeasureJob('dummy', repo_objects.MeasureConfiguration.ROC_AUC,
+                                 repo_objects.MeasureConfiguration._ALL_COORDINATES, 'dummy', 'dummy')
+        x = np.ones((20,))
+        x[1] = 0
+        roc = measure_job._compute(x, x)
+        self.assertAlmostEqual(roc, 1.0)
+
+    def test_r2(self):
+        measure_job = MeasureJob('dummy', repo_objects.MeasureConfiguration.R2,
+                                 repo_objects.MeasureConfiguration._ALL_COORDINATES, 'dummy', 'dummy')
+        x = np.ones((20,))
+        r2 = measure_job._compute(x, x)
+        self.assertAlmostEqual(r2, 1.0)
+
+    def test_f1(self):
+        measure_job = MeasureJob('dummy', repo_objects.MeasureConfiguration.F1,
+                                 repo_objects.MeasureConfiguration._ALL_COORDINATES, 'dummy', 'dummy')
+        x = np.ones((20,))
+        f1 = measure_job._compute(x, x)
+        self.assertAlmostEqual(f1, 1.0)
+
+    def test_recall(self):
+        measure_job = MeasureJob('dummy', repo_objects.MeasureConfiguration.RECALL,
+                                 repo_objects.MeasureConfiguration._ALL_COORDINATES, 'dummy', 'dummy')
+        x = np.ones((20,))
+        recall = measure_job._compute(x, x)
+        self.assertAlmostEqual(recall, 1.0)
+
+    def test_precision(self):
+        measure_job = MeasureJob('dummy', repo_objects.MeasureConfiguration.PRECISION,
+                                 repo_objects.MeasureConfiguration._ALL_COORDINATES, 'dummy', 'dummy')
+        x = np.ones((20,))
+        precision = measure_job._compute(x, x)
+        self.assertAlmostEqual(precision, 1.0)
 
 
 if __name__ == '__main__':

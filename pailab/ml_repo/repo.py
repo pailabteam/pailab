@@ -917,6 +917,14 @@ class MeasureJob(Job):
             return self._compute_r2(target_data, eval_data)
         if self.measure_type == repo_objects.MeasureConfiguration.MSE:
             return self._compute_mse(target_data, eval_data)
+        if self.measure_type == repo_objects.MeasureConfiguration.ROC_AUC:
+            return self._compute_roc_auc_score(target_data, eval_data)
+        if self.measure_type == repo_objects.MeasureConfiguration.F1:
+            return self._compute_f1(target_data, eval_data)
+        if self.measure_type == repo_objects.MeasureConfiguration.PRECISION:
+            return self._compute_precision(target_data, eval_data)
+        if self.measure_type == repo_objects.MeasureConfiguration.RECALL:
+            return self._compute_recall(target_data, eval_data)
         else:
             raise NotImplementedError
 
@@ -962,6 +970,57 @@ class MeasureJob(Job):
         from sklearn.metrics import mean_squared_error
         return mean_squared_error(target_data, eval_data)
 
+    def _compute_roc_auc_score(self, target_data, eval_data):
+        """ Computes the area under the Receiver Operating Characteristic Curve (ROC AUC).
+
+        Args:
+            target_data ([type]): the target data
+            eval_data ([type]): the evaluated data
+
+        Returns:
+            double -- the error
+        """
+        from sklearn.metrics import roc_auc_score
+        return roc_auc_score(target_data, eval_data)
+
+    def _compute_f1(self, target_data, eval_data):
+        """ Computes the F1 score.
+
+        Args:
+            target_data (1d array-like): the target data
+            eval_data (1d array-like): the evaluated data
+
+        Returns:
+            double -- the error
+        """
+        from sklearn.metrics import f1_score
+        return f1_score(target_data, eval_data)
+
+    def _compute_precision(self, target_data, eval_data):
+        """ Computes the precision score.
+
+        Args:
+            target_data (1d array-like): the target data
+            eval_data (1d array-like): the evaluated data
+
+        Returns:
+            double -- the error
+        """
+        from sklearn.metrics import precision_score
+        return precision_score(target_data, eval_data)
+
+    def _compute_recall(self, target_data, eval_data):
+        """ Computes the recall score.
+
+        Args:
+            target_data (1d array-like): the target data
+            eval_data (1d array-like): the evaluated data
+
+        Returns:
+            double -- the error
+        """
+        from sklearn.metrics import recall_score
+        return recall_score(target_data, eval_data)
 # endregion
 
 
