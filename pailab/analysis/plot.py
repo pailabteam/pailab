@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 init_notebook_mode(connected=True)
 
 
-def measure_by_parameter(ml_repo, measure_name, param_name, data_versions=None, training_param=False, logscale_y=False, logscale_x=False):
+def measure_by_parameter(ml_repo, measure_name, param_name, data_versions=None, training_param=False, logscale_y=False, logscale_x=False, title='measure by parameter'):
     """Plot a measure value vs a certain training or model parameter.
 
     Args:
@@ -40,6 +40,7 @@ def measure_by_parameter(ml_repo, measure_name, param_name, data_versions=None, 
         training_param (bool, optional): Boolean that defines if parameter of interest belongs to training or model parameter. Defaults to False.
         logscale_y (bool): If true, the y-axis will be log scale. Defaults to False.
         logscale_x (bool): If true, the x-axis will be log scale. Defaults to False.
+        title (str): Title of plot, if None, no title is used
 
     Examples:
         To plot the maximum error (which must have been defined in the measures) for the model ``DecisionTreeRegressor`` on the dataset ``sample1`` against
@@ -107,13 +108,11 @@ def measure_by_parameter(ml_repo, measure_name, param_name, data_versions=None, 
     if logscale_y:
         yaxis['type'] = 'log'
     layout = go.Layout(
-        title='measure by parameter',
+        title=title,
         annotations=model_label_annotations,
         xaxis=xaxis,
         yaxis=yaxis
     )
-    # IPython notebook
-    # py.iplot(data, filename='pandas/basic-line-plot')
 
     fig = go.Figure(data=data, layout=layout)
     if use_within_widget:
