@@ -1450,10 +1450,12 @@ class PlotMeasureVsParameter:
         self._data_selector = _DataSelectorWithVersion(display_selection=False)
         # self._model_data_selector = _ModelAndDataSelectorWithVersion(
         #    display_selection=False)
-        self._measure_selector = widgets.Dropdown(options=widget_repo.measures)
+        self._measure_selector = widgets.Dropdown(
+            options=widget_repo.measures, description='Measure')
         self._model_selector.observe(
             self._update_param_selector)
-        self._param_selector = widgets.Dropdown(options=[])
+        self._param_selector = widgets.Dropdown(
+            options=[], description='Parameter')
         self._output = widgets.Output()
         self._update_button = widgets.Button(description='update')
         self._update_button.on_click(self._plot)
@@ -1505,21 +1507,28 @@ class PlotMeasureVsParameter:
             # create measure names from selected models, data and measures
             display(go.FigureWidget(
                     paiplot.measure_by_parameter(widget_repo.ml_repo,
-                                                 measures, self._param_selector.value)
+                                                 measures, self._param_selector.value,
+                                                 title=None)  # since title is contained in widget header, figure does not show title
                     ))
 
     @_add_title_and_border('Measure vs Parameter')
     def get_widget(self):
-        return widgets.HBox(children=[
+        # put settings into accordion
+        accordion = widgets.Accordion(children=[
             widgets.VBox(children=[
                 widgets.VBox(children=[
                     widgets.Label(value='Model'),
-                    self._model_selector]
+                    self._model_selector
+                ]
                 ),
                 self._data_selector.get_widget(),
                 self._measure_selector,
                 self._param_selector,
                 self._update_button
-            ]),
+            ])
+        ])
+        accordion.set_title(0, 'Settings')
+        return widgets.HBox(children=[
+            accordion,
             self._output
         ])
