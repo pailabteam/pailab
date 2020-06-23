@@ -247,37 +247,6 @@ def _highlight_min(data, color='green'):
                             index=data.index, columns=data.columns)
 
 
-class _TableViewer:
-    def __init__(self, table, table_name, selected_columns=None):
-        self._table = table
-        self._table_name = table_name
-        self._columns = table.columns
-        if selected_columns is None:
-            self._selected_columns = self._columns
-        else:
-            self._selected_columns = selected_columns
-
-        self._selected_columns = widgets.SelectMultiple(
-            options=self._columns, value=self._selected_columns)
-        self._output = widgets.Output()
-
-        self._settings = widgets.HBox(children=[])
-        self._tab = widgets.Tab(children=[self._output, self._settings], title=[
-                                'Table', 'Table Settings'])
-
-        self._button_update = widgets.Button(description='update')
-        self._button_update.on_click(self.get_overview)
-
-    def get_overview(self, d):
-        with self._output:
-            clear_output(wait=True)
-            # , orient='index'))
-            TableDisplay(self._table[self._selected_columns.value])
-
-    def get_widget(self):
-        return self._tab
-
-
 class _ObjectCategorySelector:
 
     def __init__(self, *args, **kwargs):
