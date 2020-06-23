@@ -818,7 +818,7 @@ class ObjectView:
         )
 
     def show_history(self, d):
-        result = {key:[] for key in self._repo_info.value}
+        result = {key: [] for key in self._repo_info.value}
         for k in self._names.value:
             history = widget_repo.ml_repo.get_history(k)
             for l in history:
