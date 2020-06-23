@@ -292,6 +292,9 @@ class _ObjectCategorySelector:
                                                 # value = [selection[0]],
                                                 **kwargs)
 
+    def observe(self, on_value_change, names):
+        self._selector.observe(on_value_change, names)
+
     def get_selection(self):
         return [k.split(' ')[0] for k in self._selector.value]
 
@@ -740,21 +743,23 @@ class ObjectOverviewList:
 
         self._output = widgets.Output(layout=widgets.Layout(
             height='300px', width='1000px', overflow_y='auto',  overflow_x='auto'))
+        accordion = widgets.Accordion(children=[self._categories.get_widget(),
+                                                widgets.VBox(children=[
+                                                    widgets.Label(
+                                                        value='Info Fields'),
+                                                    self._repo_info])
+                                                ]
+                                      )
+        accordion.set_title(0, 'Categories')
+        accordion.set_title(1, 'Info Fields')
         self._input_box = widgets.HBox(
             children=[
-                self._categories.get_widget(),
                 widgets.VBox(children=[
-                    widgets.Label(value='Info Fields'),
-                    self._repo_info
+                    accordion,
+                    self._button_update,
                 ]
                 ),
-                widgets.VBox(children=[
-                    self._button_update,
-                    self._output
-                ],
-                    layout=widgets.Layout(margin='10px 10px 10px 10px')
-                )
-            ]
+                self._output]
         )
 
     def get_overview(self, d):
@@ -792,21 +797,28 @@ class ObjectView:
         self._names = widgets.SelectMultiple(
             options=[]
         )
+        self._repo_info = widgets.SelectMultiple(
+            options=[k.value for k in RepoInfoKey], value=['author', 'name', 'commit_date', 'version'],
+            layout=widgets.Layout(width='200px', height='250px', margin='10px')
+        )
         self._setup_names()
         self._categories.observe(self._setup_names, 'value')
 
         self._button_update = widgets.Button(description='show history')
         self._button_update.on_click(self.show_history)
         self._output = widgets.Output()
+        accordion = widgets.Accordion(
+            children=[self._categories.get_widget(), self._names, self._repo_info])
+        accordion.set_title(0, 'Categories')
+        accordion.set_title(1, 'Object Names')
+        accordion.set_title(2, 'Info Fields')
         self._input_box = widgets.HBox(
-            children=[self._categories.get_widget(), self._names, self._button_update, self._output], layout=widgets.Layout(border='solid 1px')
+            children=[widgets.VBox(
+                children=[accordion, self._button_update]), self._output]
         )
 
     def show_history(self, d):
-        result = {RepoInfoKey.NAME.value: [],
-                  RepoInfoKey.AUTHOR.value: [],
-                  RepoInfoKey.VERSION.value: [],
-                  RepoInfoKey.COMMIT_DATE.value: []}
+        result = {key:[] for key in self._repo_info.value}
         for k in self._names.value:
             history = widget_repo.ml_repo.get_history(k)
             for l in history:
