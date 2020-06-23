@@ -111,13 +111,21 @@ def measure_by_parameter(ml_repo, measure_name, param_name, data_versions=None, 
         title=title,
         annotations=model_label_annotations,
         xaxis=xaxis,
-        yaxis=yaxis
+        yaxis=yaxis,
+        margin={
+            'l': 60,
+            'r': 10,
+            'b': 0,
+            't': 10,
+            'pad': 4
+        },
+        legend=dict(x=0, y=-0.3)
     )
 
     fig = go.Figure(data=data, layout=layout)
     if use_within_widget:
         return fig
-    iplot(fig)  # , filename='pandas/basic-line-plot')
+    iplot(fig)
 
 
 def projection(ml_repo, left, right, n_steps=100, model=None, labels=None,  output_index=None, direction=None):
