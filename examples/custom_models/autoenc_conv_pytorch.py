@@ -2,7 +2,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import sigmoid
 
-# define the NN architecture
+#  define the NN architecture
 class ConvAutoencoder(nn.Module):
     def __init__(self, **kwargs):
         super(ConvAutoencoder, self).__init__()

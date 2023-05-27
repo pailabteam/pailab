@@ -247,37 +247,6 @@ def _highlight_min(data, color='green'):
                             index=data.index, columns=data.columns)
 
 
-class _TableViewer:
-    def __init__(self, table, table_name, selected_columns=None):
-        self._table = table
-        self._table_name = table_name
-        self._columns = table.columns
-        if selected_columns is None:
-            self._selected_columns = self._columns
-        else:
-            self._selected_columns = selected_columns
-
-        self._selected_columns = widgets.SelectMultiple(
-            options=self._columns, value=self._selected_columns)
-        self._output = widgets.Output()
-
-        self._settings = widgets.HBox(children=[])
-        self._tab = widgets.Tab(children=[self._output, self._settings], title=[
-                                'Table', 'Table Settings'])
-
-        self._button_update = widgets.Button(description='update')
-        self._button_update.on_click(self.get_overview)
-
-    def get_overview(self, d):
-        with self._output:
-            clear_output(wait=True)
-            # , orient='index'))
-            TableDisplay(self._table[self._selected_columns.value])
-
-    def get_widget(self):
-        return self._tab
-
-
 class _ObjectCategorySelector:
 
     def __init__(self, *args, **kwargs):
@@ -291,6 +260,9 @@ class _ObjectCategorySelector:
         self._selector = widgets.SelectMultiple(options=selection,
                                                 # value = [selection[0]],
                                                 **kwargs)
+
+    def observe(self, on_value_change, names):
+        self._selector.observe(on_value_change, names)
 
     def get_selection(self):
         return [k.split(' ')[0] for k in self._selector.value]
@@ -740,21 +712,23 @@ class ObjectOverviewList:
 
         self._output = widgets.Output(layout=widgets.Layout(
             height='300px', width='1000px', overflow_y='auto',  overflow_x='auto'))
+        accordion = widgets.Accordion(children=[self._categories.get_widget(),
+                                                widgets.VBox(children=[
+                                                    widgets.Label(
+                                                        value='Info Fields'),
+                                                    self._repo_info])
+                                                ]
+                                      )
+        accordion.set_title(0, 'Categories')
+        accordion.set_title(1, 'Info Fields')
         self._input_box = widgets.HBox(
             children=[
-                self._categories.get_widget(),
                 widgets.VBox(children=[
-                    widgets.Label(value='Info Fields'),
-                    self._repo_info
+                    accordion,
+                    self._button_update,
                 ]
                 ),
-                widgets.VBox(children=[
-                    self._button_update,
-                    self._output
-                ],
-                    layout=widgets.Layout(margin='10px 10px 10px 10px')
-                )
-            ]
+                self._output]
         )
 
     def get_overview(self, d):
@@ -792,21 +766,28 @@ class ObjectView:
         self._names = widgets.SelectMultiple(
             options=[]
         )
+        self._repo_info = widgets.SelectMultiple(
+            options=[k.value for k in RepoInfoKey], value=['author', 'name', 'commit_date', 'version'],
+            layout=widgets.Layout(width='200px', height='250px', margin='10px')
+        )
         self._setup_names()
         self._categories.observe(self._setup_names, 'value')
 
         self._button_update = widgets.Button(description='show history')
         self._button_update.on_click(self.show_history)
         self._output = widgets.Output()
+        accordion = widgets.Accordion(
+            children=[self._categories.get_widget(), self._names, self._repo_info])
+        accordion.set_title(0, 'Categories')
+        accordion.set_title(1, 'Object Names')
+        accordion.set_title(2, 'Info Fields')
         self._input_box = widgets.HBox(
-            children=[self._categories.get_widget(), self._names, self._button_update, self._output], layout=widgets.Layout(border='solid 1px')
+            children=[widgets.VBox(
+                children=[accordion, self._button_update]), self._output]
         )
 
     def show_history(self, d):
-        result = {RepoInfoKey.NAME.value: [],
-                  RepoInfoKey.AUTHOR.value: [],
-                  RepoInfoKey.VERSION.value: [],
-                  RepoInfoKey.COMMIT_DATE.value: []}
+        result = {key: [] for key in self._repo_info.value}
         for k in self._names.value:
             history = widget_repo.ml_repo.get_history(k)
             for l in history:
@@ -1450,10 +1431,12 @@ class PlotMeasureVsParameter:
         self._data_selector = _DataSelectorWithVersion(display_selection=False)
         # self._model_data_selector = _ModelAndDataSelectorWithVersion(
         #    display_selection=False)
-        self._measure_selector = widgets.Dropdown(options=widget_repo.measures)
+        self._measure_selector = widgets.Dropdown(
+            options=widget_repo.measures, description='Measure')
         self._model_selector.observe(
             self._update_param_selector)
-        self._param_selector = widgets.Dropdown(options=[])
+        self._param_selector = widgets.Dropdown(
+            options=[], description='Parameter')
         self._output = widgets.Output()
         self._update_button = widgets.Button(description='update')
         self._update_button.on_click(self._plot)
@@ -1505,21 +1488,28 @@ class PlotMeasureVsParameter:
             # create measure names from selected models, data and measures
             display(go.FigureWidget(
                     paiplot.measure_by_parameter(widget_repo.ml_repo,
-                                                 measures, self._param_selector.value)
+                                                 measures, self._param_selector.value,
+                                                 title=None)  # since title is contained in widget header, figure does not show title
                     ))
 
     @_add_title_and_border('Measure vs Parameter')
     def get_widget(self):
-        return widgets.HBox(children=[
+        # put settings into accordion
+        accordion = widgets.Accordion(children=[
             widgets.VBox(children=[
                 widgets.VBox(children=[
                     widgets.Label(value='Model'),
-                    self._model_selector]
+                    self._model_selector
+                ]
                 ),
                 self._data_selector.get_widget(),
                 self._measure_selector,
                 self._param_selector,
                 self._update_button
-            ]),
+            ])
+        ])
+        accordion.set_title(0, 'Settings')
+        return widgets.HBox(children=[
+            accordion,
             self._output
         ])
